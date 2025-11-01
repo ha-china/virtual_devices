@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import random
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.lock import LockEntity, LockState
@@ -125,7 +126,7 @@ class VirtualLock(LockEntity):
             return
 
         self._attr_state = LockState.LOCKED
-        self._last_access = self.hass.util.dt.utcnow()
+        self._last_access = datetime.now()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual lock '{self._attr_name}' locked")
 
@@ -159,7 +160,7 @@ class VirtualLock(LockEntity):
             return
 
         self._attr_state = LockState.UNLOCKED
-        self._last_access = self.hass.util.dt.utcnow()
+        self._last_access = datetime.now()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual lock '{self._attr_name}' unlocked")
 

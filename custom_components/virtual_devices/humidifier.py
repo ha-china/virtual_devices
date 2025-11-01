@@ -38,15 +38,22 @@ async def async_setup_entry(
     """Set up virtual humidifier entities."""
     device_type = config_entry.data.get("device_type")
 
+    _LOGGER.info(f"Setting up humidifier for device type: {device_type}")
+
     # 只有加湿器类型的设备才设置加湿器实体
     if device_type != DEVICE_TYPE_HUMIDIFIER:
+        _LOGGER.info(f"Skipping humidifier setup - device type is {device_type}, not {DEVICE_TYPE_HUMIDIFIER}")
         return
 
     device_info = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
     entities = []
     entities_config = config_entry.data.get(CONF_ENTITIES, [])
+    _LOGGER.info(f"Found {len(entities_config)} humidifier entities to create")
 
     for idx, entity_config in enumerate(entities_config):
+        entity_name = entity_config.get(CONF_ENTITY_NAME, f"Humidifier_{idx + 1}")
+        _LOGGER.info(f"Creating humidifier entity {idx + 1}: {entity_name}")
+
         entity = VirtualHumidifier(
             config_entry.entry_id,
             entity_config,
@@ -55,6 +62,7 @@ async def async_setup_entry(
         )
         entities.append(entity)
 
+    _LOGGER.info(f"Adding {len(entities)} humidifier entities to Home Assistant")
     async_add_entities(entities)
 
 
@@ -126,9 +134,6 @@ class VirtualHumidifier(HumidifierEntity):
 
         _LOGGER.info(f"Virtual humidifier '{self._attr_name}' initialized with type '{self._humidifier_type}'")
         _LOGGER.info(f"Humidifier device info: {self._attr_device_info}")
-
-        # 立即触发一次状态更新以确保信息可用
-        self.async_write_ha_state()
 
     def _get_enhanced_device_info(self) -> dict[str, Any]:
         """Get enhanced device information for humidifier."""
@@ -232,8 +237,7 @@ class VirtualHumidifier(HumidifierEntity):
         """Setup humidifier features based on type."""
         features = HumidifierEntityFeature(0)
 
-        # 基础开关功能
-        features |= HumidifierEntityFeature.TURN_ON | HumidifierEntityFeature.TURN_OFF
+        # 基础开关功能在HA 2025.10.0中是默认的，不需要明确声明
 
         # 根据类型添加特定功能
         if self._humidifier_type in ["ultrasonic", "impeller", "warm_mist"]:
@@ -277,6 +281,11 @@ class VirtualHumidifier(HumidifierEntity):
     def mode(self) -> str | None:
         """Return the current mode."""
         return self._attr_mode
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return True
 
     @property
     def available_modes(self) -> list[str] | None:

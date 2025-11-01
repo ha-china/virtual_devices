@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import random
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.fan import (
@@ -107,9 +108,8 @@ class VirtualAirPurifier(FanEntity):
 
         # 支持的功能
         self._attr_supported_features = (
-            FanEntityFeature.TURN_ON
-            | FanEntityFeature.TURN_OFF
-            | FanEntityFeature.SET_SPEED
+            # TURN_ON和TURN_OFF在HA 2025.10.0中是默认的
+            FanEntityFeature.SET_SPEED
             | FanEntityFeature.OSCILLATE
         )
 
@@ -162,8 +162,7 @@ class VirtualAirPurifier(FanEntity):
         await super().async_added_to_hass()
         
         # 确保在添加到 HA 后立即设置初始状态
-        from homeassistant.util import dt as dt_util
-        self._last_update = dt_util.utcnow()
+        self._last_update = datetime.now()
         
         # 立即触发状态更新，确保属性可见
         self.async_write_ha_state()
@@ -305,7 +304,7 @@ class VirtualAirPurifier(FanEntity):
             self._attr_is_on = True
             self._attr_percentage = kwargs.get("percentage", 50)
             self._running_time = 0
-            self._last_update = self.hass.util.dt.utcnow()
+            self._last_update = datetime.now()
 
             # 检查滤网寿命
             if self._filter_life < 10:
@@ -459,7 +458,7 @@ class VirtualAirPurifier(FanEntity):
             self._formaldehyde = min(0.3, self._formaldehyde + random.uniform(0.0001, 0.0005))
             self._co2 = min(2000, self._co2 + random.uniform(1, 5))
 
-        self._last_update = self.hass.util.dt.utcnow()
+        self._last_update = datetime.now()
         self.async_write_ha_state()
 
         # 触发模板更新事件

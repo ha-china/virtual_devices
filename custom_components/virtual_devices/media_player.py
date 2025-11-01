@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import random
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.media_player import (
@@ -165,9 +166,8 @@ class VirtualMediaPlayer(MediaPlayerEntity):
     def _setup_features(self) -> None:
         """Setup supported features based on media player type."""
         features = (
-            MediaPlayerEntityFeature.TURN_ON
-            | MediaPlayerEntityFeature.TURN_OFF
-            | MediaPlayerEntityFeature.VOLUME_SET
+            # TURN_ON和TURN_OFF在HA 2025.10.0中是默认的
+            MediaPlayerEntityFeature.VOLUME_SET
             | MediaPlayerEntityFeature.VOLUME_MUTE
             | MediaPlayerEntityFeature.VOLUME_STEP
             | MediaPlayerEntityFeature.SELECT_SOURCE
@@ -331,7 +331,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
             self._select_next_track()
 
         self._attr_state = MediaPlayerState.PLAYING
-        self._attr_media_position_updated_at = self.hass.util.dt.utcnow()
+        self._attr_media_position_updated_at = datetime.now()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' playing")
 
@@ -391,7 +391,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self._select_next_track()
         if self._attr_state == MediaPlayerState.PLAYING:
             self._attr_media_position = 0
-            self._attr_media_position_updated_at = self.hass.util.dt.utcnow()
+            self._attr_media_position_updated_at = datetime.now()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' next track")
 
@@ -412,7 +412,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self._select_previous_track()
         if self._attr_state == MediaPlayerState.PLAYING:
             self._attr_media_position = 0
-            self._attr_media_position_updated_at = self.hass.util.dt.utcnow()
+            self._attr_media_position_updated_at = datetime.now()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' previous track")
 
@@ -431,7 +431,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
     async def async_media_seek(self, position: float) -> None:
         """Send seek command."""
         self._attr_media_position = int(position)
-        self._attr_media_position_updated_at = self.hass.util.dt.utcnow()
+        self._attr_media_position_updated_at = datetime.now()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' seek to {position}s")
 
@@ -456,7 +456,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self._attr_media_album_name = "virtual_album"
         self._attr_media_duration = random.randint(180, 300)  # 3-5分钟
         self._attr_media_position = 0
-        self._attr_media_position_updated_at = self.hass.util.dt.utcnow()
+        self._attr_media_position_updated_at = datetime.now()
         self._attr_state = MediaPlayerState.PLAYING
 
         self.async_write_ha_state()
@@ -601,7 +601,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         """Update media player position."""
         if self._attr_state == MediaPlayerState.PLAYING and self._attr_media_position_updated_at:
             # 更新播放位置
-            time_diff = (self.hass.util.dt.utcnow() - self._attr_media_position_updated_at).total_seconds()
+            time_diff = (datetime.now() - self._attr_media_position_updated_at).total_seconds()
             new_position = self._attr_media_position + time_diff
 
             # 检查是否播放完成
@@ -614,7 +614,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
                     self._select_next_track()
                     if self._attr_state == MediaPlayerState.PLAYING:
                         self._attr_media_position = 0
-                self._attr_media_position_updated_at = self.hass.util.dt.utcnow()
+                self._attr_media_position_updated_at = datetime.now()
             else:
                 self._attr_media_position = int(new_position)
 

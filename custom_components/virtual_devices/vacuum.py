@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import random
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.vacuum import (
@@ -12,7 +13,6 @@ from homeassistant.components.vacuum import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_ENTITIES,
@@ -93,9 +93,8 @@ class VirtualVacuum(StateVacuumEntity):
 
         # 支持的功能 (移除 BATTERY 功能，HA 2026.8+ 将弃用)
         self._attr_supported_features = (
-            VacuumEntityFeature.TURN_ON
-            | VacuumEntityFeature.TURN_OFF
-            | VacuumEntityFeature.START
+            # TURN_ON和TURN_OFF在HA 2025.10.0中是默认的
+            VacuumEntityFeature.START
             | VacuumEntityFeature.STOP
             | VacuumEntityFeature.PAUSE
             | VacuumEntityFeature.RETURN_HOME
@@ -167,7 +166,7 @@ class VirtualVacuum(StateVacuumEntity):
         """Start or resume the cleaning task."""
         if self._attr_state in ["docked", "returning", "idle"]:
             self._attr_state = "cleaning"
-            self._cleaning_started_at = dt_util.utcnow()
+            self._cleaning_started_at = datetime.now()
             self._cleaned_area = 0
             self._current_room = random.choice(PRESET_ROOMS) if random.random() > 0.3 else None
             self.async_write_ha_state()
@@ -191,7 +190,7 @@ class VirtualVacuum(StateVacuumEntity):
         if self._attr_state == "cleaning":
             self._attr_state = "paused"
             if self._cleaning_started_at:
-                self._cleaning_duration += (dt_util.utcnow() - self._cleaning_started_at).total_seconds()
+                self._cleaning_duration += (datetime.now() - self._cleaning_started_at).total_seconds()
                 self._cleaning_started_at = None
             self.async_write_ha_state()
             _LOGGER.debug(f"Virtual vacuum '{self._attr_name}' paused cleaning")
@@ -213,7 +212,7 @@ class VirtualVacuum(StateVacuumEntity):
         if self._attr_state in ["cleaning", "paused"]:
             self._attr_state = "idle"
             if self._cleaning_started_at:
-                self._cleaning_duration += (dt_util.utcnow() - self._cleaning_started_at).total_seconds()
+                self._cleaning_duration += (datetime.now() - self._cleaning_started_at).total_seconds()
                 self._cleaning_started_at = None
             self.async_write_ha_state()
             _LOGGER.debug(f"Virtual vacuum '{self._attr_name}' stopped cleaning")
@@ -237,7 +236,7 @@ class VirtualVacuum(StateVacuumEntity):
         if self._attr_state in ["cleaning", "paused"]:
             self._attr_state = "returning"
             if self._cleaning_started_at:
-                self._cleaning_duration += (dt_util.utcnow() - self._cleaning_started_at).total_seconds()
+                self._cleaning_duration += (datetime.now() - self._cleaning_started_at).total_seconds()
                 self._cleaning_started_at = None
             self.async_write_ha_state()
             _LOGGER.debug(f"Virtual vacuum '{self._attr_name}' returning to base")
@@ -260,7 +259,7 @@ class VirtualVacuum(StateVacuumEntity):
     async def async_clean_spot(self, **kwargs: Any) -> None:
         """Perform a spot clean-up."""
         self._attr_state = "cleaning"
-        self._cleaning_started_at = dt_util.utcnow()
+        self._cleaning_started_at = datetime.now()
         self._current_room = "point_area"
         self._cleaned_area = random.uniform(2, 5)  # 2-5平方米
         self.async_write_ha_state()
@@ -323,7 +322,7 @@ class VirtualVacuum(StateVacuumEntity):
         if command == "clean_room" and params and "room" in params:
             # 清洁指定房间
             self._attr_state = "cleaning"
-            self._cleaning_started_at = dt_util.utcnow()
+            self._cleaning_started_at = datetime.now()
             self._current_room = params["room"]
             self._cleaned_area = random.uniform(5, 15)  # 5-15平方米
             self.async_write_ha_state()
@@ -388,7 +387,7 @@ class VirtualVacuum(StateVacuumEntity):
 
         # 更新清洁进度
         if self._attr_state == "cleaning" and self._cleaning_started_at:
-            elapsed_time = (dt_util.utcnow() - self._cleaning_started_at).total_seconds()
+            elapsed_time = (datetime.now() - self._cleaning_started_at).total_seconds()
 
             # 根据风扇速度计算清洁面积
             speed_multiplier = {
