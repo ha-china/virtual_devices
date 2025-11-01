@@ -294,8 +294,7 @@
     },
     "media_player": {
       "state_attributes": {
-        "media_artist": "Virtual Artist",
-        "media_album_name": "Virtual Album"
+        "media_artist": "Virtual Artist"
       }
     }
   }
