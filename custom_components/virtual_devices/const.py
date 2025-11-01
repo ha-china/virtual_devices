@@ -2,7 +2,7 @@
 
 from homeassistant.const import EntityCategory
 
-DOMAIN = "virtual_devices_multi"
+DOMAIN = "virtual_devices"
 MANUFACTURER = "Yunuo Intelligence"
 MODEL = "Virtual Device Multi-Entity"
 
