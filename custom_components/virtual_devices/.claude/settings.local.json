@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/djhui/OneDrive/Github/virtual_devices/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

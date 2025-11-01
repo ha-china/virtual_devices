@@ -108,8 +108,9 @@ class VirtualAirPurifier(FanEntity):
 
         # 支持的功能
         self._attr_supported_features = (
-            # TURN_ON和TURN_OFF在HA 2025.10.0中是默认的
-            FanEntityFeature.SET_SPEED
+            FanEntityFeature.TURN_ON
+            | FanEntityFeature.TURN_OFF
+            | FanEntityFeature.SET_SPEED
             | FanEntityFeature.OSCILLATE
         )
 
@@ -298,11 +299,16 @@ class VirtualAirPurifier(FanEntity):
         """Return true if the purifier is oscillating."""
         return self._attr_oscillating
 
-    async def async_turn_on(self, **kwargs: Any) -> None:
+    async def async_turn_on(
+        self,
+        percentage: int | None = None,
+        preset_mode: str | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Turn the air purifier on."""
         if not self._attr_is_on:
             self._attr_is_on = True
-            self._attr_percentage = kwargs.get("percentage", 50)
+            self._attr_percentage = percentage if percentage is not None else 50
             self._running_time = 0
             self._last_update = datetime.now()
 

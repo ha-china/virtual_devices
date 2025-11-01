@@ -77,8 +77,9 @@ class VirtualFan(FanEntity):
     """Representation of a virtual fan."""
 
     _attr_supported_features = (
-        # TURN_ON和TURN_OFF在HA 2025.10.0中是默认的
-        FanEntityFeature.SET_SPEED
+        FanEntityFeature.TURN_ON
+        | FanEntityFeature.TURN_OFF
+        | FanEntityFeature.SET_SPEED
         | FanEntityFeature.PRESET_MODE
         | FanEntityFeature.OSCILLATE
         | FanEntityFeature.DIRECTION
