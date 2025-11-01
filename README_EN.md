@@ -20,6 +20,27 @@ This is a custom integration compliant with Home Assistant 2025.10.0 standards, 
 
 ## 📦 Supported Device Types (18)
 
+| Device Type | Code ID | Key Features |
+|-------------|---------|--------------|
+| 🔆 Lights | `light` | Brightness, color temp, RGB, effects |
+| 🔌 Switches | `switch` | Basic on/off control |
+| 🎮 Buttons | `button` | Generic, restart, update, identify |
+| ❄️ Climate | `climate` | Temperature control, multiple modes, fan speeds |
+| 🪟 Covers | `cover` | 8 types, position control |
+| 💨 Fans | `fan` | Speed control, preset modes, oscillation |
+| 📊 Sensors | `sensor` | 16 environmental, power, air quality sensors |
+| 🚨 Binary Sensors | `binary_sensor` | 13 status monitoring types |
+| 📺 Media Players | `media_player` | 6 types, playback control |
+| 🤖 Vacuums | `vacuum` | Cleaning modes, charging, status monitoring |
+| 🌤️ Weather | `weather` | Complete weather info and forecasts |
+| 📹 Cameras | `camera` | 5 types, image generation |
+| 🔒 Locks | `lock` | 4 types, lock control |
+| 🚰 Valves | `valve` | 4 types, flow control |
+| 🔋 Water Heaters | `water_heater` | 5 heating modes |
+| 💧 Humidifiers | `humidifier` | 5 humidification modes |
+| 🌬️ Air Purifiers | `air_purifier` | 6 purification modes, AQI monitoring |
+| 🎬 Scenes | `scene` | Multi-device state linkage |
+
 ### 🔆 Lights
 - Brightness adjustment
 - Color temperature adjustment
@@ -57,11 +78,11 @@ This is a custom integration compliant with Home Assistant 2025.10.0 standards, 
 - Direction control (forward/reverse)
 
 ### 📊 Sensors
-Supports 10 sensor types:
-- Temperature, humidity, pressure
-- Illuminance, power, energy
-- Voltage, current, battery
-- Signal strength
+Supports 16 sensor types:
+- Environmental Monitoring: Temperature, humidity, pressure, illuminance
+- Power Monitoring: Power, energy, voltage, current, battery
+- Air Quality: PM2.5, PM10, CO2, VOC, formaldehyde
+- Other: Signal strength, noise, UV index, rainfall, wind speed, water quality, pH
 
 ### 🚨 Binary Sensors
 Supports 13 sensor types:
@@ -113,13 +134,6 @@ Supports 4 lock types:
 - Battery monitoring
 - Lock state change events
 
-### 🚨 Alarm Control Panels
-Full alarm control functionality:
-- Multiple arming modes (home, away, night)
-- Password verification and custom length
-- Alarm triggering and disarming
-- Alarm history
-- Real-time monitoring and notifications
 
 ### 🚰 Valves
 Supports 4 valve types:
@@ -139,9 +153,10 @@ Supports water heater functionality:
 ### 💧 Humidifiers
 Supports humidifier functionality:
 - Humidity control (configurable range)
-- Multiple humidification modes (ultrasonic, evaporative, steam, impeller, warm mist)
-- Mist level control and timer functions
-- Water shortage protection and tank level display
+- 5 humidification modes (ultrasonic, evaporative, steam, impeller, warm mist)
+- Target humidity setting and automatic adjustment
+- Mode switching and status monitoring
+- Water shortage protection and water level display
 
 ### 🌬️ Air Purifiers
 Supports air purifier functionality:
@@ -157,12 +172,6 @@ Supports scene functionality:
 - Scene recovery and state memory
 - Automation integration support
 
-### 🔋 Batteries
-Supports battery monitoring:
-- Charge percentage
-- Charging status
-- Health status
-- Low battery alerts
 
 ## 📥 Installation
 
