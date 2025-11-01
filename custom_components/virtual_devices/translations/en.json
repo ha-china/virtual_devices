@@ -252,41 +252,6 @@
     }
   },
   "entity": {
-    "humidifier": {
-      "state_attributes": {
-        "humidifier_type": {
-          "ultrasonic": "Ultrasonic",
-          "evaporative": "Evaporative",
-          "steam": "Steam",
-          "impeller": "Impeller",
-          "warm_mist": "Warm Mist"
-        },
-        "noise_level": {
-          "silent": "Silent",
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High"
-        },
-        "power_consumption": {
-          "standby": "Standby",
-          "running": "Running"
-        },
-        "special_features": {
-          "ultrasonic_mist": "Ultra Quiet",
-          "mist_control": "Mist Control",
-          "no_white_powder": "No White Powder",
-          "energy_saving": "Energy Saving",
-          "sterile_humidification": "Sterile Humidification",
-          "fast_humidification": "Fast Humidification",
-          "powerful_humidification": "Powerful Humidification",
-          "even_distribution": "Even Distribution",
-          "warm_mist": "Warm Mist",
-          "comfortable": "Comfortable",
-          "water_shortage_protection": "Water Shortage Protection",
-          "water_level_display": "Water Level Display"
-        }
-      }
-    },
     "weather": {
       "state": {
         "clear-night": "Clear Night",
