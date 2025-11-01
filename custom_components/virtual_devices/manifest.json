@@ -8,7 +8,6 @@
   "issue_tracker": "https://github.com/ha-china/virtual_devices/issues",
   "integration_type": "device",
   "iot_class": "local_polling",
-  "manufacturer": "Yunuo Intelligence",
   "requirements": [],
   "quality_scale": "silver",
   "version": "2025.10.0"
