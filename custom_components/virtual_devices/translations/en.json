@@ -1,0 +1,359 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add Virtual Device (Multi-Entity)",
+        "description": "Configure basic information for the virtual device. One device can contain multiple entities.",
+        "data": {
+          "device_name": "Device Name",
+          "device_type": {
+            "label": "Device Type",
+            "options": {
+              "light": "Light",
+              "switch": "Switch",
+              "climate": "Climate",
+              "cover": "Cover",
+              "fan": "Fan",
+              "sensor": "Sensor",
+              "binary_sensor": "Binary Sensor",
+              "button": "Button",
+              "scene": "Scene",
+              "media_player": "Media Player",
+              "vacuum": "Vacuum",
+              "weather": "Weather",
+              "camera": "Camera",
+              "lock": "Lock",
+              "valve": "Valve",
+              "water_heater": "Water Heater",
+              "humidifier": "Humidifier",
+              "air_purifier": "Air Purifier"
+            }
+          },
+          "entity_count": "Entity Count (1-10)"
+        }
+      },
+      "entity_config": {
+        "title": "Configure Entity {entity_number}/{total_entities}",
+        "description": "Configure entity {entity_number} for {device_name}",
+        "data": {
+          "entity_name": "Entity Name",
+          "brightness": "Brightness Support",
+          "color_temp": "Color Temperature Support",
+          "rgb": "RGB Color Support",
+          "effect": "Effect Support",
+          "cover_type": {
+            "label": "Cover Type",
+            "options": {
+              "curtain": "Curtain",
+              "blind": "Blind",
+              "shade": "Shade",
+              "garage": "Garage Door",
+              "gate": "Gate"
+            }
+          },
+          "sensor_type": {
+            "label": "Sensor Type",
+            "options": {
+              "temperature": "Temperature",
+              "humidity": "Humidity",
+              "pressure": "Pressure",
+              "light": "Light",
+              "motion": "Motion",
+              "air_quality": "Air Quality"
+            }
+          },
+          "binary_sensor_type": {
+            "label": "Binary Sensor Type",
+            "options": {
+              "motion": "Motion",
+              "door": "Door",
+              "window": "Window",
+              "smoke": "Smoke",
+              "gas": "Gas",
+              "water_leak": "Water Leak"
+            }
+          },
+          "button_type": {
+            "label": "Button Type",
+            "options": {
+              "generic": "Generic",
+              "doorbell": "Doorbell",
+              "emergency": "Emergency",
+              "reset": "Reset"
+            }
+          },
+          "media_player_type": {
+            "label": "Media Player Type",
+            "options": {
+              "speaker": "Speaker",
+              "tv": "TV",
+              "receiver": "Receiver",
+              "soundbar": "Soundbar"
+            }
+          },
+          "media_source_list": "Media Source List",
+          "supports_seek": "Supports Seek",
+          "vacuum_status": {
+            "label": "Vacuum Status",
+            "options": {
+              "docked": "Docked",
+              "cleaning": "Cleaning",
+              "paused": "Paused",
+              "returning": "Returning",
+              "error": "Error"
+            }
+          },
+          "fan_speed": {
+            "label": "Fan Speed",
+            "options": {
+              "quiet": "Quiet",
+              "low": "Low",
+              "medium": "Medium",
+              "high": "High",
+              "max": "Max"
+            }
+          },
+          "battery_level": "Battery Level",
+          "camera_type": {
+            "label": "Camera Type",
+            "options": {
+              "indoor": "Indoor",
+              "outdoor": "Outdoor",
+              "doorbell": "Doorbell",
+              "baby_monitor": "Baby Monitor"
+            }
+          },
+          "recording": "Supports Recording",
+          "motion_detection": "Motion Detection",
+          "night_vision": "Night Vision",
+          "lock_type": {
+            "label": "Lock Type",
+            "options": {
+              "smart_lock": "Smart Lock",
+              "deadbolt": "Deadbolt",
+              "keypad": "Keypad",
+              "fingerprint": "Fingerprint"
+            }
+          },
+          "access_code": "Access Code",
+          "auto_lock": "Auto Lock",
+          "auto_lock_delay": "Auto Lock Delay (seconds)",
+          "valve_type": {
+            "label": "Valve Type",
+            "options": {
+              "water_valve": "Water Valve",
+              "gas_valve": "Gas Valve",
+              "irrigation": "Irrigation",
+              "zone_valve": "Zone Valve"
+            }
+          },
+          "valve_size": "Valve Size (mm)",
+          "reports_position": "Reports Position",
+          "heater_type": {
+            "label": "Heater Type",
+            "options": {
+              "electric": "Electric",
+              "gas": "Gas",
+              "solar": "Solar",
+              "heat_pump": "Heat Pump",
+              "tankless": "Tankless"
+            }
+          },
+          "current_temperature": "Current Temperature (°C)",
+          "target_temperature": "Target Temperature (°C)",
+          "tank_capacity": "Tank Capacity (liters)",
+          "efficiency": "Efficiency (0.1-1.0)",
+          "humidifier_type": {
+            "label": "Humidifier Type",
+            "options": {
+              "ultrasonic": "Ultrasonic",
+              "evaporative": "Evaporative",
+              "steam": "Steam",
+              "impeller": "Impeller",
+              "warm_mist": "Warm Mist"
+            }
+          },
+          "current_humidity": "Current Humidity (%)",
+          "target_humidity": "Target Humidity (%)",
+          "water_level": "Water Level (%)",
+          "purifier_type": {
+            "label": "Purifier Type",
+            "options": {
+              "hepa": "HEPA",
+              "activated_carbon": "Activated Carbon",
+              "uv_c": "UV-C",
+              "ionic": "Ionic",
+              "ozone": "Ozone",
+              "hybrid": "Hybrid"
+            }
+          },
+          "room_volume": "Room Volume (m³)",
+          "pm25": "PM2.5 Concentration (µg/m³)",
+          "pm10": "PM10 Concentration (µg/m³)",
+          "filter_life": "Filter Life (%)",
+          "weather_station_type": {
+            "label": "Weather Station Type",
+            "options": {
+              "basic": "Basic",
+              "professional": "Professional",
+              "home": "Home",
+              "outdoor": "Outdoor",
+              "marine": "Marine"
+            }
+          },
+          "temperature_unit": {
+            "label": "Temperature Unit",
+            "options": {
+              "celsius": "Celsius",
+              "fahrenheit": "Fahrenheit"
+            }
+          },
+          "wind_speed_unit": {
+            "label": "Wind Speed Unit",
+            "options": {
+              "kmh": "km/h",
+              "mph": "mph",
+              "ms": "m/s"
+            }
+          },
+          "pressure_unit": {
+            "label": "Pressure Unit",
+            "options": {
+              "hPa": "hPa",
+              "inHg": "inHg",
+              "mmHg": "mmHg"
+            }
+          },
+          "visibility_unit": {
+            "label": "Visibility Unit",
+            "options": {
+              "km": "km",
+              "miles": "miles"
+            }
+          },
+          "skip_remaining": "Skip remaining entities (use defaults)"
+        }
+      }
+    },
+    "error": {
+      "invalid_entity_count": "Entity count must be between 1 and 10",
+      "unknown": "Unknown error"
+    },
+    "abort": {
+      "already_configured": "Device already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Virtual Device Options",
+        "description": "Device Name: {device_name}\nDevice Type: {device_type}\nEntity Count: {entity_count}"
+      }
+    }
+  },
+  "entity": {
+    "air_purifier": {
+      "state_attributes": {
+        "purifier_type": {
+          "hepa": "HEPA",
+          "activated_carbon": "Activated Carbon",
+          "uv_c": "UV-C",
+          "ionic": "Ionic",
+          "ozone": "Ozone",
+          "hybrid": "Hybrid"
+        },
+        "filter_type": {
+          "hepa_filter": "HEPA Filter",
+          "activated_carbon_filter": "Activated Carbon Filter",
+          "uv_c_filter": "UV-C Filter",
+          "ionic_filter": "Ionic Filter",
+          "ozone_filter": "Ozone Filter",
+          "hybrid_filter": "Hybrid Filter",
+          "standard_filter": "Standard Filter"
+        }
+      }
+    },
+    "humidifier": {
+      "state_attributes": {
+        "humidifier_type": {
+          "ultrasonic": "Ultrasonic",
+          "evaporative": "Evaporative",
+          "steam": "Steam",
+          "impeller": "Impeller",
+          "warm_mist": "Warm Mist"
+        },
+        "noise_level": {
+          "silent": "Silent",
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High"
+        },
+        "power_consumption": {
+          "standby": "Standby",
+          "running": "Running"
+        },
+        "special_features": {
+          "ultrasonic_mist": "Ultra Quiet",
+          "mist_control": "Mist Control",
+          "no_white_powder": "No White Powder",
+          "energy_saving": "Energy Saving",
+          "sterile_humidification": "Sterile Humidification",
+          "fast_humidification": "Fast Humidification",
+          "powerful_humidification": "Powerful Humidification",
+          "even_distribution": "Even Distribution",
+          "warm_mist": "Warm Mist",
+          "comfortable": "Comfortable",
+          "water_shortage_protection": "Water Shortage Protection",
+          "water_level_display": "Water Level Display"
+        }
+      }
+    },
+    "weather": {
+      "state": {
+        "clear-night": "Clear Night",
+        "cloudy": "Cloudy",
+        "fog": "Fog",
+        "hail": "Hail",
+        "lightning": "Lightning",
+        "lightning-rainy": "Lightning-Rainy",
+        "partlycloudy": "Partly Cloudy",
+        "pouring": "Pouring",
+        "rainy": "Rainy",
+        "snowy": "Snowy",
+        "snowy-rainy": "Snowy-Rainy",
+        "sunny": "Sunny",
+        "windy": "Windy",
+        "windy-variant": "Windy Variant"
+      }
+    },
+    "vacuum": {
+      "state_attributes": {
+        "rooms": {
+          "living_room": "Living Room",
+          "bedroom": "Bedroom",
+          "kitchen": "Kitchen",
+          "bathroom": "Bathroom",
+          "study": "Study",
+          "dining_room": "Dining Room",
+          "balcony": "Balcony",
+          "entrance": "Entrance"
+        },
+        "cleaning_modes": {
+          "auto_clean": "Auto Clean",
+          "spot_clean": "Spot Clean",
+          "edge_clean": "Edge Clean",
+          "room_clean": "Room Clean",
+          "single_room_clean": "Single Room Clean",
+          "point_clean": "Point Clean"
+        }
+      }
+    },
+    "media_player": {
+      "state_attributes": {
+        "media_artist": "Virtual Artist",
+        "media_album_name": "Virtual Album",
+        "media_album_collection": "Virtual Album Collection"
+      }
+    }
+  }
+}

@@ -1,0 +1,239 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Add Virtual Device (Multi-Entity)",
+                "description": "Configure basic information for the virtual device. One device can contain multiple entities.",
+                "data": {
+                    "device_name": "Device Name",
+                    "device_type": {
+                        "label": "Device Type",
+                        "options": {
+                            "light": "Light",
+                            "switch": "Switch",
+                            "climate": "Climate",
+                            "cover": "Cover",
+                            "fan": "Fan",
+                            "sensor": "Sensor",
+                            "binary_sensor": "Binary Sensor",
+                            "button": "Button",
+                            "scene": "Scene",
+                            "media_player": "Media Player",
+                            "vacuum": "Vacuum",
+                            "weather": "Weather",
+                            "camera": "Camera",
+                            "lock": "Lock",
+                            "alarm_control_panel": "Alarm Panel",
+                            "valve": "Valve",
+                            "water_heater": "Water Heater",
+                            "humidifier": "Humidifier",
+                            "air_purifier": "Air Purifier"
+                        }
+                    },
+                    "entity_count": "Entity Count (1-10)"
+                }
+            },
+            "entity_config": {
+                "title": "Configure Entity {entity_number}/{total_entities}",
+                "description": "Configure entity {entity_number} for {device_name}",
+                "data": {
+                    "entity_name": "Entity Name",
+                    "brightness": "Brightness Support",
+                    "color_temp": "Color Temperature Support",
+                    "rgb": "RGB Color Support",
+                    "effect": "Effect Support",
+                    "cover_type": {
+                        "options": {
+                            "curtain": "Curtain",
+                            "blind": "Blind",
+                            "shade": "Shade",
+                            "garage": "Garage Door",
+                            "gate": "Gate"
+                        }
+                    },
+                    "sensor_type": {
+                        "options": {
+                            "temperature": "Temperature",
+                            "humidity": "Humidity",
+                            "pressure": "Pressure",
+                            "light": "Light",
+                            "motion": "Motion",
+                            "air_quality": "Air Quality"
+                        }
+                    },
+                    "binary_sensor_type": {
+                        "options": {
+                            "motion": "Motion",
+                            "door": "Door",
+                            "window": "Window",
+                            "smoke": "Smoke",
+                            "gas": "Gas",
+                            "water_leak": "Water Leak"
+                        }
+                    },
+                    "button_type": {
+                        "options": {
+                            "generic": "Generic",
+                            "doorbell": "Doorbell",
+                            "emergency": "Emergency",
+                            "reset": "Reset"
+                        }
+                    },
+                    "media_player_type": {
+                        "options": {
+                            "speaker": "Speaker",
+                            "tv": "TV",
+                            "receiver": "Receiver",
+                            "soundbar": "Soundbar"
+                        }
+                    },
+                    "media_source_list": "Media Source List",
+                    "supports_seek": "Supports Seek",
+                    "vacuum_status": {
+                        "options": {
+                            "docked": "Docked",
+                            "cleaning": "Cleaning",
+                            "paused": "Paused",
+                            "returning": "Returning",
+                            "error": "Error"
+                        }
+                    },
+                    "fan_speed": {
+                        "options": {
+                            "quiet": "Quiet",
+                            "low": "Low",
+                            "medium": "Medium",
+                            "high": "High",
+                            "max": "Max"
+                        }
+                    },
+                    "battery_level": "Battery Level",
+                    "camera_type": {
+                        "options": {
+                            "indoor": "Indoor",
+                            "outdoor": "Outdoor",
+                            "doorbell": "Doorbell",
+                            "baby_monitor": "Baby Monitor"
+                        }
+                    },
+                    "recording": "Supports Recording",
+                    "motion_detection": "Motion Detection",
+                    "night_vision": "Night Vision",
+                    "lock_type": {
+                        "options": {
+                            "smart_lock": "Smart Lock",
+                            "deadbolt": "Deadbolt",
+                            "keypad": "Keypad",
+                            "fingerprint": "Fingerprint"
+                        }
+                    },
+                    "access_code": "Access Code",
+                    "auto_lock": "Auto Lock",
+                    "auto_lock_delay": "Auto Lock Delay (seconds)",
+                    "alarm_code": "Alarm Code",
+                    "supported_code_lengths": "Supported Code Lengths",
+                    "valve_type": {
+                        "options": {
+                            "water_valve": "Water Valve",
+                            "gas_valve": "Gas Valve",
+                            "irrigation": "Irrigation",
+                            "zone_valve": "Zone Valve"
+                        }
+                    },
+                    "valve_size": "Valve Size (mm)",
+                    "reports_position": "Reports Position",
+                    "heater_type": {
+                        "options": {
+                            "electric": "Electric",
+                            "gas": "Gas",
+                            "solar": "Solar",
+                            "heat_pump": "Heat Pump",
+                            "tankless": "Tankless"
+                        }
+                    },
+                    "current_temperature": "Current Temperature (\u00b0C)",
+                    "target_temperature": "Target Temperature (\u00b0C)",
+                    "tank_capacity": "Tank Capacity (liters)",
+                    "efficiency": "Efficiency (0.1-1.0)",
+                    "humidifier_type": {
+                        "options": {
+                            "ultrasonic": "Ultrasonic",
+                            "evaporative": "Evaporative",
+                            "steam": "Steam",
+                            "impeller": "Impeller",
+                            "warm_mist": "Warm Mist"
+                        }
+                    },
+                    "current_humidity": "Current Humidity (%)",
+                    "target_humidity": "Target Humidity (%)",
+                    "water_level": "Water Level (%)",
+                    "purifier_type": {
+                        "options": {
+                            "hepa": "HEPA",
+                            "activated_carbon": "Activated Carbon",
+                            "uv_c": "UV-C",
+                            "ionic": "Ionic",
+                            "ozone": "Ozone",
+                            "hybrid": "Hybrid"
+                        }
+                    },
+                    "room_volume": "Room Volume (m\u00b3)",
+                    "pm25": "PM2.5 Concentration (\u00b5g/m\u00b3)",
+                    "pm10": "PM10 Concentration (\u00b5g/m\u00b3)",
+                    "filter_life": "Filter Life (%)",
+                    "weather_station_type": {
+                        "options": {
+                            "basic": "Basic",
+                            "professional": "Professional",
+                            "home": "Home",
+                            "outdoor": "Outdoor",
+                            "marine": "Marine"
+                        }
+                    },
+                    "temperature_unit": {
+                        "options": {
+                            "celsius": "Celsius",
+                            "fahrenheit": "Fahrenheit"
+                        }
+                    },
+                    "wind_speed_unit": {
+                        "options": {
+                            "kmh": "km/h",
+                            "mph": "mph",
+                            "ms": "m/s"
+                        }
+                    },
+                    "pressure_unit": {
+                        "options": {
+                            "hPa": "hPa",
+                            "inHg": "inHg",
+                            "mmHg": "mmHg"
+                        }
+                    },
+                    "visibility_unit": {
+                        "options": {
+                            "km": "km",
+                            "miles": "miles"
+                        }
+                    },
+                    "skip_remaining": "Skip remaining entities (use defaults)"
+                }
+            }
+        },
+        "error": {
+            "invalid_entity_count": "Entity count must be between 1 and 10",
+            "unknown": "Unknown error"
+        },
+        "abort": {
+            "already_configured": "Device already configured"
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Virtual Device Options",
+                "description": "Device Name: {device_name}\nDevice Type: {device_type}\nEntity Count: {entity_count}"
+            }
+        }
+    }
+}

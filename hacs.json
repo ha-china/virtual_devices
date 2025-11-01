@@ -1,0 +1,10 @@
+{
+  "name": "虚拟实体",
+  "render_readme": true,
+  "domains": ["virtual_devices"],
+  "homeassistant": "2023.9.0",
+  "persistent_directory": "none",
+  "iot_class": "local_push",
+  "zip_release": true,
+  "filename": "virtual_devices.zip"
+}
