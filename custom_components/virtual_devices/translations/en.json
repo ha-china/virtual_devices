@@ -291,11 +291,6 @@
           "point_clean": "Point Clean"
         }
       }
-    },
-    "media_player": {
-      "state_attributes": {
-        "media_artist": "Virtual Artist"
-      }
     }
   }
 }
