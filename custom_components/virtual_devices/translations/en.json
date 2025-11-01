@@ -261,15 +261,6 @@
           "ionic": "Ionic",
           "ozone": "Ozone",
           "hybrid": "Hybrid"
-        },
-        "filter_type": {
-          "hepa_filter": "HEPA Filter",
-          "activated_carbon_filter": "Activated Carbon Filter",
-          "uv_c_filter": "UV-C Filter",
-          "ionic_filter": "Ionic Filter",
-          "ozone_filter": "Ozone Filter",
-          "hybrid_filter": "Hybrid Filter",
-          "standard_filter": "Standard Filter"
         }
       }
     },
