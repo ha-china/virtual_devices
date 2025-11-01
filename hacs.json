@@ -3,7 +3,6 @@
   "render_readme": true,
   "homeassistant": "2025.10.0",
   "persistent_directory": "none",
-  "iot_class": "local_push",
   "zip_release": true,
   "filename": "virtual_devices.zip"
 }

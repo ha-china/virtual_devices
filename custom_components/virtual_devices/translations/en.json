@@ -252,18 +252,6 @@
     }
   },
   "entity": {
-    "air_purifier": {
-      "state_attributes": {
-        "purifier_type": {
-          "hepa": "HEPA",
-          "activated_carbon": "Activated Carbon",
-          "uv_c": "UV-C",
-          "ionic": "Ionic",
-          "ozone": "Ozone",
-          "hybrid": "Hybrid"
-        }
-      }
-    },
     "humidifier": {
       "state_attributes": {
         "humidifier_type": {
