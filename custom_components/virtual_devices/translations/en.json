@@ -291,6 +291,29 @@
           "point_clean": "Point Clean"
         }
       }
+    },
+    "humidifier": {
+      "state_attributes": {
+        "humidifier_type": {
+          "ultrasonic": "Ultrasonic",
+          "evaporative": "Evaporative",
+          "steam": "Steam",
+          "impeller": "Impeller",
+          "warm_mist": "Warm Mist"
+        }
+      }
+    },
+    "air_purifier": {
+      "state_attributes": {
+        "purifier_type": {
+          "hepa": "HEPA",
+          "activated_carbon": "Activated Carbon",
+          "uv_c": "UV-C",
+          "ionic": "Ionic",
+          "ozone": "Ozone",
+          "hybrid": "Hybrid"
+        }
+      }
     }
   }
 }
