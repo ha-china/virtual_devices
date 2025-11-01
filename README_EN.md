@@ -11,14 +11,14 @@ This is a custom integration compliant with Home Assistant 2025.10.0 standards, 
 
 - ✅ **Multi-Entity Device**: Create multiple entities of the same type under one device
 - ✅ **Button Support**: Virtual button entities
-- ✅ **Template Functionality**: Supports sensor and other entity templates
+- ✅ **Template Functionality**: Supports sensor and other entity templates with dynamic value calculation
 - ✅ **Graphical Configuration**: Easily add and configure via the web interface
 - ✅ **Device Information**: Full device info and entity category support
 - ✅ **HA 2025.10.0 Standards**: Uses the latest APIs and best practices
 - ✅ **Multi-Language Support**: Chinese and English interfaces
 - ✅ **HACS Compatible**: Meets HACS quality standards
 
-## 📦 Supported Device Types (20)
+## 📦 Supported Device Types (18)
 
 ### 🔆 Lights
 - Brightness adjustment
@@ -129,6 +129,34 @@ Supports 4 valve types:
 - Pressure monitoring and valve state
 - Simulated gradual process and feedback
 
+### 🔋 Water Heaters
+Supports water heater functionality:
+- Temperature control (configurable range)
+- Multiple operation modes (electric, gas, solar, heat pump, tankless)
+- Preset temperatures and eco modes
+- Status monitoring and safety protection
+
+### 💧 Humidifiers
+Supports humidifier functionality:
+- Humidity control (configurable range)
+- Multiple humidification modes (ultrasonic, evaporative, steam, impeller, warm mist)
+- Mist level control and timer functions
+- Water shortage protection and tank level display
+
+### 🌬️ Air Purifiers
+Supports air purifier functionality:
+- Automatic air quality adjustment
+- Multiple purification modes (HEPA, activated carbon, UV-C, ionic, ozone, hybrid)
+- Fan speed control and filter status monitoring
+- PM2.5, formaldehyde, VOC and other pollutant detection
+
+### 🎬 Scenes
+Supports scene functionality:
+- One-trigger for multiple device state changes
+- Support for lighting, curtain, climate and other scenes
+- Scene recovery and state memory
+- Automation integration support
+
 ### 🔋 Batteries
 Supports battery monitoring:
 - Charge percentage
@@ -136,42 +164,17 @@ Supports battery monitoring:
 - Health status
 - Low battery alerts
 
-### 🚪 Access Control
-Supports access control:
-- Card recognition
-- Facial recognition
-- Password verification
-- Remote unlocking
-
-### 🚿 Showers
-Supports shower devices:
-- Water temperature control
-- Water flow control
-- Preset modes (eco, comfort, turbo)
-
-### 🛏️ Smart Beds
-Supports smart bed features:
-- Bed angle adjustment
-- Massage functions
-- Sleep monitoring
-
-### 🚗 Smart Garages
-Supports garage door control:
-- Open/close control
-- Status monitoring
-- Security alerts
-
 ## 📥 Installation
 
 ### Method 1: Manual Installation
-1. Copy the entire `virtual_devices_multi` folder to Home Assistant's `custom_components` directory
+1. Copy the entire `virtual_devices` folder to Home Assistant's `custom_components` directory
 2. Restart Home Assistant
 3. Search for "Virtual Devices Multi" in the integrations page and add it
 
 ### Method 2: Via HACS
 1. Open HACS
 2. Click the top-right menu → Custom repositories
-3. Add this repository URL
+3. Add this repository URL: https://github.com/ha-china/virtual_devices
 4. Search for "Virtual Devices Multi"
 5. Install and restart HA
 
@@ -230,3 +233,64 @@ Entity 5: All Off
 ```
 
 Result: Creates 1 device with 5 button entities
+
+## ⚙️ Advanced Features
+
+### Template Configuration
+Template functionality is supported for the following device types:
+- Sensors: Dynamic calculation of temperature, humidity, power values
+- Binary Sensors: Generate states based on conditions
+- Media Players: Template-based media content and states
+- Cameras: Dynamic image content generation
+
+### Device Information
+Each virtual device includes:
+- Manufacturer: Yunuo Intelligence
+- Model: Virtual Device Multi-Entity
+- Version: 2025.10.0
+- Support for custom device names and entity IDs
+
+### Entity Categories
+Sensor entities are automatically categorized as diagnostic for easy management.
+
+## 🛠️ Technical Specifications
+
+- **Compatibility**: Home Assistant 2025.10.0+
+- **Integration Type**: Device Integration
+- **IoT Class**: Local Polling
+- **Quality Standard**: HACS Silver Quality
+- **Dependencies**: No external dependencies
+- **Entity Count**: 1-10 entities per device
+
+## 🔧 Troubleshooting
+
+### Common Issues
+1. **Entities not showing**: Ensure device type and entity configuration are correct
+2. **Templates not working**: Check template syntax and referenced entities exist
+3. **Media player no sound**: Virtual devices don't produce actual audio
+4. **Camera no image**: Need to wait for image generation to complete
+
+### Debug Mode
+Enable debug logging in Home Assistant configuration:
+```yaml
+logger:
+  logs:
+    custom_components.virtual_devices: debug
+```
+
+## 📞 Support
+
+- **GitHub Repository**: https://github.com/ha-china/virtual_devices
+- **Issue Reporting**: Please submit to GitHub Issues
+- **Documentation**: Check Wiki for more usage instructions
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributing
+
+Pull Requests are welcome to improve this project! Please ensure:
+- Follow existing code style
+- Add appropriate tests
+- Update relevant documentation
