@@ -9,6 +9,9 @@ from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.storage import Store
+
+STORAGE_VERSION = 1
 from homeassistant.util.percentage import (
     int_states_in_range,
     percentage_to_ranged_value,
@@ -53,6 +56,7 @@ async def async_setup_entry(
         
         for idx, entity_config in enumerate(entities_config):
             entity = VirtualAirPurifier(
+                hass,
                 config_entry.entry_id,
                 entity_config,
                 idx,
@@ -63,6 +67,7 @@ async def async_setup_entry(
         # 创建普通风扇实体
         for idx, entity_config in enumerate(entities_config):
             entity = VirtualFan(
+                hass,
                 config_entry.entry_id,
                 entity_config,
                 idx,
@@ -87,6 +92,7 @@ class VirtualFan(FanEntity):
 
     def __init__(
         self,
+        hass: HomeAssistant,
         config_entry_id: str,
         entity_config: dict[str, Any],
         index: int,
@@ -97,6 +103,7 @@ class VirtualFan(FanEntity):
         self._entity_config = entity_config
         self._index = index
         self._device_info = device_info
+        self._hass = hass
 
         entity_name = entity_config.get(CONF_ENTITY_NAME, f"fan_{index + 1}")
         self._attr_name = entity_name
@@ -107,7 +114,10 @@ class VirtualFan(FanEntity):
         # Template support
         self._templates = entity_config.get("templates", {})
 
-        # 状态
+        # 存储实体状态
+        self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, f"virtual_devices_fan_{config_entry_id}_{index}")
+
+        # 状态 - 默认值，稍后从存储恢复
         self._is_on = False
         self._percentage = 50
         self._preset_mode = None
@@ -115,6 +125,40 @@ class VirtualFan(FanEntity):
         self._direction = "forward"
 
         self._attr_speed_count = int_states_in_range(SPEED_RANGE)
+
+    async def async_load_state(self) -> None:
+        """Load saved state from storage."""
+        try:
+            data = await self._store.async_load()
+            if data:
+                self._is_on = data.get("is_on", False)
+                self._percentage = data.get("percentage", 50)
+                self._preset_mode = data.get("preset_mode")
+                self._oscillating = data.get("oscillating", False)
+                self._direction = data.get("direction", "forward")
+                _LOGGER.info(f"Fan '{self._attr_name}' state loaded from storage")
+        except Exception as ex:
+            _LOGGER.error(f"Failed to load state for fan '{self._attr_name}': {ex}")
+
+    async def async_save_state(self) -> None:
+        """Save current state to storage."""
+        try:
+            data = {
+                "is_on": self._is_on,
+                "percentage": self._percentage,
+                "preset_mode": self._preset_mode,
+                "oscillating": self._oscillating,
+                "direction": self._direction,
+            }
+            await self._store.async_save(data)
+        except Exception as ex:
+            _LOGGER.error(f"Failed to save state for fan '{self._attr_name}': {ex}")
+
+    async def async_added_to_hass(self) -> None:
+        """Call when entity is added to hass."""
+        await super().async_added_to_hass()
+        # 加载保存的状态
+        await self.async_load_state()
 
     @property
     def is_on(self) -> bool:
@@ -159,23 +203,44 @@ class VirtualFan(FanEntity):
             self._preset_mode = preset_mode
             self._percentage = 50
 
+        # 保存状态到存储
+        await self.async_save_state()
+
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual fan '{self._attr_name}' turned on")
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the fan off."""
         self._is_on = False
+
+        # 保存状态到存储
+        await self.async_save_state()
+
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual fan '{self._attr_name}' turned off")
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the speed percentage of the fan."""
+        # 修复：添加百分比范围验证 (0-100)
+        original_percentage = percentage
+        percentage = max(0, min(100, percentage))
+
+        if original_percentage != percentage:
+            _LOGGER.warning(
+                f"Fan percentage {original_percentage}% out of range (0-100%), "
+                f"clamped to {percentage}%"
+            )
+
         self._percentage = percentage
         self._preset_mode = None
         if percentage == 0:
             self._is_on = False
         else:
             self._is_on = True
+
+        # 保存状态到存储
+        await self.async_save_state()
+
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual fan '{self._attr_name}' speed set to {percentage}%")
 
@@ -183,6 +248,10 @@ class VirtualFan(FanEntity):
         """Set the preset mode of the fan."""
         self._preset_mode = preset_mode
         self._is_on = True
+
+        # 保存状态到存储
+        await self.async_save_state()
+
         self.async_write_ha_state()
         _LOGGER.debug(
             f"Virtual fan '{self._attr_name}' preset mode set to {preset_mode}"
@@ -191,6 +260,10 @@ class VirtualFan(FanEntity):
     async def async_oscillate(self, oscillating: bool) -> None:
         """Set oscillation."""
         self._oscillating = oscillating
+
+        # 保存状态到存储
+        await self.async_save_state()
+
         self.async_write_ha_state()
         _LOGGER.debug(
             f"Virtual fan '{self._attr_name}' oscillation set to {oscillating}"
@@ -199,5 +272,9 @@ class VirtualFan(FanEntity):
     async def async_set_direction(self, direction: str) -> None:
         """Set the direction of the fan."""
         self._direction = direction
+
+        # 保存状态到存储
+        await self.async_save_state()
+
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual fan '{self._attr_name}' direction set to {direction}")

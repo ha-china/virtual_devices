@@ -14,6 +14,9 @@ from homeassistant.config_entries import ConfigEntry
 # ATTR_HUMIDITY 不存在，移除此导入
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.storage import Store
+
+STORAGE_VERSION = 1
 
 from .const import (
     CONF_ENTITIES,
@@ -55,6 +58,7 @@ async def async_setup_entry(
         _LOGGER.info(f"Creating humidifier entity {idx + 1}: {entity_name}")
 
         entity = VirtualHumidifier(
+            hass,
             config_entry.entry_id,
             entity_config,
             idx,
@@ -71,6 +75,7 @@ class VirtualHumidifier(HumidifierEntity):
 
     def __init__(
         self,
+        hass: HomeAssistant,
         config_entry_id: str,
         entity_config: dict[str, Any],
         index: int,
@@ -81,6 +86,7 @@ class VirtualHumidifier(HumidifierEntity):
         self._entity_config = entity_config
         self._index = index
         self._device_info = device_info
+        self._hass = hass
 
         entity_name = entity_config.get(CONF_ENTITY_NAME, f"Humidifier_{index + 1}")
         self._attr_name = entity_name
@@ -102,6 +108,9 @@ class VirtualHumidifier(HumidifierEntity):
 
         # Template support
         self._templates = entity_config.get("templates", {})
+
+        # 存储实体状态
+        self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, f"virtual_devices_humidifier_{config_entry_id}_{index}")
 
         # 支持的功能
         self._attr_supported_features = HumidifierEntityFeature(0)
@@ -134,6 +143,37 @@ class VirtualHumidifier(HumidifierEntity):
 
         _LOGGER.info(f"Virtual humidifier '{self._attr_name}' initialized with type '{self._humidifier_type}'")
         _LOGGER.info(f"Humidifier device info: {self._attr_device_info}")
+
+    async def async_load_state(self) -> None:
+        """Load saved state from storage."""
+        try:
+            data = await self._store.async_load()
+            if data:
+                self._attr_is_on = data.get("is_on", False)
+                self._attr_target_humidity = data.get("target_humidity", 60)
+                self._attr_mode = data.get("mode", "Auto")
+                self._water_level = data.get("water_level", 80)
+                _LOGGER.info(f"Humidifier '{self._attr_name}' state loaded from storage")
+        except Exception as ex:
+            _LOGGER.error(f"Failed to load state for humidifier '{self._attr_name}': {ex}")
+
+    async def async_save_state(self) -> None:
+        """Save current state to storage."""
+        try:
+            data = {
+                "is_on": self._attr_is_on,
+                "target_humidity": self._attr_target_humidity,
+                "mode": self._attr_mode,
+                "water_level": self._water_level,
+            }
+            await self._store.async_save(data)
+        except Exception as ex:
+            _LOGGER.error(f"Failed to save state for humidifier '{self._attr_name}': {ex}")
+
+    async def async_added_to_hass(self) -> None:
+        """Call when entity is added to hass."""
+        await super().async_added_to_hass()
+        await self.async_load_state()
 
     def _get_enhanced_device_info(self) -> dict[str, Any]:
         """Get enhanced device information for humidifier."""
@@ -320,6 +360,7 @@ class VirtualHumidifier(HumidifierEntity):
             self._attr_is_on = True
             self._running_time = 0
             self._last_update = datetime.now()
+            await self.async_save_state()
 
             # 检查水位
             if self._water_level < 10:
@@ -346,6 +387,7 @@ class VirtualHumidifier(HumidifierEntity):
         """Turn the humidifier off."""
         if self._attr_is_on:
             self._attr_is_on = False
+            await self.async_save_state()
             self.async_write_ha_state()
             _LOGGER.debug(f"Virtual humidifier '{self._attr_name}' turned off")
 
@@ -364,6 +406,7 @@ class VirtualHumidifier(HumidifierEntity):
         """Set the target humidity."""
         if self.min_humidity <= humidity <= self.max_humidity:
             self._attr_target_humidity = humidity
+            await self.async_save_state()
             self.async_write_ha_state()
             _LOGGER.debug(f"Virtual humidifier '{self._attr_name}' target humidity set to {humidity}%")
 
@@ -383,6 +426,7 @@ class VirtualHumidifier(HumidifierEntity):
         """Set the mode of the humidifier."""
         if mode in self._attr_available_modes:
             self._attr_mode = mode
+            await self.async_save_state()
             self.async_write_ha_state()
             _LOGGER.debug(f"Virtual humidifier '{self._attr_name}' mode set to {mode}")
 

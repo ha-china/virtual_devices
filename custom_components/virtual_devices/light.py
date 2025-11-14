@@ -17,6 +17,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.storage import Store
+
+STORAGE_VERSION = 1
 
 from .const import (
     CONF_BRIGHTNESS,
@@ -53,6 +56,7 @@ async def async_setup_entry(
 
     for idx, entity_config in enumerate(entities_config):
         entity = VirtualLight(
+            hass,
             config_entry.entry_id,
             entity_config,
             idx,
@@ -68,6 +72,7 @@ class VirtualLight(LightEntity):
 
     def __init__(
         self,
+        hass: HomeAssistant,
         config_entry_id: str,
         entity_config: dict[str, Any],
         index: int,
@@ -78,6 +83,7 @@ class VirtualLight(LightEntity):
         self._entity_config = entity_config
         self._index = index
         self._device_info = device_info
+        self._hass = hass
 
         entity_name = entity_config.get(CONF_ENTITY_NAME, f"light_{index + 1}")
         self._attr_name = entity_name
@@ -88,7 +94,10 @@ class VirtualLight(LightEntity):
         self._templates = entity_config.get("templates", {})
         self._attr_entity_category = None  # 灯光是主要控制实体，无类别
 
-        # 灯光状态
+        # 存储实体状态
+        self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, f"virtual_devices_light_{config_entry_id}_{index}")
+
+        # 灯光状态 - 默认值，稍后从存储恢复
         self._is_on = False
         self._brightness = 255
         self._color_temp_kelvin = 2700  # 使用 kelvin 而不是 mireds
@@ -153,6 +162,42 @@ class VirtualLight(LightEntity):
             _LOGGER.warning(f"Light '{self._attr_name}': No color modes configured, defaulting to BRIGHTNESS")
             self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
 
+    async def async_load_state(self) -> None:
+        """Load saved state from storage."""
+        try:
+            data = await self._store.async_load()
+            if data:
+                self._is_on = data.get("is_on", False)
+                self._brightness = data.get("brightness", 255)
+                self._color_temp_kelvin = data.get("color_temp_kelvin", 2700)
+                self._color_temp = data.get("color_temp", 2700)
+                self._rgb_color = tuple(data.get("rgb_color", [255, 255, 255]))
+                self._effect = data.get("effect")
+                _LOGGER.info(f"Light '{self._attr_name}' state loaded from storage")
+        except Exception as ex:
+            _LOGGER.error(f"Failed to load state for light '{self._attr_name}': {ex}")
+
+    async def async_save_state(self) -> None:
+        """Save current state to storage."""
+        try:
+            data = {
+                "is_on": self._is_on,
+                "brightness": self._brightness,
+                "color_temp_kelvin": self._color_temp_kelvin,
+                "color_temp": self._color_temp,
+                "rgb_color": list(self._rgb_color) if self._rgb_color else [255, 255, 255],
+                "effect": self._effect,
+            }
+            await self._store.async_save(data)
+        except Exception as ex:
+            _LOGGER.error(f"Failed to save state for light '{self._attr_name}': {ex}")
+
+    async def async_added_to_hass(self) -> None:
+        """Call when entity is added to hass."""
+        await super().async_added_to_hass()
+        # 加载保存的状态
+        await self.async_load_state()
+
     @property
     def is_on(self) -> bool:
         """Return true if light is on."""
@@ -161,7 +206,10 @@ class VirtualLight(LightEntity):
     @property
     def brightness(self) -> int | None:
         """Return the brightness of the light."""
-        if ColorMode.BRIGHTNESS in self._attr_supported_color_modes:
+        if ColorMode.RGB in self._attr_supported_color_modes:
+            # 修复：RGB模式下，从RGB颜色计算亮度
+            return max(self._rgb_color)
+        elif ColorMode.BRIGHTNESS in self._attr_supported_color_modes:
             return self._brightness
         return None
 
@@ -235,16 +283,61 @@ class VirtualLight(LightEntity):
         self._is_on = True
 
         if ATTR_BRIGHTNESS in kwargs:
-            self._brightness = kwargs[ATTR_BRIGHTNESS]
+            # 修复：添加亮度范围验证 (0-255)
+            brightness = max(0, min(255, kwargs[ATTR_BRIGHTNESS]))
+
+            if ColorMode.RGB in self._attr_supported_color_modes:
+                # RGB模式下：保持当前颜色比例，调整RGB值来达到目标亮度
+                if self._rgb_color:
+                    current_brightness = max(self._rgb_color)
+                    if current_brightness > 0:
+                        # 计算缩放因子
+                        scale_factor = brightness / current_brightness
+                        # 应用缩放到RGB值
+                        self._rgb_color = tuple(
+                            max(0, min(255, int(val * scale_factor)))
+                            for val in self._rgb_color
+                        )
+                        _LOGGER.debug(f"RGB brightness scaled: {self._rgb_color}")
+                    else:
+                        # 当前亮度为0，使用白色达到目标亮度
+                        self._rgb_color = (brightness, brightness, brightness)
+                else:
+                    self._rgb_color = (brightness, brightness, brightness)
+            else:
+                self._brightness = brightness
 
         if ATTR_COLOR_TEMP_KELVIN in kwargs:
-            self._color_temp_kelvin = kwargs[ATTR_COLOR_TEMP_KELVIN]
+            # 修复：添加色温范围验证 (2000-6500K)
+            self._color_temp_kelvin = max(2000, min(6500, kwargs[ATTR_COLOR_TEMP_KELVIN]))
+            self._color_temp = self._color_temp_kelvin  # 同步更新color_temp属性
 
         if ATTR_RGB_COLOR in kwargs:
-            self._rgb_color = kwargs[ATTR_RGB_COLOR]
+            # 修复：添加RGB值验证 (0-255范围)
+            rgb = kwargs[ATTR_RGB_COLOR]
+            if len(rgb) == 3 and all(0 <= val <= 255 for val in rgb):
+                self._rgb_color = rgb
+                # RGB模式下同步更新亮度
+                if ColorMode.RGB in self._attr_supported_color_modes:
+                    self._brightness = max(rgb)  # 同步更新内部亮度值
+            else:
+                _LOGGER.warning(f"Invalid RGB values: {rgb}, using default white")
+                self._rgb_color = (255, 255, 255)
+                if ColorMode.RGB in self._attr_supported_color_modes:
+                    self._brightness = 255
 
         if ATTR_EFFECT in kwargs:
-            self._effect = kwargs[ATTR_EFFECT]
+            effect = kwargs[ATTR_EFFECT]
+            # 修复：验证特效是否在支持列表中
+            if hasattr(self, '_attr_effect_list') and effect in self._attr_effect_list:
+                self._effect = effect
+            elif effect is None:
+                self._effect = effect
+            else:
+                _LOGGER.warning(f"Unsupported effect: {effect}, ignoring")
+
+        # 保存状态到存储
+        await self.async_save_state()
 
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual light '{self._attr_name}' turned on")
@@ -269,6 +362,10 @@ class VirtualLight(LightEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the light off."""
         self._is_on = False
+
+        # 保存状态到存储
+        await self.async_save_state()
+
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual light '{self._attr_name}' turned off")
 

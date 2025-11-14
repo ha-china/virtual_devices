@@ -14,6 +14,9 @@ from homeassistant.components.fan import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.storage import Store
+
+STORAGE_VERSION = 1
 
 from .const import (
     CONF_ENTITIES,
@@ -50,6 +53,7 @@ async def async_setup_entry(
     for idx, entity_config in enumerate(entities_config):
         _LOGGER.info(f"Creating air purifier entity {idx + 1}: {entity_config}")
         entity = VirtualAirPurifier(
+            hass,
             config_entry.entry_id,
             entity_config,
             idx,
@@ -72,6 +76,7 @@ class VirtualAirPurifier(FanEntity):
 
     def __init__(
         self,
+        hass: HomeAssistant,
         config_entry_id: str,
         entity_config: dict[str, Any],
         index: int,
@@ -82,6 +87,7 @@ class VirtualAirPurifier(FanEntity):
         self._entity_config = entity_config
         self._index = index
         self._device_info = device_info
+        self._hass = hass
 
         entity_name = entity_config.get(CONF_ENTITY_NAME, f"Air Purifier_{index + 1}")
         self._attr_name = entity_name
@@ -90,6 +96,9 @@ class VirtualAirPurifier(FanEntity):
 
         # Template support
         self._templates = entity_config.get("templates", {})
+
+        # 存储实体状态
+        self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, f"virtual_devices_air_purifier_{config_entry_id}_{index}")
 
         # Air purifier type - must be set before calling _get_enhanced_device_info()
         purifier_type = entity_config.get("purifier_type", "hepa")
@@ -158,24 +167,49 @@ class VirtualAirPurifier(FanEntity):
         _LOGGER.info(f"Air purifier device info: {self._attr_device_info}")
         _LOGGER.info(f"Initial attributes - PM2.5: {self._pm25}, PM10: {self._pm10}, Filter Life: {self._filter_life}")
 
+    async def async_load_state(self) -> None:
+        """Load saved state from storage."""
+        try:
+            data = await self._store.async_load()
+            if data:
+                self._attr_is_on = data.get("is_on", False)
+                self._attr_percentage = data.get("percentage", 0)
+                self._attr_oscillating = data.get("oscillating", False)
+                _LOGGER.info(f"Air purifier '{self._attr_name}' state loaded from storage")
+        except Exception as ex:
+            _LOGGER.error(f"Failed to load state for air purifier '{self._attr_name}': {ex}")
+
+    async def async_save_state(self) -> None:
+        """Save current state to storage."""
+        try:
+            data = {
+                "is_on": self._attr_is_on,
+                "percentage": self._attr_percentage,
+                "oscillating": self._attr_oscillating,
+            }
+            await self._store.async_save(data)
+        except Exception as ex:
+            _LOGGER.error(f"Failed to save state for air purifier '{self._attr_name}': {ex}")
+
     async def async_added_to_hass(self) -> None:
-        """Called when entity is added to Home Assistant."""
+        """Call when entity is added to hass."""
         await super().async_added_to_hass()
-        
+        await self.async_load_state()
+
         # 确保在添加到 HA 后立即设置初始状态
         self._last_update = datetime.now()
-        
+
         # 立即触发状态更新，确保属性可见
         self.async_write_ha_state()
-        
+
         # 等待一小段时间后再次更新，确保所有属性都被正确设置和显示
         async def delayed_update():
             await asyncio.sleep(0.5)
             self.async_write_ha_state()
             _LOGGER.info(f"Air purifier '{self._attr_name}' state updated after adding to HA")
-        
+
         self.hass.async_create_task(delayed_update())
-        
+
         attrs = self.extra_state_attributes
         _LOGGER.info(f"Air purifier '{self._attr_name}' added to Home Assistant")
         _LOGGER.info(f"  - State: {self._attr_is_on}, Percentage: {self._attr_percentage}")
@@ -311,6 +345,7 @@ class VirtualAirPurifier(FanEntity):
             self._attr_percentage = percentage if percentage is not None else 50
             self._running_time = 0
             self._last_update = datetime.now()
+            await self.async_save_state()
 
             # 检查滤网寿命
             if self._filter_life < 10:
@@ -338,6 +373,7 @@ class VirtualAirPurifier(FanEntity):
         if self._attr_is_on:
             self._attr_is_on = False
             self._attr_percentage = 0
+            await self.async_save_state()
             self.async_write_ha_state()
             _LOGGER.debug(f"Virtual air purifier '{self._attr_name}' turned off")
 
@@ -359,6 +395,7 @@ class VirtualAirPurifier(FanEntity):
             closest_speed = min(self._speed_list, key=lambda x: abs(x - percentage))
             self._attr_percentage = closest_speed
             self._cleaning_rate = self._get_cleaning_rate()
+            await self.async_save_state()
             self.async_write_ha_state()
             _LOGGER.debug(f"Virtual air purifier '{self._attr_name}' speed set to {percentage}% (actual: {closest_speed}%)")
 
@@ -378,6 +415,7 @@ class VirtualAirPurifier(FanEntity):
     async def async_oscillate(self, oscillating: bool) -> None:
         """Set oscillation."""
         self._attr_oscillating = oscillating
+        await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual air purifier '{self._attr_name}' oscillation set to {oscillating}")
 

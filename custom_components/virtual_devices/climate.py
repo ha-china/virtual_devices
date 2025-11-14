@@ -16,6 +16,9 @@ from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change
+from homeassistant.helpers.storage import Store
+
+STORAGE_VERSION = 1
 
 from .const import (
     CONF_ENTITIES,
@@ -49,6 +52,7 @@ async def async_setup_entry(
 
     for idx, entity_config in enumerate(entities_config):
         entity = VirtualClimate(
+            hass,
             config_entry.entry_id,
             entity_config,
             idx,
@@ -83,6 +87,7 @@ class VirtualClimate(ClimateEntity):
 
     def __init__(
         self,
+        hass: HomeAssistant,
         config_entry_id: str,
         entity_config: dict[str, Any],
         index: int,
@@ -93,6 +98,7 @@ class VirtualClimate(ClimateEntity):
         self._entity_config = entity_config
         self._index = index
         self._device_info = device_info
+        self._hass = hass
 
         entity_name = entity_config.get(CONF_ENTITY_NAME, f"Climate_{index + 1}")
         self._attr_name = entity_name
@@ -102,6 +108,9 @@ class VirtualClimate(ClimateEntity):
         # Template support
         self._templates = entity_config.get("templates", {})
 
+        # 存储实体状态
+        self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, f"virtual_devices_climate_{config_entry_id}_{index}")
+
         # 温度范围
         self._attr_min_temp = entity_config.get("min_temp", DEFAULT_MIN_TEMP)
         self._attr_max_temp = entity_config.get("max_temp", DEFAULT_MAX_TEMP)
@@ -109,7 +118,7 @@ class VirtualClimate(ClimateEntity):
             "temp_step", DEFAULT_TEMP_STEP
         )
 
-        # 状态
+        # 状态 - 默认值，稍后从存储恢复
         self._attr_hvac_mode = HVACMode.OFF
         self._attr_target_temperature = 24
         self._attr_current_temperature = 22
@@ -123,10 +132,52 @@ class VirtualClimate(ClimateEntity):
         self._temperature_change_rate = 0.5    # 温度变化速率
         self._simulation_enabled = entity_config.get("enable_temperature_simulation", True)
 
+    async def async_load_state(self) -> None:
+        """Load saved state from storage."""
+        try:
+            data = await self._store.async_load()
+            if data:
+                self._attr_hvac_mode = data.get("hvac_mode", HVACMode.OFF)
+                self._attr_target_temperature = data.get("target_temperature", 24)
+                self._attr_current_temperature = data.get("current_temperature", 22)
+                self._attr_fan_mode = data.get("fan_mode", "auto")
+                self._attr_swing_mode = data.get("swing_mode", "off")
+                self._attr_preset_mode = data.get("preset_mode")
+                self._attr_hvac_action = data.get("hvac_action", HVACAction.OFF)
+                _LOGGER.info(f"Climate '{self._attr_name}' state loaded from storage")
+        except Exception as ex:
+            _LOGGER.error(f"Failed to load state for climate '{self._attr_name}': {ex}")
+
+    async def async_save_state(self) -> None:
+        """Save current state to storage."""
+        try:
+            data = {
+                "hvac_mode": self._attr_hvac_mode,
+                "target_temperature": self._attr_target_temperature,
+                "current_temperature": self._attr_current_temperature,
+                "fan_mode": self._attr_fan_mode,
+                "swing_mode": self._attr_swing_mode,
+                "preset_mode": self._attr_preset_mode,
+                "hvac_action": self._attr_hvac_action,
+            }
+            await self._store.async_save(data)
+        except Exception as ex:
+            _LOGGER.error(f"Failed to save state for climate '{self._attr_name}': {ex}")
+
+    async def async_added_to_hass(self) -> None:
+        """Call when entity is added to hass."""
+        await super().async_added_to_hass()
+        # 加载保存的状态
+        await self.async_load_state()
+
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new target hvac mode."""
         self._attr_hvac_mode = hvac_mode
         self._update_hvac_action()
+
+        # 保存状态到存储
+        await self.async_save_state()
+
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual climate '{self._attr_name}' mode set to {hvac_mode}")
 
@@ -146,8 +197,22 @@ class VirtualClimate(ClimateEntity):
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set new target temperature."""
         if (temperature := kwargs.get(ATTR_TEMPERATURE)) is not None:
+            # 修复：添加温度范围验证
+            original_temp = temperature
+            temperature = max(self._attr_min_temp, min(self._attr_max_temp, temperature))
+
+            if original_temp != temperature:
+                _LOGGER.warning(
+                    f"Temperature {original_temp}°C out of range ({self._attr_min_temp}-{self._attr_max_temp}°C), "
+                    f"clamped to {temperature}°C"
+                )
+
             self._attr_target_temperature = temperature
             self._update_hvac_action()
+
+            # 保存状态到存储
+            await self.async_save_state()
+
             self.async_write_ha_state()
             _LOGGER.debug(
                 f"Virtual climate '{self._attr_name}' temperature set to {temperature}"
@@ -156,12 +221,20 @@ class VirtualClimate(ClimateEntity):
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         """Set new target fan mode."""
         self._attr_fan_mode = fan_mode
+
+        # 保存状态到存储
+        await self.async_save_state()
+
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual climate '{self._attr_name}' fan mode set to {fan_mode}")
 
     async def async_set_swing_mode(self, swing_mode: str) -> None:
         """Set new target swing operation."""
         self._attr_swing_mode = swing_mode
+
+        # 保存状态到存储
+        await self.async_save_state()
+
         self.async_write_ha_state()
         _LOGGER.debug(
             f"Virtual climate '{self._attr_name}' swing mode set to {swing_mode}"
@@ -181,6 +254,10 @@ class VirtualClimate(ClimateEntity):
             self._attr_target_temperature = 18
 
         self._update_hvac_action()
+
+        # 保存状态到存储
+        await self.async_save_state()
+
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual climate '{self._attr_name}' preset mode set to {preset_mode}")
 

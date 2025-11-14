@@ -15,6 +15,9 @@ from homeassistant.components.media_player import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.storage import Store
+
+STORAGE_VERSION = 1
 
 from .const import (
     CONF_ENTITIES,
@@ -76,6 +79,7 @@ async def async_setup_entry(
 
     for idx, entity_config in enumerate(entities_config):
         entity = VirtualMediaPlayer(
+            hass,
             config_entry.entry_id,
             entity_config,
             idx,
@@ -91,6 +95,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
 
     def __init__(
         self,
+        hass: HomeAssistant,
         config_entry_id: str,
         entity_config: dict[str, Any],
         index: int,
@@ -101,6 +106,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self._entity_config = entity_config
         self._index = index
         self._device_info = device_info
+        self._hass = hass
 
         entity_name = entity_config.get(CONF_ENTITY_NAME, f"media_player_{index + 1}")
         self._attr_name = entity_name
@@ -109,6 +115,9 @@ class VirtualMediaPlayer(MediaPlayerEntity):
 
         # Template support
         self._templates = entity_config.get("templates", {})
+
+        # 存储实体状态
+        self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, f"virtual_devices_media_player_{config_entry_id}_{index}")
 
         # 媒体播放器类型
         media_player_type = entity_config.get("media_player_type", "speaker")
@@ -154,13 +163,44 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         
         _LOGGER.info(f"Virtual media player '{self._attr_name}' initialized with state: {self._attr_state}")
 
+    async def async_load_state(self) -> None:
+        """Load saved state from storage."""
+        try:
+            data = await self._store.async_load()
+            if data:
+                self._attr_state = MediaPlayerState(data.get("state", "off"))
+                self._attr_volume_level = data.get("volume_level", 0.5)
+                self._attr_volume_muted = data.get("volume_muted", False)
+                self._attr_source = data.get("source", self._attr_source_list[0] if self._attr_source_list else None)
+                self._attr_media_repeat = data.get("media_repeat", "off")
+                self._attr_media_shuffle = data.get("media_shuffle", False)
+                _LOGGER.info(f"Media player '{self._attr_name}' state loaded from storage")
+        except Exception as ex:
+            _LOGGER.error(f"Failed to load state for media player '{self._attr_name}': {ex}")
+
+    async def async_save_state(self) -> None:
+        """Save current state to storage."""
+        try:
+            data = {
+                "state": self._attr_state.value if hasattr(self._attr_state, 'value') else str(self._attr_state),
+                "volume_level": self._attr_volume_level,
+                "volume_muted": self._attr_volume_muted,
+                "source": self._attr_source,
+                "media_repeat": self._attr_media_repeat,
+                "media_shuffle": self._attr_media_shuffle,
+            }
+            await self._store.async_save(data)
+        except Exception as ex:
+            _LOGGER.error(f"Failed to save state for media player '{self._attr_name}': {ex}")
+
     async def async_added_to_hass(self) -> None:
-        """Called when entity is added to Home Assistant."""
+        """Call when entity is added to hass."""
         await super().async_added_to_hass()
-        
+        await self.async_load_state()
+
         # 确保状态正确设置并立即更新
         self.async_write_ha_state()
-        
+
         _LOGGER.info(f"Virtual media player '{self._attr_name}' added to Home Assistant with state: {self._attr_state}, volume: {self._attr_volume_level}, source: {self._attr_source}")
 
     def _setup_features(self) -> None:
@@ -286,6 +326,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
     async def async_turn_on(self) -> None:
         """Turn on the media player."""
         self._attr_state = MediaPlayerState.IDLE
+        await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' turned on")
 
@@ -309,6 +350,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self._attr_media_album_name = None
         self._attr_media_position = 0
         self._attr_media_position_updated_at = None
+        await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' turned off")
 
@@ -332,6 +374,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
 
         self._attr_state = MediaPlayerState.PLAYING
         self._attr_media_position_updated_at = datetime.now()
+        await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' playing")
 
@@ -351,6 +394,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
     async def async_media_pause(self) -> None:
         """Pause media."""
         self._attr_state = MediaPlayerState.PAUSED
+        await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' paused")
 
@@ -371,6 +415,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self._attr_state = MediaPlayerState.IDLE
         self._attr_media_position = 0
         self._attr_media_position_updated_at = None
+        await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' stopped")
 
@@ -480,6 +525,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         """Select input source."""
         if source in self._attr_source_list:
             self._attr_source = source
+            await self.async_save_state()
             self.async_write_ha_state()
             _LOGGER.debug(f"Virtual media player '{self._attr_name}' source changed to {source}")
 
@@ -497,9 +543,23 @@ class VirtualMediaPlayer(MediaPlayerEntity):
 
     async def async_set_volume_level(self, volume: float) -> None:
         """Set volume level, range 0..1."""
+        # 修复：添加音量范围验证 (0.0-1.0)
+        original_volume = volume
+        volume = max(0.0, min(1.0, volume))
+
+        if abs(original_volume - volume) > 0.001:  # 浮点数精度比较
+            _LOGGER.warning(
+                f"Volume {original_volume} out of range (0.0-1.0), "
+                f"clamped to {volume}"
+            )
+
         self._attr_volume_level = volume
+
+        # 修复：可选的静音逻辑 - 仅在音量>0且当前静音时取消静音
         if volume > 0 and self._attr_volume_muted:
             self._attr_volume_muted = False
+
+        await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' volume set to {volume}")
 
@@ -518,6 +578,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
     async def async_mute_volume(self, mute: bool) -> None:
         """Mute (true) or unmute (false) media player."""
         self._attr_volume_muted = mute
+        await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' muted: {mute}")
 
@@ -536,6 +597,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
     async def async_set_repeat(self, repeat: str) -> None:
         """Set repeat mode."""
         self._attr_media_repeat = repeat
+        await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' repeat set to {repeat}")
 
@@ -556,6 +618,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self._attr_media_shuffle = shuffle
         if shuffle:
             random.shuffle(self._playlist)
+        await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' shuffle set to {shuffle}")
 

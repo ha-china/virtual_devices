@@ -12,6 +12,9 @@ from homeassistant.components.camera import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.storage import Store
+
+STORAGE_VERSION = 1
 
 from .const import (
     CONF_ENTITIES,
@@ -53,6 +56,7 @@ async def async_setup_entry(
 
     for idx, entity_config in enumerate(entities_config):
         entity = VirtualCamera(
+            hass,
             config_entry.entry_id,
             entity_config,
             idx,
@@ -68,6 +72,7 @@ class VirtualCamera(Camera):
 
     def __init__(
         self,
+        hass: HomeAssistant,
         config_entry_id: str,
         entity_config: dict[str, Any],
         index: int,
@@ -76,21 +81,25 @@ class VirtualCamera(Camera):
         """Initialize the virtual camera."""
         # 必须先调用父类初始化
         super().__init__()
-        
+
         self._config_entry_id = config_entry_id
         self._entity_config = entity_config
         self._index = index
         self._device_info = device_info
+        self._hass = hass
 
         entity_name = entity_config.get(CONF_ENTITY_NAME, f"Camera_{index + 1}")
         self._attr_name = entity_name
         self._attr_unique_id = f"{config_entry_id}_camera_{index}"
-        
+
         # 设置实体为可用
         self._attr_available = True
 
         # Template support
         self._templates = entity_config.get("templates", {})
+
+        # 存储实体状态
+        self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, f"virtual_devices_camera_{config_entry_id}_{index}")
 
         # 摄像头类型 - 必须在调用_get_enhanced_device_info()之前设置
         camera_type = entity_config.get("camera_type", "indoor")
@@ -154,15 +163,40 @@ class VirtualCamera(Camera):
         self._attr_device_info = self._get_enhanced_device_info()
         
         _LOGGER.info(f"Virtual camera '{self._attr_name}' initialized (type: {camera_type}, available: {self._attr_available})")
-    
+
+    async def async_load_state(self) -> None:
+        """Load saved state from storage."""
+        try:
+            data = await self._store.async_load()
+            if data:
+                self._attr_is_recording = data.get("is_recording", False)
+                self._attr_motion_detection_enabled = data.get("motion_detection_enabled", True)
+                self._attr_is_streaming = data.get("is_streaming", False)
+                _LOGGER.info(f"Camera '{self._attr_name}' state loaded from storage")
+        except Exception as ex:
+            _LOGGER.error(f"Failed to load state for camera '{self._attr_name}': {ex}")
+
+    async def async_save_state(self) -> None:
+        """Save current state to storage."""
+        try:
+            data = {
+                "is_recording": self._attr_is_recording,
+                "motion_detection_enabled": self._attr_motion_detection_enabled,
+                "is_streaming": self._attr_is_streaming,
+            }
+            await self._store.async_save(data)
+        except Exception as ex:
+            _LOGGER.error(f"Failed to save state for camera '{self._attr_name}': {ex}")
+
     async def async_added_to_hass(self) -> None:
-        """Called when entity is added to Home Assistant."""
+        """Call when entity is added to hass."""
         await super().async_added_to_hass()
-        
+        await self.async_load_state()
+
         # 确保实体可用并立即更新状态
         self._attr_available = True
         self.async_write_ha_state()
-        
+
         _LOGGER.info(f"Virtual camera '{self._attr_name}' added to Home Assistant and marked as available")
 
     def _get_enhanced_device_info(self) -> dict[str, Any]:
@@ -408,6 +442,7 @@ class VirtualCamera(Camera):
     async def async_enable_motion_detection(self) -> None:
         """Enable motion detection."""
         self._attr_motion_detection_enabled = True
+        await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual camera '{self._attr_name}' motion detection enabled")
 
@@ -426,6 +461,7 @@ class VirtualCamera(Camera):
         """Disable motion detection."""
         self._attr_motion_detection_enabled = False
         self._motion_detected = False
+        await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual camera '{self._attr_name}' motion detection disabled")
 
@@ -443,6 +479,7 @@ class VirtualCamera(Camera):
     async def async_turn_on(self) -> None:
         """Turn on camera."""
         self._attr_is_streaming = True
+        await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual camera '{self._attr_name}' turned on")
 
@@ -461,6 +498,7 @@ class VirtualCamera(Camera):
         """Turn off camera."""
         self._attr_is_streaming = False
         self._attr_is_recording = False
+        await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual camera '{self._attr_name}' turned off")
 
@@ -478,6 +516,7 @@ class VirtualCamera(Camera):
     async def async_enable_recording(self) -> None:
         """Enable recording."""
         self._attr_is_recording = True
+        await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual camera '{self._attr_name}' recording started")
 
@@ -495,6 +534,7 @@ class VirtualCamera(Camera):
     async def async_disable_recording(self) -> None:
         """Disable recording."""
         self._attr_is_recording = False
+        await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual camera '{self._attr_name}' recording stopped")
 

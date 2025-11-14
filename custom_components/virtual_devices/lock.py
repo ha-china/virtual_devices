@@ -10,6 +10,9 @@ from homeassistant.components.lock import LockEntity, LockState
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.storage import Store
+
+STORAGE_VERSION = 1
 
 from .const import (
     CONF_ENTITIES,
@@ -43,6 +46,7 @@ async def async_setup_entry(
 
     for idx, entity_config in enumerate(entities_config):
         entity = VirtualLock(
+            hass,
             config_entry.entry_id,
             entity_config,
             idx,
@@ -58,6 +62,7 @@ class VirtualLock(LockEntity):
 
     def __init__(
         self,
+        hass: HomeAssistant,
         config_entry_id: str,
         entity_config: dict[str, Any],
         index: int,
@@ -68,6 +73,7 @@ class VirtualLock(LockEntity):
         self._entity_config = entity_config
         self._index = index
         self._device_info = device_info
+        self._hass = hass
 
         entity_name = entity_config.get(CONF_ENTITY_NAME, f"lock_{index + 1}")
         self._attr_name = entity_name
@@ -76,6 +82,9 @@ class VirtualLock(LockEntity):
 
         # Template support
         self._templates = entity_config.get("templates", {})
+
+        # 存储实体状态
+        self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, f"virtual_devices_lock_{config_entry_id}_{index}")
 
         # 锁类型
         lock_type = entity_config.get("lock_type", "smart_lock")
@@ -105,6 +114,34 @@ class VirtualLock(LockEntity):
         self._auto_lock_delay = entity_config.get("auto_lock_delay", 30)  # 秒
         self._jamming_enabled = entity_config.get("enable_jamming", False)  # 默认禁用随机卡滞
 
+    async def async_load_state(self) -> None:
+        """Load saved state from storage."""
+        try:
+            data = await self._store.async_load()
+            if data:
+                state_str = data.get("state", "locked")
+                self._attr_state = LockState.LOCKED if state_str == "locked" else LockState.UNLOCKED
+                self._attr_battery_level = data.get("battery_level", 100)
+                _LOGGER.info(f"Lock '{self._attr_name}' state loaded from storage")
+        except Exception as ex:
+            _LOGGER.error(f"Failed to load state for lock '{self._attr_name}': {ex}")
+
+    async def async_save_state(self) -> None:
+        """Save current state to storage."""
+        try:
+            data = {
+                "state": "locked" if self._attr_state == LockState.LOCKED else "unlocked",
+                "battery_level": self._attr_battery_level,
+            }
+            await self._store.async_save(data)
+        except Exception as ex:
+            _LOGGER.error(f"Failed to save state for lock '{self._attr_name}': {ex}")
+
+    async def async_added_to_hass(self) -> None:
+        """Call when entity is added to hass."""
+        await super().async_added_to_hass()
+        await self.async_load_state()
+
     @property
     def is_locked(self) -> bool:
         """Return true if the lock is locked."""
@@ -128,6 +165,7 @@ class VirtualLock(LockEntity):
 
         self._attr_state = LockState.LOCKED
         self._last_access = datetime.now()
+        await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual lock '{self._attr_name}' locked")
 
@@ -162,6 +200,7 @@ class VirtualLock(LockEntity):
 
         self._attr_state = LockState.UNLOCKED
         self._last_access = datetime.now()
+        await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual lock '{self._attr_name}' unlocked")
 
@@ -203,6 +242,8 @@ class VirtualLock(LockEntity):
             self._attr_battery_level = max(0, self._attr_battery_level - random.uniform(0.01, 0.05))
         else:
             self._attr_battery_level = max(0, self._attr_battery_level - random.uniform(0.001, 0.01))
+
+        await self.async_save_state()
 
         # 模拟随机卡滞（可配置）
         if self._jamming_enabled and random.random() < 0.01:  # 1% 概率卡滞
