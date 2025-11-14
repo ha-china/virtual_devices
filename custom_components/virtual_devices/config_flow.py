@@ -237,10 +237,10 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     # 根据设备类型添加默认配置
                     if self._device_type == DEVICE_TYPE_LIGHT:
                         entity_config.update({
-                            CONF_BRIGHTNESS: True,
-                            CONF_COLOR_TEMP: True,
-                            CONF_RGB: False,
-                            CONF_EFFECT: False,
+                            CONF_BRIGHTNESS: True,  # 快速模式默认启用亮度
+                            CONF_COLOR_TEMP: False,  # 快速模式默认关闭色温
+                            CONF_RGB: False,  # 快速模式默认关闭RGB
+                            CONF_EFFECT: False,  # 快速模式默认关闭特效
                         })
                     elif self._device_type == DEVICE_TYPE_COVER:
                         entity_config["cover_type"] = "curtain"
@@ -339,9 +339,9 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if self._device_type == DEVICE_TYPE_LIGHT:
                 entity_config.update(
                     {
-                        CONF_BRIGHTNESS: user_input.get(CONF_BRIGHTNESS, False),
-                        CONF_COLOR_TEMP: user_input.get(CONF_COLOR_TEMP, False),
-                        CONF_RGB: user_input.get(CONF_RGB, False),
+                        CONF_BRIGHTNESS: user_input.get(CONF_BRIGHTNESS, True),
+                        CONF_COLOR_TEMP: user_input.get(CONF_COLOR_TEMP, False),  # 只有用户选择时才启用
+                        CONF_RGB: user_input.get(CONF_RGB, False),  # 只有用户选择时才启用
                         CONF_EFFECT: user_input.get(CONF_EFFECT, False),
                     }
                 )
@@ -487,10 +487,10 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if self._device_type == DEVICE_TYPE_LIGHT:
             schema_dict.update(
                 {
-                    vol.Optional(CONF_BRIGHTNESS, default=True): bool,
-                    vol.Optional(CONF_COLOR_TEMP, default=True): bool,
-                    vol.Optional(CONF_RGB, default=False): bool,
-                    vol.Optional(CONF_EFFECT, default=False): bool,
+                    vol.Optional(CONF_BRIGHTNESS, default=True): bool,  # 默认启用亮度
+                    vol.Optional(CONF_COLOR_TEMP, default=False): bool,  # 默认关闭色温
+                    vol.Optional(CONF_RGB, default=False): bool,  # 默认关闭RGB
+                    vol.Optional(CONF_EFFECT, default=False): bool,  # 默认关闭特效
                 }
             )
         elif self._device_type == DEVICE_TYPE_COVER:

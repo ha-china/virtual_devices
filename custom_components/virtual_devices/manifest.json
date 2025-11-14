@@ -1,7 +1,7 @@
 {
   "domain": "virtual_devices",
   "name": "Virtual Devices",
-  "codeowners": ["@Desmond-Dong"],
+  "codeowners": ["@ha-china"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/ha-china/virtual_devices",
@@ -10,5 +10,5 @@
   "issue_tracker": "https://github.com/ha-china/virtual_devices/issues",
   "quality_scale": "silver",
   "requirements": [],
-  "version": "2025.10.0"
+  "version": "2025.11.0"
 }

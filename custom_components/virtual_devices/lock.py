@@ -103,6 +103,7 @@ class VirtualLock(LockEntity):
         self._access_code = entity_config.get("access_code", "1234")
         self._auto_lock_enabled = entity_config.get("auto_lock", True)
         self._auto_lock_delay = entity_config.get("auto_lock_delay", 30)  # 秒
+        self._jamming_enabled = entity_config.get("enable_jamming", False)  # 默认禁用随机卡滞
 
     @property
     def is_locked(self) -> bool:
@@ -203,8 +204,8 @@ class VirtualLock(LockEntity):
         else:
             self._attr_battery_level = max(0, self._attr_battery_level - random.uniform(0.001, 0.01))
 
-        # 模拟随机卡滞（小概率）
-        if random.random() < 0.01:  # 1% 概率卡滞
+        # 模拟随机卡滞（可配置）
+        if self._jamming_enabled and random.random() < 0.01:  # 1% 概率卡滞
             self._is_jammed = True
             self.async_write_ha_state()
             _LOGGER.warning(f"Virtual lock '{self._attr_name}' is jammed")
@@ -229,6 +230,7 @@ class VirtualLock(LockEntity):
             "auto_lock_enabled": self._auto_lock_enabled,
             "auto_lock_delay": self._auto_lock_delay,
             "is_jammed": self._is_jammed,
+            "jamming_enabled": self._jamming_enabled,
         }
 
         if self._last_access:

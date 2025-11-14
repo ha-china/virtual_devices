@@ -62,6 +62,7 @@ CONF_BRIGHTNESS = "brightness"
 CONF_COLOR_TEMP = "color_temp"
 CONF_RGB = "rgb"
 CONF_EFFECT = "effect"
+CONF_COLOR_MODE = "color_mode"
 
 LIGHT_FEATURES = {
     CONF_BRIGHTNESS: "brightness_control",

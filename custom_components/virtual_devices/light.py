@@ -104,8 +104,8 @@ class VirtualLight(LightEntity):
         supported_features = LightEntityFeature(0)
         color_modes = set()
 
-        # 基础亮度
-        if self._entity_config.get(CONF_BRIGHTNESS, True):
+        # 基础亮度 - 严格按照用户配置
+        if self._entity_config.get(CONF_BRIGHTNESS, False):
             color_modes.add(ColorMode.BRIGHTNESS)
 
         # 色温
@@ -124,24 +124,34 @@ class VirtualLight(LightEntity):
             supported_features |= LightEntityFeature.EFFECT
             self._attr_effect_list = EFFECT_LIST
 
-        # 如果没有选择任何色彩模式，默认为开关模式
+        # 只有在用户完全没有选择任何功能时，才默认启用亮度
         if not color_modes:
             color_modes.add(ColorMode.BRIGHTNESS)
 
-        # 确保颜色模式兼容性 - HA 2025.3+ 不支持多个颜色模式组合
+        # HA 2025.3+ 颜色模式兼容性：只能选择一个主要模式
         if len(color_modes) > 1:
-            # 如果支持RGB，移除其他模式
             if ColorMode.RGB in color_modes:
+                # 如果选择了RGB，只保留RGB模式
                 color_modes = {ColorMode.RGB}
-            # 如果支持色温，移除亮度模式（色温包含亮度）
             elif ColorMode.COLOR_TEMP in color_modes:
+                # 如果选择了色温，只保留色温模式
                 color_modes = {ColorMode.COLOR_TEMP}
             else:
-                # 只保留亮度模式
+                # 否则只保留亮度模式
                 color_modes = {ColorMode.BRIGHTNESS}
 
         self._attr_supported_color_modes = color_modes
         self._attr_supported_features = supported_features
+
+        # 调试信息
+        _LOGGER.debug(f"Light '{self._attr_name}' config: brightness={self._entity_config.get(CONF_BRIGHTNESS)}, "
+                     f"color_temp={self._entity_config.get(CONF_COLOR_TEMP)}, rgb={self._entity_config.get(CONF_RGB)}")
+        _LOGGER.debug(f"Light '{self._attr_name}' final supported modes: {self._attr_supported_color_modes}")
+
+        # 确保颜色模式正确设置
+        if not self._attr_supported_color_modes:
+            _LOGGER.warning(f"Light '{self._attr_name}': No color modes configured, defaulting to BRIGHTNESS")
+            self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
 
     @property
     def is_on(self) -> bool:
@@ -171,10 +181,46 @@ class VirtualLight(LightEntity):
         return None
 
     @property
+    def color_mode(self) -> ColorMode:
+        """Return the current color mode."""
+        # 返回支持的颜色模式中的第一个
+        if self._attr_supported_color_modes:
+            return next(iter(self._attr_supported_color_modes))
+        return ColorMode.BRIGHTNESS  # 默认返回亮度模式
+
+    @property
     def rgb_color(self) -> tuple[int, int, int] | None:
         """Return the rgb color value."""
         if ColorMode.RGB in self._attr_supported_color_modes:
+            _LOGGER.debug(f"Returning RGB color: {self._rgb_color} for light '{self._attr_name}'")
             return self._rgb_color
+        return None
+
+    @property
+    def hs_color(self) -> tuple[float, float] | None:
+        """Return the hs color value."""
+        if ColorMode.RGB in self._attr_supported_color_modes and self._rgb_color:
+            # 简单的RGB到HS转换
+            r, g, b = self._rgb_color
+            max_val = max(r, g, b)
+            min_val = min(r, g, b)
+            delta = max_val - min_val
+
+            if delta == 0:
+                hue = 0
+            elif max_val == r:
+                hue = (g - b) / delta % 6
+            elif max_val == g:
+                hue = (b - r) / delta + 2
+            else:
+                hue = (r - g) / delta + 4
+
+            hue = round(hue * 60)
+            if hue < 0:
+                hue += 360
+
+            saturation = 0 if max_val == 0 else round(delta / max_val * 100)
+            return (hue, saturation)
         return None
 
     @property
