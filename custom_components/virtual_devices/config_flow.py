@@ -65,6 +65,31 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+def get_device_type_name(device_type: str) -> str:
+    """Get Chinese name for device type."""
+    device_type_names = {
+        DEVICE_TYPE_LIGHT: "灯光",
+        DEVICE_TYPE_SWITCH: "开关",
+        DEVICE_TYPE_CLIMATE: "空调",
+        DEVICE_TYPE_COVER: "窗帘",
+        DEVICE_TYPE_FAN: "风扇",
+        DEVICE_TYPE_SENSOR: "传感器",
+        DEVICE_TYPE_BINARY_SENSOR: "二进制传感器",
+        DEVICE_TYPE_BUTTON: "按钮",
+        DEVICE_TYPE_SCENE: "场景",
+        DEVICE_TYPE_MEDIA_PLAYER: "媒体播放器",
+        DEVICE_TYPE_VACUUM: "扫地机器人",
+        DEVICE_TYPE_WEATHER: "气象站",
+        DEVICE_TYPE_CAMERA: "摄像头",
+        DEVICE_TYPE_LOCK: "智能门锁",
+        DEVICE_TYPE_VALVE: "水阀",
+        DEVICE_TYPE_WATER_HEATER: "热水器",
+        DEVICE_TYPE_HUMIDIFIER: "加湿器",
+        DEVICE_TYPE_AIR_PURIFIER: "空气净化器",
+    }
+    return device_type_names.get(device_type, device_type)
+
+
 class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Virtual Devices Multi."""
 
@@ -87,15 +112,14 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             # Validate input data
-            device_name = user_input.get(CONF_DEVICE_NAME, "").strip()
             device_type = user_input.get(CONF_DEVICE_TYPE)
             entity_count = user_input.get(CONF_ENTITY_COUNT, DEFAULT_ENTITY_COUNT)
 
-            # Validate device name
-            if not device_name:
-                errors[CONF_DEVICE_NAME] = "device_name_required"
+            # Auto-generate device name based on device type
+            device_name = get_device_type_name(device_type)
+
             # Validate device type
-            elif device_type not in DEVICE_TYPES:
+            if device_type not in DEVICE_TYPES:
                 errors[CONF_DEVICE_TYPE] = "invalid_device_type"
             # Validate entity count - simplified version for debugging
             elif True:  # Ensure this validation also uses elif structure
@@ -141,8 +165,6 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Default to select light
         default_device_type = DEVICE_TYPE_LIGHT
-        # Generate default name based on selected device type
-        default_device_name = "Virtual Entity 1"
 
         _LOGGER.info(f"Device type options: {list(DEVICE_TYPES.keys())}")
 
@@ -186,7 +208,6 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         data_schema = vol.Schema(
             {
-                vol.Required(CONF_DEVICE_NAME, default=default_device_name): str,
                 vol.Required(
                     CONF_DEVICE_TYPE,
                     default=default_device_type

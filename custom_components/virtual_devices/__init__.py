@@ -12,6 +12,7 @@ from .const import DOMAIN, MANUFACTURER, MODEL
 
 _LOGGER = logging.getLogger(__name__)
 
+# 支持的Home Assistant平台列表
 PLATFORMS = [
     Platform.LIGHT,
     Platform.SWITCH,
@@ -30,18 +31,46 @@ PLATFORMS = [
     Platform.VALVE,
     Platform.WATER_HEATER,
     Platform.HUMIDIFIER,
+    # 注意：air_purifier 不是独立的平台，它使用 fan 平台
 ]
 
 
 def get_device_info(config_entry: ConfigEntry) -> DeviceInfo:
     """Get device information for this integration."""
-    device_name = config_entry.data.get("device_name", "Unknown Device")
     device_type = config_entry.data.get("device_type", "unknown")
     entities_config = config_entry.data.get("entities", [])
 
-    # 获取设备类型名称（使用翻译系统时这里只作记录用）
-    from .const import DEVICE_TYPES
-    device_type_name = DEVICE_TYPES.get(device_type, device_type)
+    # 自动生成设备名称为设备类型的中文名称
+    from .const import (
+        DEVICE_TYPE_LIGHT, DEVICE_TYPE_SWITCH, DEVICE_TYPE_CLIMATE, DEVICE_TYPE_COVER, DEVICE_TYPE_FAN,
+        DEVICE_TYPE_SENSOR, DEVICE_TYPE_BINARY_SENSOR, DEVICE_TYPE_BUTTON, DEVICE_TYPE_SCENE,
+        DEVICE_TYPE_MEDIA_PLAYER, DEVICE_TYPE_VACUUM, DEVICE_TYPE_WEATHER, DEVICE_TYPE_CAMERA,
+        DEVICE_TYPE_LOCK, DEVICE_TYPE_VALVE, DEVICE_TYPE_WATER_HEATER, DEVICE_TYPE_HUMIDIFIER,
+        DEVICE_TYPE_AIR_PURIFIER,
+    )
+
+    device_type_names = {
+        DEVICE_TYPE_LIGHT: "灯光",
+        DEVICE_TYPE_SWITCH: "开关",
+        DEVICE_TYPE_CLIMATE: "空调",
+        DEVICE_TYPE_COVER: "窗帘",
+        DEVICE_TYPE_FAN: "风扇",
+        DEVICE_TYPE_SENSOR: "传感器",
+        DEVICE_TYPE_BINARY_SENSOR: "二进制传感器",
+        DEVICE_TYPE_BUTTON: "按钮",
+        DEVICE_TYPE_SCENE: "场景",
+        DEVICE_TYPE_MEDIA_PLAYER: "媒体播放器",
+        DEVICE_TYPE_VACUUM: "扫地机器人",
+        DEVICE_TYPE_WEATHER: "气象站",
+        DEVICE_TYPE_CAMERA: "摄像头",
+        DEVICE_TYPE_LOCK: "智能门锁",
+        DEVICE_TYPE_VALVE: "水阀",
+        DEVICE_TYPE_WATER_HEATER: "热水器",
+        DEVICE_TYPE_HUMIDIFIER: "加湿器",
+        DEVICE_TYPE_AIR_PURIFIER: "空气净化器",
+    }
+
+    device_name = device_type_names.get(device_type, device_type.title())
 
     # 构建设备详细信息
     device_info = {
@@ -101,7 +130,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     }
 
     # 设置所有平台
+    # 现在每个平台使用统一的服务管理，而不是每个设备类型一个独立服务
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    _LOGGER.info(f"Successfully set up virtual device: {entry.data.get('device_type')}")
 
     return True
 

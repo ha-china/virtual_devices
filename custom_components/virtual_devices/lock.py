@@ -75,7 +75,7 @@ class VirtualLock(LockEntity):
         self._device_info = device_info
         self._hass = hass
 
-        entity_name = entity_config.get(CONF_ENTITY_NAME, f"lock_{index + 1}")
+        entity_name = entity_config.get(CONF_ENTITY_NAME, f"Lock {index + 1}")
         self._attr_name = entity_name
         self._attr_unique_id = f"{config_entry_id}_lock_{index}"
         self._attr_device_info = device_info

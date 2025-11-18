@@ -3,9 +3,8 @@
     "step": {
       "user": {
         "title": "添加虚拟设备（多实体）",
-        "description": "配置虚拟设备的基本信息。一个设备下可以包含多个实体。",
+        "description": "选择设备类型和实体数量，设备名称将自动设置为设备类型的中文名称。",
         "data": {
-          "device_name": "设备名称",
           "device_type": {
             "label": "设备类型",
             "options": {

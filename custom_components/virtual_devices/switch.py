@@ -1,4 +1,4 @@
-"""Platform for virtual switch integration."""
+"""Switch platform for virtual devices integration."""
 from __future__ import annotations
 
 import logging
@@ -10,12 +10,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
-    CONF_DEVICE_NAME,
     CONF_ENTITIES,
     CONF_ENTITY_NAME,
     DEVICE_TYPE_SWITCH,
     DOMAIN,
-    TEMPLATE_ENABLED_DEVICE_TYPES,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,24 +27,33 @@ async def async_setup_entry(
     """Set up virtual switch entities."""
     device_type = config_entry.data.get("device_type")
 
-    # 只有开关类型的设备才设置开关实体
+    # Only create switch entities for switch device types
     if device_type != DEVICE_TYPE_SWITCH:
+        _LOGGER.debug(f"Skipping switch setup for device type: {device_type}")
         return
+
+    _LOGGER.info(f"Setting up switch entities for device type: {device_type}")
 
     device_info = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
     entities = []
     entities_config = config_entry.data.get(CONF_ENTITIES, [])
 
     for idx, entity_config in enumerate(entities_config):
-        entity = VirtualSwitch(
-            config_entry.entry_id,
-            entity_config,
-            idx,
-            device_info,
-        )
-        entities.append(entity)
+        try:
+            entity = VirtualSwitch(
+                hass,
+                config_entry.entry_id,
+                entity_config,
+                idx,
+                device_info,
+            )
+            entities.append(entity)
+        except Exception as e:
+            _LOGGER.error(f"Failed to create VirtualSwitch {idx}: {e}")
 
-    async_add_entities(entities)
+    if entities:
+        async_add_entities(entities)
+        _LOGGER.info(f"Added {len(entities)} switch entities")
 
 
 class VirtualSwitch(SwitchEntity):
@@ -54,6 +61,7 @@ class VirtualSwitch(SwitchEntity):
 
     def __init__(
         self,
+        hass: HomeAssistant,
         config_entry_id: str,
         entity_config: dict[str, Any],
         index: int,
@@ -64,6 +72,7 @@ class VirtualSwitch(SwitchEntity):
         self._entity_config = entity_config
         self._index = index
         self._device_info = device_info
+        self._hass = hass
         self._is_on = False
 
         entity_name = entity_config.get(CONF_ENTITY_NAME, f"switch_{index + 1}")
