@@ -1,6 +1,7 @@
 """Platform for virtual cover integration."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -11,21 +12,23 @@ from homeassistant.components.cover import (
     CoverEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
+import homeassistant.config_entries as config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.storage import Store
 
-STORAGE_VERSION = 1
-
 from .const import (
     CONF_ENTITIES,
     CONF_ENTITY_NAME,
+    CONF_TRAVEL_TIME,
     DEVICE_TYPE_COVER,
     DOMAIN,
     TEMPLATE_ENABLED_DEVICE_TYPES,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+STORAGE_VERSION = 1
 
 
 async def async_setup_entry(
@@ -109,6 +112,13 @@ class VirtualCover(CoverEntity):
             cover_type, CoverDeviceClass.CURTAIN
         )
 
+        # 运行时间设置（秒）
+        self._travel_time = entity_config.get(CONF_TRAVEL_TIME, 15)  # 默认15秒完成全行程
+        self._is_moving = False  # 是否正在移动
+        self._target_position = None  # 目标位置
+        self._start_position = None  # 开始位置
+        self._start_time = None  # 开始移动的时间
+
         # 状态 - 默认值，稍后从存储恢复
         self._position = 0
         self._is_closed = True
@@ -120,6 +130,11 @@ class VirtualCover(CoverEntity):
             if data:
                 self._position = data.get("position", 0)
                 self._is_closed = data.get("is_closed", True)
+                # 重置移动状态，避免重启后卡在移动中
+                self._is_moving = False
+                self._target_position = None
+                self._start_position = None
+                self._start_time = None
                 _LOGGER.info(f"Cover '{self._attr_name}' state loaded from storage")
         except Exception as ex:
             _LOGGER.error(f"Failed to load state for cover '{self._attr_name}': {ex}")
@@ -130,6 +145,8 @@ class VirtualCover(CoverEntity):
             data = {
                 "position": self._position,
                 "is_closed": self._is_closed,
+                "is_moving": self._is_moving,
+                "target_position": self._target_position,
             }
             await self._store.async_save(data)
         except Exception as ex:
@@ -140,6 +157,29 @@ class VirtualCover(CoverEntity):
         await super().async_added_to_hass()
         # 加载保存的状态
         await self.async_load_state()
+        # 监听配置更新
+        self.async_on_remove(
+            self.hass.config_entries.async_get_entry(self._config_entry_id).add_update_listener(
+                self._async_config_updated
+            )
+        )
+
+    async def _async_config_updated(
+        self, config_entry: ConfigEntry
+    ) -> None:
+        """Handle configuration update."""
+        # 重新加载配置
+        new_entities = config_entry.data.get(CONF_ENTITIES, [])
+        if self._index < len(new_entities):
+            new_config = new_entities[self._index]
+            # 更新本地配置
+            self._travel_time = new_config.get(CONF_TRAVEL_TIME, self._travel_time)
+
+            # 保存新状态
+            await self.async_save_state()
+            self.async_write_ha_state()
+
+            _LOGGER.info(f"Cover '{self._attr_name}' configuration updated: travel_time={self._travel_time}s")
 
     @property
     def current_cover_position(self) -> int:
@@ -151,45 +191,97 @@ class VirtualCover(CoverEntity):
         """Return if the cover is closed."""
         return self._is_closed
 
+    @property
+    def is_opening(self) -> bool:
+        """Return if the cover is opening."""
+        return self._is_moving and self._target_position and self._target_position > self._position
+
+    @property
+    def is_closing(self) -> bool:
+        """Return if the cover is closing."""
+        return self._is_moving and self._target_position and self._target_position < self._position
+
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
-        self._position = 100
-        self._is_closed = False
-
-        # 保存状态到存储
-        await self.async_save_state()
-
-        self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual cover '{self._attr_name}' opened")
+        await self._move_to_position(100)
 
     async def async_close_cover(self, **kwargs: Any) -> None:
         """Close the cover."""
-        self._position = 0
-        self._is_closed = True
+        await self._move_to_position(0)
 
-        # 保存状态到存储
+    async def _move_to_position(self, target_position: int) -> None:
+        """Move cover to target position with travel time simulation."""
+        if target_position == self._position:
+            return
+
+        self._is_moving = True
+        self._target_position = target_position
+        self._start_position = self._position
+        self._start_time = self._hass.loop.time()
+
+        _LOGGER.debug(f"Cover '{self._attr_name}' moving from {self._position}% to {target_position}% (travel time: {self._travel_time}s)")
+
+        # 开始移动，定期更新位置
+        await self._update_position_during_movement()
+
+    async def _update_position_during_movement(self) -> None:
+        """Update position during movement based on elapsed time."""
+        if not self._is_moving or self._target_position is None:
+            return
+
+        current_time = self._hass.loop.time()
+        elapsed_time = current_time - self._start_time
+
+        # 计算应该移动的距离
+        total_distance = abs(self._target_position - self._start_position)
+        travel_time_per_percent = self._travel_time / 100.0  # 每个百分比需要的秒数
+
+        # 计算当前位置
+        if self._target_position > self._start_position:
+            # 正在开启
+            new_position = min(
+                self._target_position,
+                self._start_position + int(elapsed_time / travel_time_per_percent)
+            )
+        else:
+            # 正在关闭
+            new_position = max(
+                self._target_position,
+                self._start_position - int(elapsed_time / travel_time_per_percent)
+            )
+
+        self._position = new_position
+        self._is_closed = (self._position == 0)
+
+        # 保存状态并更新HA
         await self.async_save_state()
-
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual cover '{self._attr_name}' closed")
+
+        # 检查是否到达目标位置
+        if self._position == self._target_position:
+            self._is_moving = False
+            self._target_position = None
+            action = "opened" if self._position == 100 else "closed" if self._position == 0 else f"moved to {self._position}%"
+            _LOGGER.debug(f"Virtual cover '{self._attr_name}' {action}")
+        else:
+            # 继续移动，0.5秒后再次检查
+            await asyncio.sleep(0.5)
+            await self._update_position_during_movement()
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
         """Stop the cover."""
-        # 修复：保持当前位置状态，只更新HA状态
-        current_position = self._position
+        if self._is_moving:
+            self._is_moving = False
+            self._target_position = None
+            await self.async_save_state()
+            _LOGGER.debug(f"Virtual cover '{self._attr_name}' stopped at position {self._position}%")
+
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual cover '{self._attr_name}' stopped at position {current_position}")
 
     async def async_set_cover_position(self, **kwargs: Any) -> None:
         """Move the cover to a specific position."""
         if (position := kwargs.get(ATTR_POSITION)) is not None:
-            self._position = position
-            self._is_closed = position == 0
-
-            # 保存状态到存储
-            await self.async_save_state()
-
-            self.async_write_ha_state()
+            await self._move_to_position(position)
             _LOGGER.debug(
-                f"Virtual cover '{self._attr_name}' position set to {position}"
+                f"Virtual cover '{self._attr_name}' moving to position {position}%"
             )

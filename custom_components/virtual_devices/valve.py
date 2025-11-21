@@ -1,6 +1,7 @@
 """Platform for virtual valve integration."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import random
 from typing import Any
@@ -10,12 +11,15 @@ from homeassistant.components.valve import (
     ValveEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
+import homeassistant.config_entries as config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.storage import Store
 
 from .const import (
     CONF_ENTITIES,
     CONF_ENTITY_NAME,
+    CONF_TRAVEL_TIME,
     CONF_VALVE_POSITION,
     CONF_VALVE_REPORTS_POSITION,
     DEVICE_TYPE_VALVE,
@@ -23,6 +27,8 @@ from .const import (
     TEMPLATE_ENABLED_DEVICE_TYPES,
     VALVE_TYPES,
 )
+
+STORAGE_VERSION = 1
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,6 +51,7 @@ async def async_setup_entry(
 
     for idx, entity_config in enumerate(entities_config):
         entity = VirtualValve(
+            hass,
             config_entry.entry_id,
             entity_config,
             idx,
@@ -67,6 +74,7 @@ class VirtualValve(ValveEntity):
 
     def __init__(
         self,
+        hass: HomeAssistant,
         config_entry_id: str,
         entity_config: dict[str, Any],
         index: int,
@@ -77,6 +85,7 @@ class VirtualValve(ValveEntity):
         self._entity_config = entity_config
         self._index = index
         self._device_info = device_info
+        self._hass = hass
 
         entity_name = entity_config.get(CONF_ENTITY_NAME, f"valve_{index + 1}")
         self._attr_name = entity_name
@@ -85,6 +94,15 @@ class VirtualValve(ValveEntity):
 
         # Template support
         self._templates = entity_config.get("templates", {})
+
+        # 存储实体状态
+        self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, f"virtual_devices_valve_{config_entry_id}_{index}")
+
+        # 运行时间设置（秒）
+        self._travel_time = entity_config.get(CONF_TRAVEL_TIME, 10)  # 默认10秒完成全行程
+        self._is_moving = False  # 是否正在移动
+        self._start_position = None  # 开始位置
+        self._start_time = None  # 开始移动的时间
 
         # 水阀类型
         valve_type = entity_config.get("valve_type", "water_valve")
@@ -131,7 +149,68 @@ class VirtualValve(ValveEntity):
     async def _async_initialize_state(self) -> None:
         """Initialize state after entity is added to hass."""
         if self.hass is not None:
+            # 先加载保存的状态
+            await self.async_load_state()
+            # 然后写入状态
             self.async_write_ha_state()
+
+    async def async_load_state(self) -> None:
+        """Load saved state from storage."""
+        try:
+            data = await self._store.async_load()
+            if data:
+                self._attr_current_position = data.get("current_position", 0)
+                self._target_position = data.get("target_position", self._attr_current_position)
+                # 重置移动状态，避免重启后卡在移动中
+                self._is_moving = False
+                self._is_opening = False
+                self._is_closing = False
+                self._start_position = None
+                self._start_time = None
+                _LOGGER.info(f"Valve '{self._attr_name}' state loaded from storage - position: {self._attr_current_position}%")
+        except Exception as ex:
+            _LOGGER.error(f"Failed to load state for valve '{self._attr_name}': {ex}")
+
+    async def async_save_state(self) -> None:
+        """Save current state to storage."""
+        try:
+            data = {
+                "current_position": self._attr_current_position,
+                "is_moving": self._is_moving,
+                "target_position": self._target_position,
+            }
+            await self._store.async_save(data)
+        except Exception as ex:
+            _LOGGER.error(f"Failed to save state for valve '{self._attr_name}': {ex}")
+
+    async def async_added_to_hass(self) -> None:
+        """Call when entity is added to hass."""
+        await super().async_added_to_hass()
+        # 加载保存的状态
+        await self.async_load_state()
+        # 监听配置更新
+        self.async_on_remove(
+            self.hass.config_entries.async_get_entry(self._config_entry_id).add_update_listener(
+                self._async_config_updated
+            )
+        )
+
+    async def _async_config_updated(
+        self, config_entry: ConfigEntry
+    ) -> None:
+        """Handle configuration update."""
+        # 重新加载配置
+        new_entities = config_entry.data.get(CONF_ENTITIES, [])
+        if self._index < len(new_entities):
+            new_config = new_entities[self._index]
+            # 更新本地配置
+            self._travel_time = new_config.get(CONF_TRAVEL_TIME, self._travel_time)
+
+            # 保存新状态
+            await self.async_save_state()
+            self.async_write_ha_state()
+
+            _LOGGER.info(f"Valve '{self._attr_name}' configuration updated: travel_time={self._travel_time}s")
 
     @property
     def current_position(self) -> int:
@@ -173,16 +252,9 @@ class VirtualValve(ValveEntity):
             _LOGGER.debug(f"Virtual valve '{self._attr_name}' is already fully open")
             return
 
-        self._target_position = 100
         self._is_opening = True
         self._is_closing = False
-
-        # 如果支持位置报告，模拟渐变过程
-        if self._attr_reports_position:
-            self.hass.loop.call_later(2, self._position_update_callback)
-        else:
-            self._attr_current_position = 100
-            self.async_write_ha_state()
+        await self._move_to_position(100)
 
         _LOGGER.debug(f"Virtual valve '{self._attr_name}' opening")
 
@@ -204,16 +276,9 @@ class VirtualValve(ValveEntity):
             _LOGGER.debug(f"Virtual valve '{self._attr_name}' is already fully closed")
             return
 
-        self._target_position = 0
         self._is_closing = True
         self._is_opening = False
-
-        # 如果支持位置报告，模拟渐变过程
-        if self._attr_reports_position:
-            self.hass.loop.call_later(2, self._position_update_callback)
-        else:
-            self._attr_current_position = 0
-            self.async_write_ha_state()
+        await self._move_to_position(0)
 
         _LOGGER.debug(f"Virtual valve '{self._attr_name}' closing")
 
@@ -264,8 +329,6 @@ class VirtualValve(ValveEntity):
             _LOGGER.debug(f"Virtual valve '{self._attr_name}' is already at position {position}")
             return
 
-        self._target_position = position
-
         # 确定操作方向
         if position > self._attr_current_position:
             self._is_opening = True
@@ -274,12 +337,7 @@ class VirtualValve(ValveEntity):
             self._is_closing = True
             self._is_opening = False
 
-        # 如果支持位置报告，模拟渐变过程
-        if self._attr_reports_position:
-            self.hass.loop.call_later(2, self._position_update_callback)
-        else:
-            self._attr_current_position = position
-            self.async_write_ha_state()
+        await self._move_to_position(position)
 
         _LOGGER.debug(f"Virtual valve '{self._attr_name}' moving to position {position}%")
 
@@ -315,6 +373,11 @@ class VirtualValve(ValveEntity):
 
     async def async_update(self) -> None:
         """Update valve state."""
+        # 如果正在移动，继续更新位置
+        if self._is_moving and self._start_time is not None:
+            await self._update_position_during_movement()
+            return
+
         # 累计流量（如果有流量）
         if self._flow_rate > 0:
             # 假设每秒更新一次，流量转换为升
@@ -326,18 +389,8 @@ class VirtualValve(ValveEntity):
             self._pressure += random.uniform(-0.1, 0.1)
             self._pressure = max(0, self._pressure)
 
-        # 确保状态正确更新
-        if self._is_opening or self._is_closing:
-            # 如果正在开启或关闭，继续模拟过程
-            if self._is_opening:
-                self._attr_current_position = min(self._target_position, self._attr_current_position + 5)
-                if self._attr_current_position >= self._target_position:
-                    self._is_opening = False
-            elif self._is_closing:
-                self._attr_current_position = max(self._target_position, self._attr_current_position - 5)
-                if self._attr_current_position <= self._target_position:
-                    self._is_closing = False
-
+        # 只在没有主动移动时更新流量和压力
+        if not self._is_moving:
             # 更新流量和压力
             if self._attr_current_position > 0:
                 self._flow_rate = round(self._attr_current_position * 0.1 * (self._valve_size / 25), 2)
@@ -371,3 +424,78 @@ class VirtualValve(ValveEntity):
             attrs["pressure"] = f"{self._pressure} bar"
 
         return attrs
+
+    async def _move_to_position(self, target_position: int) -> None:
+        """Move valve to target position with travel time simulation."""
+        if target_position == self._attr_current_position:
+            return
+
+        self._is_moving = True
+        self._target_position = target_position
+        self._start_position = self._attr_current_position
+        self._start_time = self._hass.loop.time()
+
+        _LOGGER.debug(f"Valve '{self._attr_name}' moving from {self._attr_current_position}% to {target_position}% (travel time: {self._travel_time}s)")
+
+        # 开始移动，定期更新位置
+        await self._update_position_during_movement()
+
+    async def _update_position_during_movement(self) -> None:
+        """Update position during movement based on elapsed time."""
+        if not self._is_moving or self._target_position is None:
+            return
+
+        current_time = self._hass.loop.time()
+        elapsed_time = current_time - self._start_time
+
+        # 计算应该移动的距离
+        total_distance = abs(self._target_position - self._start_position)
+        travel_time_per_percent = self._travel_time / 100.0  # 每个百分比需要的秒数
+
+        # 计算当前位置
+        if self._target_position > self._start_position:
+            # 正在开启
+            new_position = min(
+                self._target_position,
+                self._start_position + int(elapsed_time / travel_time_per_percent)
+            )
+        else:
+            # 正在关闭
+            new_position = max(
+                self._target_position,
+                self._start_position - int(elapsed_time / travel_time_per_percent)
+            )
+
+        self._attr_current_position = new_position
+
+        # 更新流量和压力
+        if self._attr_current_position > 0:
+            self._flow_rate = round(self._attr_current_position * 0.1 * (self._valve_size / 25), 2)
+            if self._valve_type == "water_valve":
+                self._pressure = round(2 + (self._attr_current_position / 100) * 3, 1)
+            elif self._valve_type == "gas_valve":
+                self._pressure = round(0.5 + (self._attr_current_position / 100) * 2, 1)
+        else:
+            self._flow_rate = 0
+            self._pressure = 0
+
+        # 保存状态并更新HA
+        await self.async_save_state()
+        self.async_write_ha_state()
+
+        # 检查是否到达目标位置
+        if self._attr_current_position == self._target_position:
+            self._is_moving = False
+            self._is_opening = False
+            self._is_closing = False
+
+            # 保存最终状态
+            await self.async_save_state()
+            self.async_write_ha_state()
+
+            action = "opened" if self._attr_current_position == 100 else "closed" if self._attr_current_position == 0 else f"moved to {self._attr_current_position}%"
+            _LOGGER.debug(f"Virtual valve '{self._attr_name}' {action}")
+        else:
+            # 继续移动，0.5秒后再次检查
+            await asyncio.sleep(0.5)
+            await self._update_position_during_movement()

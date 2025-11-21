@@ -127,6 +127,11 @@ class VirtualClimate(ClimateEntity):
         self._attr_preset_mode = None
         self._attr_hvac_action = HVACAction.OFF
 
+        # 湿度模拟相关
+        self._current_humidity = 55  # 当前湿度 (%)
+        self._target_humidity = 50     # 目标湿度 (%)
+        self._humidity_enabled = entity_config.get("enable_humidity_sensor", True)
+
         # 温度模拟相关
         self._target_reached_threshold = 1.0  # 目标温度达到阈值
         self._temperature_change_rate = 0.5    # 温度变化速率
@@ -144,6 +149,8 @@ class VirtualClimate(ClimateEntity):
                 self._attr_swing_mode = data.get("swing_mode", "off")
                 self._attr_preset_mode = data.get("preset_mode")
                 self._attr_hvac_action = data.get("hvac_action", HVACAction.OFF)
+                self._current_humidity = data.get("current_humidity", 55)
+                self._target_humidity = data.get("target_humidity", 50)
                 _LOGGER.info(f"Climate '{self._attr_name}' state loaded from storage")
         except Exception as ex:
             _LOGGER.error(f"Failed to load state for climate '{self._attr_name}': {ex}")
@@ -159,6 +166,8 @@ class VirtualClimate(ClimateEntity):
                 "swing_mode": self._attr_swing_mode,
                 "preset_mode": self._attr_preset_mode,
                 "hvac_action": self._attr_hvac_action,
+                "current_humidity": self._current_humidity,
+                "target_humidity": self._target_humidity,
             }
             await self._store.async_save(data)
         except Exception as ex:
@@ -299,6 +308,47 @@ class VirtualClimate(ClimateEntity):
                 # 确保温度在合理范围内
                 self._attr_current_temperature = max(self._attr_min_temp, min(self._attr_max_temp, self._attr_current_temperature))
 
-                # 检查是否达到目标温度
-                self._update_hvac_action()
-                self.async_write_ha_state()
+            # 模拟湿度变化
+            if self._humidity_enabled:
+                self._update_humidity()
+
+            # 检查是否达到目标温度
+            self._update_hvac_action()
+            self.async_write_ha_state()
+
+    def _update_humidity(self) -> None:
+        """Update humidity based on HVAC mode and temperature."""
+        # 基础随机变化
+        humidity_change = random.uniform(-2, 2)
+
+        # 根据空调模式调整湿度
+        if self._attr_hvac_action in [HVACAction.COOLING]:
+            # 制冷模式：除湿效果，湿度下降
+            humidity_change -= random.uniform(0.5, 2.0)
+        elif self._attr_hvac_action == HVACAction.HEATING:
+            # 制热模式：蒸发增加湿度，湿度上升
+            humidity_change += random.uniform(0.5, 2.0)
+        elif self._attr_hvac_mode == HVACMode.DRY:
+            # 除湿模式：湿度下降
+            humidity_change -= random.uniform(2.0, 4.0)
+        elif self._attr_hvac_mode == HVACMode.FAN:
+            # 仅送风模式：轻微影响
+            humidity_change += random.uniform(-0.5, 0.5)
+
+        # 温度对湿度的影响（温度高时湿度相对较低）
+        temp_effect = (self._attr_current_temperature - 20) * 0.1
+        humidity_change -= temp_effect
+
+        # 应用湿度变化
+        self._current_humidity += humidity_change
+        self._current_humidity = max(20, min(90, self._current_humidity))  # 限制在20-90%之间
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional state attributes."""
+        if self._humidity_enabled:
+            return {
+                "humidity": round(self._current_humidity, 1),
+                "target_humidity": self._target_humidity,
+            }
+        return {}

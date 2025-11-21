@@ -22,6 +22,9 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.storage import Store
+
+STORAGE_VERSION = 1
 
 from .const import (
     CONF_ENTITIES,
@@ -105,11 +108,28 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up virtual sensor entities using unified service."""
-    from .unified_service import UnifiedServiceManager
+    """Set up virtual sensor entities."""
+    device_type = config_entry.data.get("device_type")
 
-    manager = UnifiedServiceManager(hass)
-    await manager.setup_platform("sensor", config_entry, async_add_entities)
+    # 只有传感器类型的设备才设置传感器实体
+    if device_type != DEVICE_TYPE_SENSOR:
+        return
+
+    device_info = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
+    entities = []
+    entities_config = config_entry.data.get(CONF_ENTITIES, [])
+
+    for idx, entity_config in enumerate(entities_config):
+        entity = VirtualSensor(
+            hass,
+            config_entry.entry_id,
+            entity_config,
+            idx,
+            device_info,
+        )
+        entities.append(entity)
+
+    async_add_entities(entities)
 
 
 class VirtualSensor(SensorEntity):
@@ -135,6 +155,9 @@ class VirtualSensor(SensorEntity):
         self._attr_unique_id = f"{config_entry_id}_sensor_{index}"
         self._attr_device_info = device_info
 
+        # 存储实体状态
+        self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, f"virtual_devices_sensor_{config_entry_id}_{index}")
+
         # 传感器特定配置
         sensor_type = entity_config.get("sensor_type", "temperature")
         self._sensor_type = sensor_type
@@ -148,12 +171,38 @@ class VirtualSensor(SensorEntity):
         self._attr_state_class = type_config.get("state_class")
         self._attr_icon = type_config.get("icon", "mdi:eye")
 
-        # 传感器状态
+        # 传感器状态 - 默认值，稍后从存储恢复
         self._attr_native_value = self._generate_initial_value(type_config)
 
         # 模拟设置
         self._simulation_enabled = entity_config.get("enable_simulation", True)
         self._update_frequency = entity_config.get("update_frequency", 30)  # 秒
+
+    async def async_load_state(self) -> None:
+        """Load saved state from storage."""
+        try:
+            data = await self._store.async_load()
+            if data:
+                self._attr_native_value = data.get("native_value", self._generate_initial_value(SENSOR_TYPE_CONFIG.get(self._sensor_type, {})))
+                _LOGGER.info(f"Sensor '{self._attr_name}' state loaded from storage: {self._attr_native_value}")
+        except Exception as ex:
+            _LOGGER.error(f"Failed to load state for sensor '{self._attr_name}': {ex}")
+
+    async def async_save_state(self) -> None:
+        """Save current state to storage."""
+        try:
+            data = {
+                "native_value": self._attr_native_value,
+            }
+            await self._store.async_save(data)
+        except Exception as ex:
+            _LOGGER.error(f"Failed to save state for sensor '{self._attr_name}': {ex}")
+
+    async def async_added_to_hass(self) -> None:
+        """Call when entity is added to hass."""
+        await super().async_added_to_hass()
+        # 加载保存的状态
+        await self.async_load_state()
 
     def _generate_initial_value(self, type_config: dict[str, Any]) -> Any:
         """根据传感器类型生成初始值。"""
@@ -196,3 +245,6 @@ class VirtualSensor(SensorEntity):
                 type_config = SENSOR_TYPE_CONFIG.get(self._sensor_type, {})
                 range_vals = type_config.get("range", (0, 100))
                 self._attr_native_value = round(random.uniform(range_vals[0], range_vals[1]), 1)
+
+            # 保存状态到存储
+            await self.async_save_state()

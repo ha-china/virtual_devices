@@ -265,12 +265,19 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         })
                     elif self._device_type == DEVICE_TYPE_COVER:
                         entity_config["cover_type"] = "curtain"
+                        entity_config["travel_time"] = 15  # 快速模式默认15秒
                     elif self._device_type == DEVICE_TYPE_SENSOR:
                         entity_config["sensor_type"] = "temperature"
                     elif self._device_type == DEVICE_TYPE_BINARY_SENSOR:
                         entity_config["sensor_type"] = "motion"
                     elif self._device_type == DEVICE_TYPE_BUTTON:
                         entity_config["button_type"] = "generic"
+                    elif self._device_type == DEVICE_TYPE_CLIMATE:
+                        entity_config.update({
+                            "min_temp": 16,
+                            "max_temp": 30,
+                            "enable_humidity_sensor": True,
+                        })
                     elif self._device_type == DEVICE_TYPE_MEDIA_PLAYER:
                         entity_config.update({
                             "media_player_type": "speaker",
@@ -302,6 +309,7 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             "valve_type": "water_valve",
                             "valve_size": 25,
                             "reports_position": True,
+                            "travel_time": 10,  # 快速模式默认10秒
                         })
                     elif self._device_type == DEVICE_TYPE_WATER_HEATER:
                         entity_config.update({
@@ -368,6 +376,7 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
             elif self._device_type == DEVICE_TYPE_COVER:
                 entity_config["cover_type"] = user_input.get("cover_type", "curtain")
+                entity_config["travel_time"] = user_input.get("travel_time", 15)
             elif self._device_type == DEVICE_TYPE_SENSOR:
                 entity_config["sensor_type"] = user_input.get(
                     "sensor_type", "temperature"
@@ -376,6 +385,12 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 entity_config["sensor_type"] = user_input.get("sensor_type", "motion")
             elif self._device_type == DEVICE_TYPE_BUTTON:
                 entity_config["button_type"] = user_input.get("button_type", "generic")
+            elif self._device_type == DEVICE_TYPE_CLIMATE:
+                entity_config.update({
+                    "min_temp": user_input.get("min_temp", 16),
+                    "max_temp": user_input.get("max_temp", 30),
+                    "enable_humidity_sensor": user_input.get("enable_humidity_sensor", True),
+                })
             elif self._device_type == DEVICE_TYPE_MEDIA_PLAYER:
                 # 处理媒体源列表 - 从逗号分隔的字符串转换为列表
                 media_source_str = user_input.get(CONF_MEDIA_SOURCE_LIST, "local_music,online_radio")
@@ -429,6 +444,7 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         "valve_type": user_input.get("valve_type", "water_valve"),
                         "valve_size": user_input.get("valve_size", 25),
                         "reports_position": user_input.get("reports_position", True),
+                        "travel_time": user_input.get("travel_time", 10),
                     }
                 )
             elif self._device_type == DEVICE_TYPE_WATER_HEATER:
@@ -517,6 +533,7 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         elif self._device_type == DEVICE_TYPE_COVER:
             schema_dict.update({
                 vol.Optional("cover_type", default="curtain"): vol.In(["curtain", "blind", "shade", "garage", "gate"]),
+                vol.Optional("travel_time", default=15): vol.All(vol.Coerce(int), vol.Range(min=1, max=60)),
             })
         elif self._device_type == DEVICE_TYPE_SENSOR:
             schema_dict.update({
@@ -529,6 +546,12 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         elif self._device_type == DEVICE_TYPE_BUTTON:
             schema_dict.update({
                 vol.Optional("button_type", default="generic"): vol.In(["generic", "doorbell", "emergency", "reset"]),
+            })
+        elif self._device_type == DEVICE_TYPE_CLIMATE:
+            schema_dict.update({
+                vol.Optional("min_temp", default=16): vol.All(vol.Coerce(int), vol.Range(min=5, max=35)),
+                vol.Optional("max_temp", default=30): vol.All(vol.Coerce(int), vol.Range(min=10, max=45)),
+                vol.Optional("enable_humidity_sensor", default=True): bool,
             })
         elif self._device_type == DEVICE_TYPE_MEDIA_PLAYER:
             schema_dict.update(
@@ -571,6 +594,7 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Optional("valve_type", default="water_valve"): vol.In(["water_valve", "gas_valve", "irrigation", "zone_valve"]),
                     vol.Optional("valve_size", default=25): vol.All(vol.Coerce(int), vol.Range(min=5, max=200)),
                     vol.Optional("reports_position", default=True): bool,
+                    vol.Optional("travel_time", default=10): vol.All(vol.Coerce(int), vol.Range(min=1, max=60)),
                 }
             )
         elif self._device_type == DEVICE_TYPE_WATER_HEATER:
@@ -719,26 +743,107 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
+        self._config_entry = config_entry
+        self.entities = config_entry.data.get(CONF_ENTITIES, [])
+        self.device_type = config_entry.data.get(CONF_DEVICE_TYPE)
+
+    @property
+    def config_entry(self) -> config_entries.ConfigEntry:
+        """Get config entry."""
+        return self._config_entry
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the options."""
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            # 获取用户选择的实体索引
+            selected_entity = user_input.get("entity_index")
+            if selected_entity is not None:
+                return await self.async_step_entity_config(int(selected_entity))
+            else:
+                return self.async_create_entry(title="", data=user_input)
 
-        # 显示当前配置
-        config_entry = self.config_entry
-        device_name = config_entry.data.get(CONF_DEVICE_NAME)
-        device_type = config_entry.data.get(CONF_DEVICE_TYPE)
-        entity_count = config_entry.data.get(CONF_ENTITY_COUNT)
+        device_name = self.config_entry.data.get(CONF_DEVICE_NAME)
+        device_type = self.config_entry.data.get(CONF_DEVICE_TYPE)
+        entity_count = len(self.entities)
+
+        # 创建实体选择器
+        entity_options = {}
+        for i, entity in enumerate(self.entities):
+            entity_name = entity.get(CONF_ENTITY_NAME, f"{device_type}_{i + 1}")
+            entity_options[f"{i}"] = f"{entity_name} (索引: {i})"
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema({}),
+            data_schema=vol.Schema({
+                vol.Required("entity_index"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=entity_options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }),
             description_placeholders={
                 "device_name": device_name,
                 "device_type": DEVICE_TYPES.get(device_type, device_type),
                 "entity_count": str(entity_count),
+            },
+        )
+
+    async def async_step_entity_config(self, entity_index: int) -> FlowResult:
+        """Configure individual entity."""
+        if entity_index >= len(self.entities):
+            return self.async_show_form(
+                step_id="error",
+                data_schema=vol.Schema({}),
+                errors={"base": "Invalid entity index"}
+            )
+
+        entity = self.entities[entity_index]
+        entity_name = entity.get(CONF_ENTITY_NAME, f"{self.device_type}_{entity_index + 1}")
+
+        # 创建动态配置表单
+        schema_dict = {}
+
+        # 根据设备类型添加特定选项
+        if self.device_type == DEVICE_TYPE_COVER:
+            schema_dict.update({
+                vol.Optional("travel_time", default=entity.get("travel_time", 15)):
+                    vol.All(vol.Coerce(int), vol.Range(min=1, max=60)),
+            })
+        elif self.device_type == DEVICE_TYPE_VALVE:
+            schema_dict.update({
+                vol.Optional("travel_time", default=entity.get("travel_time", 10)):
+                    vol.All(vol.Coerce(int), vol.Range(min=1, max=60)),
+            })
+
+        if user_input is not None:
+            # 更新实体配置
+            updated_entity = entity.copy()
+            for key, value in user_input.items():
+                if key in schema_dict:
+                    updated_entity[key] = value
+
+            self.entities[entity_index] = updated_entity
+
+            # 保存更新后的配置
+            new_data = self.config_entry.data.copy()
+            new_data[CONF_ENTITIES] = self.entities
+
+            self.hass.config_entries.async_update(self.config_entry.entry_id, new_data)
+
+            return self.async_create_entry(
+                title="实体配置已更新",
+                data={}
+            )
+
+        return self.async_show_form(
+            step_id="entity_config",
+            data_schema=vol.Schema(schema_dict),
+            description_placeholders={
+                "entity_name": entity_name,
+                "entity_index": str(entity_index + 1),
+                "total_entities": str(len(self.entities)),
             },
         )

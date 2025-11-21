@@ -107,26 +107,46 @@ class VirtualLight(LightEntity):
         has_color_temp = entity_config.get(CONF_COLOR_TEMP, False)
         has_effects = entity_config.get(CONF_EFFECT, False)
 
-        # 设置支持的颜色模式和功能
-        supported_modes = []
+        # 设置支持的颜色模式和功能 - HA 2025.3+ 兼容性：只选择一个主要模式
+        supported_modes = set()
         supported_features = LightEntityFeature(0)
 
         if has_rgb:
-            supported_modes.append(ColorMode.RGB)
+            supported_modes.add(ColorMode.RGB)
         if has_color_temp:
-            supported_modes.append(ColorMode.COLOR_TEMP)
+            supported_modes.add(ColorMode.COLOR_TEMP)
         if has_brightness:
-            supported_modes.append(ColorMode.BRIGHTNESS)
+            supported_modes.add(ColorMode.BRIGHTNESS)
 
         if not supported_modes:
-            supported_modes.append(ColorMode.ONOFF)
+            supported_modes.add(ColorMode.ONOFF)
 
-        self._attr_color_mode = supported_modes[0] if supported_modes else ColorMode.ONOFF
+        # HA 2025.3+ 颜色模式兼容性：只能选择一个主要模式
+        if len(supported_modes) > 1:
+            if ColorMode.RGB in supported_modes:
+                # 如果选择了RGB，只保留RGB模式（RGB包含亮度控制）
+                supported_modes = {ColorMode.RGB}
+                _LOGGER.info(f"Light '{self._attr_name}': Multiple modes detected, using RGB mode (includes brightness control)")
+            elif ColorMode.COLOR_TEMP in supported_modes:
+                # 如果选择了色温，只保留色温模式（色温包含亮度控制）
+                supported_modes = {ColorMode.COLOR_TEMP}
+                _LOGGER.info(f"Light '{self._attr_name}': Multiple modes detected, using COLOR_TEMP mode (includes brightness control)")
+            else:
+                # 否则只保留亮度模式
+                supported_modes = {ColorMode.BRIGHTNESS}
+                _LOGGER.info(f"Light '{self._attr_name}': Multiple modes detected, using BRIGHTNESS mode")
+
+        self._attr_color_mode = next(iter(supported_modes)) if supported_modes else ColorMode.ONOFF
         self._attr_supported_color_modes = supported_modes
 
         if has_effects:
             supported_features |= LightEntityFeature.EFFECT
             self._attr_effect_list = EFFECT_LIST
+
+        # HA 2026.1+ 色温范围要求：使用Kelvin而不是mireds
+        if has_color_temp:
+            self._attr_min_color_temp_kelvin = 2000  # 暖色最低温度
+            self._attr_max_color_temp_kelvin = 6500  # 冷色最高温度
 
         self._attr_supported_features = supported_features
 
@@ -160,15 +180,81 @@ class VirtualLight(LightEntity):
         except Exception as ex:
             _LOGGER.error(f"Failed to load state for light: {ex}")
 
+    @property
+    def is_on(self) -> bool:
+        """Return true if light is on."""
+        return self._attr_is_on
+
+    @property
+    def brightness(self) -> int | None:
+        """Return the brightness of the light."""
+        if ColorMode.RGB in self._attr_supported_color_modes:
+            # RGB模式下，从RGB颜色计算亮度
+            return max(self._attr_rgb_color) if self._attr_rgb_color else 255
+        elif ColorMode.COLOR_TEMP in self._attr_supported_color_modes:
+            # 色温模式下，返回内部亮度值
+            return self._attr_brightness
+        elif ColorMode.BRIGHTNESS in self._attr_supported_color_modes:
+            return self._attr_brightness
+        return None
+
+    @property
+    def rgb_color(self) -> tuple[int, int, int] | None:
+        """Return the rgb color value."""
+        if ColorMode.RGB in self._attr_supported_color_modes:
+            return self._attr_rgb_color
+        return None
+
+    @property
+    def color_temp_kelvin(self) -> int | None:
+        """Return the color temperature in kelvin."""
+        if ColorMode.COLOR_TEMP in self._attr_supported_color_modes:
+            return self._attr_color_temp_kelvin
+        return None
+
+    @property
+    def effect(self) -> str | None:
+        """Return the current effect."""
+        if self._attr_supported_features & LightEntityFeature.EFFECT:
+            return self._attr_effect
+        return None
+
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the light on."""
         self._attr_is_on = True
 
-        if ATTR_BRIGHTNESS in kwargs and self._has_brightness:
-            self._attr_brightness = kwargs[ATTR_BRIGHTNESS]
+        # 修复：处理亮度调整
+        if ATTR_BRIGHTNESS in kwargs:
+            brightness = kwargs[ATTR_BRIGHTNESS]
 
-        if ATTR_RGB_COLOR in kwargs and self._has_rgb:
-            self._attr_rgb_color = kwargs[ATTR_RGB_COLOR]
+            if ColorMode.RGB in self._attr_supported_color_modes:
+                # RGB模式下：保持当前颜色比例，调整RGB值来达到目标亮度
+                if self._attr_rgb_color:
+                    current_brightness = max(self._attr_rgb_color)
+                    if current_brightness > 0:
+                        # 计算缩放因子
+                        scale_factor = brightness / current_brightness
+                        # 应用缩放到RGB值
+                        self._attr_rgb_color = tuple(
+                            max(0, min(255, int(val * scale_factor)))
+                            for val in self._attr_rgb_color
+                        )
+                    else:
+                        # 当前亮度为0，使用白色达到目标亮度
+                        self._attr_rgb_color = (brightness, brightness, brightness)
+                else:
+                    self._attr_rgb_color = (brightness, brightness, brightness)
+            else:
+                # 非RGB模式下直接设置亮度
+                self._attr_brightness = brightness
+
+        # 修复：处理RGB颜色
+        if ATTR_RGB_COLOR in kwargs:
+            rgb = kwargs[ATTR_RGB_COLOR]
+            if ColorMode.RGB in self._attr_supported_color_modes:
+                # RGB模式下同步更新亮度
+                self._attr_rgb_color = rgb
+                self._attr_brightness = max(rgb) if rgb else 255
 
         if ATTR_COLOR_TEMP_KELVIN in kwargs and self._has_color_temp:
             self._attr_color_temp_kelvin = kwargs[ATTR_COLOR_TEMP_KELVIN]

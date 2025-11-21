@@ -50,6 +50,7 @@
               "gate": "大门"
             }
           },
+          "travel_time": "运行时间（秒）",
           "sensor_type": {
             "label": "传感器类型",
             "options": {
@@ -148,6 +149,7 @@
           },
           "valve_size": "阀门尺寸（mm）",
           "reports_position": "报告位置",
+          "travel_time": "运行时间（秒）",
           "heater_type": {
             "label": "热水器类型",
             "options": {
@@ -230,6 +232,13 @@
               "miles": "英里"
             }
           },
+          "min_temp": "最低温度（°C）",
+          "max_temp": "最高温度（°C）",
+          "temp_step": "温度步长（°C）",
+          "enable_humidity_sensor": "启用湿度传感器",
+          "enable_temperature_simulation": "启用温度模拟",
+          "target_reached_threshold": "目标达到阈值（°C）",
+          "temperature_change_rate": "温度变化速率",
           "skip_remaining": "跳过剩余实体配置（使用默认值）"
         }
       }
@@ -352,6 +361,24 @@
         "media_artist": "虚拟艺术家",
         "media_album_name": "虚拟专辑",
         "media_album_collection": "虚拟专辑集"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "配置虚拟实体",
+        "description": "选择要配置的实体：\n\n设备名称: {device_name}\n设备类型: {device_type}\n实体数量: {entity_count}",
+        "data": {
+          "entity_index": "选择要配置的实体"
+        }
+      },
+      "entity_config": {
+        "title": "配置实体",
+        "description": "配置实体 {entity_name} ({entity_index}/{total_entities}) 的参数",
+        "data": {
+          "travel_time": "运行时间（秒）"
+        }
       }
     }
   }

@@ -162,6 +162,9 @@ CONF_LOCK_BATTERY_LEVEL = "battery_level"
 CONF_VALVE_POSITION = "valve_position"
 CONF_VALVE_REPORTS_POSITION = "reports_position"
 
+# 运行时间配置
+CONF_TRAVEL_TIME = "travel_time"
+
 # 默认值
 DEFAULT_ENTITY_COUNT = 1
 DEFAULT_MIN_TEMP = 16
