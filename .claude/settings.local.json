@@ -6,7 +6,8 @@
       "Bash(git restore:*)",
       "Bash(dir \"C:\\Users\\djhui\\OneDrive\\Github\\virtual_devices\")",
       "Bash(dir \"C:\\Users\\djhui\\OneDrive\\Github\\virtual_devices\\custom_components\\virtual_devices\")",
-      "Read(//c/Users/**)"
+      "Read(//c/Users/**)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []

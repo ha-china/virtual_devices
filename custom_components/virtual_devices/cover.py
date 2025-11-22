@@ -123,6 +123,16 @@ class VirtualCover(CoverEntity):
         self._position = 0
         self._is_closed = True
 
+        # 设置默认暴露给语音助手
+        self._attr_entity_registry_enabled_default = True
+        self._attr_should_poll = False
+        self._attr_entity_category = None
+
+    @property
+    def should_expose(self) -> bool:
+        """Return if this entity should be exposed to voice assistants."""
+        return True
+
     async def async_load_state(self) -> None:
         """Load saved state from storage."""
         try:
@@ -157,29 +167,6 @@ class VirtualCover(CoverEntity):
         await super().async_added_to_hass()
         # 加载保存的状态
         await self.async_load_state()
-        # 监听配置更新
-        self.async_on_remove(
-            self.hass.config_entries.async_get_entry(self._config_entry_id).add_update_listener(
-                self._async_config_updated
-            )
-        )
-
-    async def _async_config_updated(
-        self, config_entry: ConfigEntry
-    ) -> None:
-        """Handle configuration update."""
-        # 重新加载配置
-        new_entities = config_entry.data.get(CONF_ENTITIES, [])
-        if self._index < len(new_entities):
-            new_config = new_entities[self._index]
-            # 更新本地配置
-            self._travel_time = new_config.get(CONF_TRAVEL_TIME, self._travel_time)
-
-            # 保存新状态
-            await self.async_save_state()
-            self.async_write_ha_state()
-
-            _LOGGER.info(f"Cover '{self._attr_name}' configuration updated: travel_time={self._travel_time}s")
 
     @property
     def current_cover_position(self) -> int:

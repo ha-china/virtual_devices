@@ -154,6 +154,14 @@ class VirtualCamera(Camera):
         # 摄像头参数
         self._attr_brand = "VirtualCam"
         self._attr_model_name = f"VC-{camera_type.upper()}-{index + 1:03d}"
+
+        # 设置默认暴露给语音助手
+        self._attr_entity_registry_enabled_default = True
+
+    @property
+    def should_expose(self) -> bool:
+        """Return if this entity should be exposed to voice assistants."""
+        return True
         self._attr_frontend_stream_type = "hls" if entity_config.get(CONF_CAMERA_STREAM_SOURCE) else None
 
         # 设置WebRTC提供者（必需属性）

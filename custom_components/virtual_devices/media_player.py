@@ -160,8 +160,16 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         # 播放列表
         self._playlist = DEFAULT_PLAYLIST[:]
         self._current_track_index = 0
-        
+
+        # 设置默认暴露给语音助手
+        self._attr_entity_registry_enabled_default = True
+
         _LOGGER.info(f"Virtual media player '{self._attr_name}' initialized with state: {self._attr_state}")
+
+    @property
+    def should_expose(self) -> bool:
+        """Return if this entity should be exposed to voice assistants."""
+        return True
 
     async def async_load_state(self) -> None:
         """Load saved state from storage."""

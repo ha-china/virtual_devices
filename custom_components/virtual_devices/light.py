@@ -163,8 +163,26 @@ class VirtualLight(LightEntity):
         self._has_color_temp = has_color_temp
         self._has_effects = has_effects
 
+        # 设置默认暴露给语音助手
+        self._attr_entity_registry_enabled_default = True
+        self._attr_should_poll = False
+        self._attr_entity_category = None
+
+    @property
+    def should_expose(self) -> bool:
+        """Return if this entity should be exposed to voice assistants."""
+        return True
+
         # 加载保存的状态
         self._load_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Call when entity is added to hass."""
+        await super().async_added_to_hass()
+
+        # 加载保存的状态并更新HA状态
+        self._load_state()
+        self.async_write_ha_state()
 
     def _load_state(self) -> None:
         """Load saved state from storage."""
@@ -263,11 +281,13 @@ class VirtualLight(LightEntity):
             self._attr_effect = kwargs[ATTR_EFFECT]
 
         await self._save_state()
+        self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the light off."""
         self._attr_is_on = False
         await self._save_state()
+        self.async_write_ha_state()
 
     async def _save_state(self) -> None:
         """Save state to storage."""

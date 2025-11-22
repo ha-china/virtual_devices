@@ -81,8 +81,16 @@ class VirtualSwitch(SwitchEntity):
         self._attr_device_info = device_info
         self._attr_icon = "mdi:electric-switch"
 
+        # 设置默认暴露给语音助手
+        self._attr_entity_registry_enabled_default = True
+
         # Template support
         self._templates = entity_config.get("templates", {})
+
+    @property
+    def should_expose(self) -> bool:
+        """Return if this entity should be exposed to voice assistants."""
+        return True
 
     @property
     def is_on(self) -> bool:

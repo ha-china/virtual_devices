@@ -338,9 +338,17 @@
         "title": "Configure Entity",
         "description": "Configure parameters for entity {entity_name} ({entity_index}/{total_entities})",
         "data": {
-          "travel_time": "Travel Time (seconds)"
+          "travel_time": "Travel Time (seconds)",
+          "color_mode": "Color Mode"
         }
       }
+    },
+    "error": {
+      "invalid_entity_index": "Invalid entity index",
+      "no_entity_selected": "No entity selected"
+    },
+    "abort": {
+      "invalid_entity_index": "Invalid entity index"
     }
   }
 }

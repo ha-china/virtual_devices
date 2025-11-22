@@ -126,6 +126,14 @@ class VirtualFan(FanEntity):
 
         self._attr_speed_count = int_states_in_range(SPEED_RANGE)
 
+        # 设置默认暴露给语音助手
+        self._attr_entity_registry_enabled_default = True
+
+    @property
+    def should_expose(self) -> bool:
+        """Return if this entity should be exposed to voice assistants."""
+        return True
+
     async def async_load_state(self) -> None:
         """Load saved state from storage."""
         try:

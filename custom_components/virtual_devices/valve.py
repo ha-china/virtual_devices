@@ -61,7 +61,7 @@ async def async_setup_entry(
 
     async_add_entities(entities)
 
-    # 为每个实体添加初始化回调
+    # 为每个实体设置默认公开给语音助手
     for entity in entities:
         # 延迟初始化状态，确保 hass 已经设置
         hass.async_create_task(
@@ -144,6 +144,16 @@ class VirtualValve(ValveEntity):
         # 水压相关
         self._pressure = 0  # bar
 
+        # 设置默认暴露给语音助手
+        self._attr_entity_registry_enabled_default = True
+        self._attr_should_poll = False
+        self._attr_entity_category = None
+
+    @property
+    def should_expose(self) -> bool:
+        """Return if this entity should be exposed to voice assistants."""
+        return True
+
         # 注意：不能在这里调用 async_write_ha_state()，因为 hass 还没有设置
 
     async def _async_initialize_state(self) -> None:
@@ -188,29 +198,9 @@ class VirtualValve(ValveEntity):
         await super().async_added_to_hass()
         # 加载保存的状态
         await self.async_load_state()
-        # 监听配置更新
-        self.async_on_remove(
-            self.hass.config_entries.async_get_entry(self._config_entry_id).add_update_listener(
-                self._async_config_updated
-            )
-        )
 
-    async def _async_config_updated(
-        self, config_entry: ConfigEntry
-    ) -> None:
-        """Handle configuration update."""
-        # 重新加载配置
-        new_entities = config_entry.data.get(CONF_ENTITIES, [])
-        if self._index < len(new_entities):
-            new_config = new_entities[self._index]
-            # 更新本地配置
-            self._travel_time = new_config.get(CONF_TRAVEL_TIME, self._travel_time)
-
-            # 保存新状态
-            await self.async_save_state()
-            self.async_write_ha_state()
-
-            _LOGGER.info(f"Valve '{self._attr_name}' configuration updated: travel_time={self._travel_time}s")
+        # 初始化状态
+        self.async_write_ha_state()
 
     @property
     def current_position(self) -> int:
@@ -254,7 +244,15 @@ class VirtualValve(ValveEntity):
 
         self._is_opening = True
         self._is_closing = False
-        await self._move_to_position(100)
+
+        try:
+            await self._move_to_position(100)
+        except Exception as ex:
+            _LOGGER.error(f"Failed to open valve: {ex}")
+            self._is_opening = False
+            self._is_closing = False
+            self._is_moving = False
+            self.async_write_ha_state()
 
         _LOGGER.debug(f"Virtual valve '{self._attr_name}' opening")
 
@@ -278,7 +276,15 @@ class VirtualValve(ValveEntity):
 
         self._is_closing = True
         self._is_opening = False
-        await self._move_to_position(0)
+
+        try:
+            await self._move_to_position(0)
+        except Exception as ex:
+            _LOGGER.error(f"Failed to close valve: {ex}")
+            self._is_opening = False
+            self._is_closing = False
+            self._is_moving = False
+            self.async_write_ha_state()
 
         _LOGGER.debug(f"Virtual valve '{self._attr_name}' closing")
 
@@ -337,7 +343,15 @@ class VirtualValve(ValveEntity):
             self._is_closing = True
             self._is_opening = False
 
-        await self._move_to_position(position)
+        try:
+            await self._move_to_position(position)
+        except Exception as ex:
+            _LOGGER.error(f"Failed to move valve to position {position}: {ex}")
+            # 重置状态
+            self._is_opening = False
+            self._is_closing = False
+            self._is_moving = False
+            self.async_write_ha_state()
 
         _LOGGER.debug(f"Virtual valve '{self._attr_name}' moving to position {position}%")
 

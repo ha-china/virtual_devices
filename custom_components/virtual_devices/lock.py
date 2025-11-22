@@ -114,6 +114,14 @@ class VirtualLock(LockEntity):
         self._auto_lock_delay = entity_config.get("auto_lock_delay", 30)  # 秒
         self._jamming_enabled = entity_config.get("enable_jamming", False)  # 默认禁用随机卡滞
 
+        # 设置默认暴露给语音助手
+        self._attr_entity_registry_enabled_default = True
+
+    @property
+    def should_expose(self) -> bool:
+        """Return if this entity should be exposed to voice assistants."""
+        return True
+
     async def async_load_state(self) -> None:
         """Load saved state from storage."""
         try:

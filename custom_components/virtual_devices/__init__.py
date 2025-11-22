@@ -130,7 +130,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     }
 
     # 设置所有平台
-    # 现在每个平台使用统一的服务管理，而不是每个设备类型一个独立服务
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     _LOGGER.info(f"Successfully set up virtual device: {entry.data.get('device_type')}")

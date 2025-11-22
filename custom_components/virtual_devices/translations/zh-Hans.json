@@ -377,9 +377,17 @@
         "title": "配置实体",
         "description": "配置实体 {entity_name} ({entity_index}/{total_entities}) 的参数",
         "data": {
-          "travel_time": "运行时间（秒）"
+          "travel_time": "运行时间（秒）",
+          "color_mode": "颜色模式"
         }
       }
+    },
+    "error": {
+      "invalid_entity_index": "无效的实体索引",
+      "no_entity_selected": "未选择实体"
+    },
+    "abort": {
+      "invalid_entity_index": "无效的实体索引"
     }
   }
 }
