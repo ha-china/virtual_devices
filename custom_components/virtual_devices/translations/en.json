@@ -296,28 +296,6 @@
         "windy": "Windy",
         "windy-variant": "Windy Variant"
       }
-    },
-    "vacuum": {
-      "state_attributes": {
-        "rooms": {
-          "living_room": "Living Room",
-          "bedroom": "Bedroom",
-          "kitchen": "Kitchen",
-          "bathroom": "Bathroom",
-          "study": "Study",
-          "dining_room": "Dining Room",
-          "balcony": "Balcony",
-          "entrance": "Entrance"
-        },
-        "cleaning_modes": {
-          "auto_clean": "Auto Clean",
-          "spot_clean": "Spot Clean",
-          "edge_clean": "Edge Clean",
-          "room_clean": "Room Clean",
-          "single_room_clean": "Single Room Clean",
-          "point_clean": "Point Clean"
-        }
-      }
     }
   }
 }

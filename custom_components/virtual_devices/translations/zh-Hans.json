@@ -296,28 +296,6 @@
         "windy": "大风",
         "windy-variant": "多变风"
       }
-    },
-    "vacuum": {
-      "state_attributes": {
-        "rooms": {
-          "living_room": "客厅",
-          "bedroom": "卧室",
-          "kitchen": "厨房",
-          "bathroom": "卫生间",
-          "study": "书房",
-          "dining_room": "餐厅",
-          "balcony": "阳台",
-          "entrance": "玄关"
-        },
-        "cleaning_modes": {
-          "auto_clean": "自动清洁",
-          "spot_clean": "局部清洁",
-          "edge_clean": "沿边清洁",
-          "room_clean": "单间清洁",
-          "single_room_clean": "单间清洁",
-          "point_clean": "定点清洁"
-        }
-      }
     }
   }
 }
