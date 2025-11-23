@@ -329,18 +329,6 @@
           "warm_mist": "暖雾"
         }
       }
-    },
-    "air_purifier": {
-      "state_attributes": {
-        "purifier_type": {
-          "hepa": "HEPA",
-          "activated_carbon": "活性炭",
-          "uv_c": "紫外线C",
-          "ionic": "离子",
-          "ozone": "臭氧",
-          "hybrid": "混合式"
-        }
-      }
     }
   }
 }
