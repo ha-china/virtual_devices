@@ -277,25 +277,5 @@
     "abort": {
       "invalid_entity_index": "无效的实体索引"
     }
-  },
-  "entity": {
-    "weather": {
-      "state": {
-        "clear-night": "晴朗夜晚",
-        "cloudy": "多云",
-        "fog": "雾",
-        "hail": "冰雹",
-        "lightning": "闪电",
-        "lightning-rainy": "雷阵雨",
-        "partlycloudy": "局部多云",
-        "pouring": "暴雨",
-        "rainy": "雨",
-        "snowy": "雪",
-        "snowy-rainy": "雨夹雪",
-        "sunny": "晴",
-        "windy": "大风",
-        "windy-variant": "多变风"
-      }
-    }
   }
 }

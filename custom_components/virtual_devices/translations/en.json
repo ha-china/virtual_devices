@@ -277,25 +277,5 @@
     "abort": {
       "invalid_entity_index": "Invalid entity index"
     }
-  },
-  "entity": {
-    "weather": {
-      "state": {
-        "clear-night": "Clear Night",
-        "cloudy": "Cloudy",
-        "fog": "Fog",
-        "hail": "Hail",
-        "lightning": "Lightning",
-        "lightning-rainy": "Lightning-Rainy",
-        "partlycloudy": "Partly Cloudy",
-        "pouring": "Pouring",
-        "rainy": "Rainy",
-        "snowy": "Snowy",
-        "snowy-rainy": "Snowy-Rainy",
-        "sunny": "Sunny",
-        "windy": "Windy",
-        "windy-variant": "Windy Variant"
-      }
-    }
   }
 }
