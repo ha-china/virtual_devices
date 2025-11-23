@@ -5,6 +5,8 @@
 [![HA Version](https://img.shields.io/badge/HA-2025.10.0+-blue.svg)](https://www.home-assistant.io/)
 [![Quality Scale](https://img.shields.io/badge/Quality%20Scale-Silver-orange.svg)](https://hacs.xyz/docs/publishing/quality-guideline)
 
+**Language**: [中文](README.md) | [English](README_EN.md)
+
 这是一个符合 Home Assistant 2025.10.0 标准的自定义集成，允许您创建虚拟设备，**一个设备下可以包含多个实体**，适用于测试、演示和开发目的。
 
 ## 🎯 核心特性

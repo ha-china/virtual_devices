@@ -3,8 +3,9 @@
     "step": {
       "user": {
         "title": "添加虚拟设备（多实体）",
-        "description": "选择设备类型和实体数量，设备名称将自动设置为设备类型的中文名称。",
+        "description": "配置虚拟设备的基本信息。一个设备可以包含多个实体。",
         "data": {
+          "device_name": "设备名称",
           "device_type": {
             "label": "设备类型",
             "options": {
@@ -254,68 +255,30 @@
   "options": {
     "step": {
       "init": {
-        "title": "虚拟设备选项",
-        "description": "设备名称: {device_name}\n设备类型: {device_type}\n实体数量: {entity_count}"
+        "title": "配置虚拟实体",
+        "description": "选择要配置的实体：\n\n设备名称: {device_name}\n设备类型: {device_type}\n实体数量: {entity_count}",
+        "data": {
+          "entity_index": "选择要配置的实体"
+        }
+      },
+      "entity_config": {
+        "title": "配置实体",
+        "description": "配置实体 {entity_name} ({entity_index}/{total_entities}) 的参数",
+        "data": {
+          "travel_time": "运行时间（秒）",
+          "color_mode": "颜色模式"
+        }
       }
+    },
+    "error": {
+      "invalid_entity_index": "无效的实体索引",
+      "no_entity_selected": "未选择实体"
+    },
+    "abort": {
+      "invalid_entity_index": "无效的实体索引"
     }
   },
   "entity": {
-    "air_purifier": {
-      "state_attributes": {
-        "purifier_type": {
-          "hepa": "HEPA",
-          "activated_carbon": "活性炭",
-          "uv_c": "紫外线C",
-          "ionic": "离子",
-          "ozone": "臭氧",
-          "hybrid": "混合式"
-        },
-        "filter_type": {
-          "hepa_filter": "HEPA滤网",
-          "activated_carbon_filter": "活性炭滤网",
-          "uv_c_filter": "紫外线C滤网",
-          "ionic_filter": "离子滤网",
-          "ozone_filter": "臭氧滤网",
-          "hybrid_filter": "混合滤网",
-          "standard_filter": "标准滤网"
-        }
-      }
-    },
-    "humidifier": {
-      "state_attributes": {
-        "humidifier_type": {
-          "ultrasonic": "超声波",
-          "evaporative": "蒸发式",
-          "steam": "蒸汽式",
-          "impeller": "离心式",
-          "warm_mist": "暖雾"
-        },
-        "noise_level": {
-          "silent": "静音",
-          "low": "低档位",
-          "medium": "中档位",
-          "high": "高档位"
-        },
-        "power_consumption": {
-          "standby": "待机",
-          "running": "运行"
-        },
-        "special_features": {
-          "ultrasonic_mist": "超静音",
-          "mist_control": "雾量调节",
-          "no_white_powder": "无白粉",
-          "energy_saving": "节能",
-          "sterile_humidification": "无菌加湿",
-          "fast_humidification": "快速加湿",
-          "powerful_humidification": "强力加湿",
-          "even_distribution": "均匀分布",
-          "warm_mist": "暖雾",
-          "comfortable": "舒适不冷",
-          "water_shortage_protection": "缺水保护",
-          "water_level_display": "水位显示"
-        }
-      }
-    },
     "weather": {
       "state": {
         "clear-night": "晴朗夜晚",
@@ -356,38 +319,28 @@
         }
       }
     },
-    "media_player": {
+    "humidifier": {
       "state_attributes": {
-        "media_artist": "虚拟艺术家",
-        "media_album_name": "虚拟专辑",
-        "media_album_collection": "虚拟专辑集"
-      }
-    }
-  },
-  "options": {
-    "step": {
-      "init": {
-        "title": "配置虚拟实体",
-        "description": "选择要配置的实体：\n\n设备名称: {device_name}\n设备类型: {device_type}\n实体数量: {entity_count}",
-        "data": {
-          "entity_index": "选择要配置的实体"
-        }
-      },
-      "entity_config": {
-        "title": "配置实体",
-        "description": "配置实体 {entity_name} ({entity_index}/{total_entities}) 的参数",
-        "data": {
-          "travel_time": "运行时间（秒）",
-          "color_mode": "颜色模式"
+        "humidifier_type": {
+          "ultrasonic": "超声波",
+          "evaporative": "蒸发式",
+          "steam": "蒸汽式",
+          "impeller": "离心式",
+          "warm_mist": "暖雾"
         }
       }
     },
-    "error": {
-      "invalid_entity_index": "无效的实体索引",
-      "no_entity_selected": "未选择实体"
-    },
-    "abort": {
-      "invalid_entity_index": "无效的实体索引"
+    "air_purifier": {
+      "state_attributes": {
+        "purifier_type": {
+          "hepa": "HEPA",
+          "activated_carbon": "活性炭",
+          "uv_c": "紫外线C",
+          "ionic": "离子",
+          "ozone": "臭氧",
+          "hybrid": "混合式"
+        }
+      }
     }
   }
 }

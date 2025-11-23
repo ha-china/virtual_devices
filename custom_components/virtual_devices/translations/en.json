@@ -255,9 +255,27 @@
   "options": {
     "step": {
       "init": {
-        "title": "Virtual Device Options",
-        "description": "Device Name: {device_name}\nDevice Type: {device_type}\nEntity Count: {entity_count}"
+        "title": "Configure Virtual Entity",
+        "description": "Select an entity to configure:\n\nDevice Name: {device_name}\nDevice Type: {device_type}\nEntity Count: {entity_count}",
+        "data": {
+          "entity_index": "Select Entity to Configure"
+        }
+      },
+      "entity_config": {
+        "title": "Configure Entity",
+        "description": "Configure parameters for entity {entity_name} ({entity_index}/{total_entities})",
+        "data": {
+          "travel_time": "Travel Time (seconds)",
+          "color_mode": "Color Mode"
+        }
       }
+    },
+    "error": {
+      "invalid_entity_index": "Invalid entity index",
+      "no_entity_selected": "No entity selected"
+    },
+    "abort": {
+      "invalid_entity_index": "Invalid entity index"
     }
   },
   "entity": {
@@ -323,32 +341,6 @@
           "hybrid": "Hybrid"
         }
       }
-    }
-  },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Configure Virtual Entity",
-        "description": "Select an entity to configure:\n\nDevice Name: {device_name}\nDevice Type: {device_type}\nEntity Count: {entity_count}",
-        "data": {
-          "entity_index": "Select Entity to Configure"
-        }
-      },
-      "entity_config": {
-        "title": "Configure Entity",
-        "description": "Configure parameters for entity {entity_name} ({entity_index}/{total_entities})",
-        "data": {
-          "travel_time": "Travel Time (seconds)",
-          "color_mode": "Color Mode"
-        }
-      }
-    },
-    "error": {
-      "invalid_entity_index": "Invalid entity index",
-      "no_entity_selected": "No entity selected"
-    },
-    "abort": {
-      "invalid_entity_index": "Invalid entity index"
     }
   }
 }

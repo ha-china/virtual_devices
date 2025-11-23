@@ -5,6 +5,8 @@
 [![HA Version](https://img.shields.io/badge/HA-2025.10.0+-blue.svg)](https://www.home-assistant.io/)
 [![Quality Scale](https://img.shields.io/badge/Quality%20Scale-Silver-orange.svg)](https://hacs.xyz/docs/publishing/quality-guideline)
 
+**Language**: [中文](README.md) | [English](README_EN.md)
+
 This is a custom integration compliant with Home Assistant 2025.10.0 standards, allowing you to create virtual devices **with multiple entities under a single device**, ideal for testing, demonstrations, and development purposes.
 
 ## 🎯 Core Features

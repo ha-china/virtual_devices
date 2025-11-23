@@ -7,7 +7,8 @@
       "Bash(dir \"C:\\Users\\djhui\\OneDrive\\Github\\virtual_devices\")",
       "Bash(dir \"C:\\Users\\djhui\\OneDrive\\Github\\virtual_devices\\custom_components\\virtual_devices\")",
       "Read(//c/Users/**)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(git HEAD:*)"
     ],
     "deny": [],
     "ask": []
