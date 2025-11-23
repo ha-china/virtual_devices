@@ -318,17 +318,6 @@
           "point_clean": "Point Clean"
         }
       }
-    },
-    "humidifier": {
-      "state_attributes": {
-        "humidifier_type": {
-          "ultrasonic": "Ultrasonic",
-          "evaporative": "Evaporative",
-          "steam": "Steam",
-          "impeller": "Impeller",
-          "warm_mist": "Warm Mist"
-        }
-      }
     }
   }
 }

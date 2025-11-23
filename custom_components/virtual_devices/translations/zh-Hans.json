@@ -318,17 +318,6 @@
           "point_clean": "定点清洁"
         }
       }
-    },
-    "humidifier": {
-      "state_attributes": {
-        "humidifier_type": {
-          "ultrasonic": "超声波",
-          "evaporative": "蒸发式",
-          "steam": "蒸汽式",
-          "impeller": "离心式",
-          "warm_mist": "暖雾"
-        }
-      }
     }
   }
 }
