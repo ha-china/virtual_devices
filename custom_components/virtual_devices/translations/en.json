@@ -6,29 +6,7 @@
         "description": "Configure basic information for the virtual device. One device can contain multiple entities.",
         "data": {
           "device_name": "Device Name",
-          "device_type": {
-            "label": "Device Type",
-            "options": {
-              "light": "Light",
-              "switch": "Switch",
-              "climate": "Climate",
-              "cover": "Cover",
-              "fan": "Fan",
-              "sensor": "Sensor",
-              "binary_sensor": "Binary Sensor",
-              "button": "Button",
-              "scene": "Scene",
-              "media_player": "Media Player",
-              "vacuum": "Vacuum",
-              "weather": "Weather",
-              "camera": "Camera",
-              "lock": "Lock",
-              "valve": "Valve",
-              "water_heater": "Water Heater",
-              "humidifier": "Humidifier",
-              "air_purifier": "Air Purifier"
-            }
-          },
+          "device_type": "Device Type",
           "entity_count": "Entity Count (1-10)"
         }
       },
@@ -41,198 +19,47 @@
           "color_temp": "Color Temperature Support",
           "rgb": "RGB Color Support",
           "effect": "Effect Support",
-          "cover_type": {
-            "label": "Cover Type",
-            "options": {
-              "curtain": "Curtain",
-              "blind": "Blind",
-              "shade": "Shade",
-              "garage": "Garage Door",
-              "gate": "Gate"
-            }
-          },
+          "cover_type": "Cover Type",
           "travel_time": "Travel Time (seconds)",
-          "sensor_type": {
-            "label": "Sensor Type",
-            "options": {
-              "temperature": "Temperature",
-              "humidity": "Humidity",
-              "pressure": "Pressure",
-              "light": "Light",
-              "motion": "Motion",
-              "air_quality": "Air Quality"
-            }
-          },
-          "binary_sensor_type": {
-            "label": "Binary Sensor Type",
-            "options": {
-              "motion": "Motion",
-              "door": "Door",
-              "window": "Window",
-              "smoke": "Smoke",
-              "gas": "Gas",
-              "water_leak": "Water Leak"
-            }
-          },
-          "button_type": {
-            "label": "Button Type",
-            "options": {
-              "generic": "Generic",
-              "doorbell": "Doorbell",
-              "emergency": "Emergency",
-              "reset": "Reset"
-            }
-          },
-          "media_player_type": {
-            "label": "Media Player Type",
-            "options": {
-              "speaker": "Speaker",
-              "tv": "TV",
-              "receiver": "Receiver",
-              "soundbar": "Soundbar"
-            }
-          },
+          "sensor_type": "Sensor Type",
+          "binary_sensor_type": "Binary Sensor Type",
+          "button_type": "Button Type",
+          "media_player_type": "Media Player Type",
           "media_source_list": "Media Source List",
           "supports_seek": "Supports Seek",
-          "vacuum_status": {
-            "label": "Vacuum Status",
-            "options": {
-              "docked": "Docked",
-              "cleaning": "Cleaning",
-              "paused": "Paused",
-              "returning": "Returning",
-              "error": "Error"
-            }
-          },
-          "fan_speed": {
-            "label": "Fan Speed",
-            "options": {
-              "quiet": "Quiet",
-              "low": "Low",
-              "medium": "Medium",
-              "high": "High",
-              "max": "Max"
-            }
-          },
+          "vacuum_status": "Vacuum Status",
+          "fan_speed": "Fan Speed",
           "battery_level": "Battery Level",
-          "camera_type": {
-            "label": "Camera Type",
-            "options": {
-              "indoor": "Indoor",
-              "outdoor": "Outdoor",
-              "doorbell": "Doorbell",
-              "baby_monitor": "Baby Monitor"
-            }
-          },
+          "camera_type": "Camera Type",
           "recording": "Supports Recording",
           "motion_detection": "Motion Detection",
           "night_vision": "Night Vision",
-          "lock_type": {
-            "label": "Lock Type",
-            "options": {
-              "smart_lock": "Smart Lock",
-              "deadbolt": "Deadbolt",
-              "keypad": "Keypad",
-              "fingerprint": "Fingerprint"
-            }
-          },
+          "lock_type": "Lock Type",
           "access_code": "Access Code",
           "auto_lock": "Auto Lock",
           "auto_lock_delay": "Auto Lock Delay (seconds)",
-          "valve_type": {
-            "label": "Valve Type",
-            "options": {
-              "water_valve": "Water Valve",
-              "gas_valve": "Gas Valve",
-              "irrigation": "Irrigation",
-              "zone_valve": "Zone Valve"
-            }
-          },
+          "valve_type": "Valve Type",
           "valve_size": "Valve Size (mm)",
           "reports_position": "Reports Position",
-          "travel_time": "Travel Time (seconds)",
-          "heater_type": {
-            "label": "Heater Type",
-            "options": {
-              "electric": "Electric",
-              "gas": "Gas",
-              "solar": "Solar",
-              "heat_pump": "Heat Pump",
-              "tankless": "Tankless"
-            }
-          },
+          "heater_type": "Heater Type",
           "current_temperature": "Current Temperature (°C)",
           "target_temperature": "Target Temperature (°C)",
           "tank_capacity": "Tank Capacity (liters)",
           "efficiency": "Efficiency (0.1-1.0)",
-          "humidifier_type": {
-            "label": "Humidifier Type",
-            "options": {
-              "ultrasonic": "Ultrasonic",
-              "evaporative": "Evaporative",
-              "steam": "Steam",
-              "impeller": "Impeller",
-              "warm_mist": "Warm Mist"
-            }
-          },
+          "humidifier_type": "Humidifier Type",
           "current_humidity": "Current Humidity (%)",
           "target_humidity": "Target Humidity (%)",
           "water_level": "Water Level (%)",
-          "purifier_type": {
-            "label": "Purifier Type",
-            "options": {
-              "hepa": "HEPA",
-              "activated_carbon": "Activated Carbon",
-              "uv_c": "UV-C",
-              "ionic": "Ionic",
-              "ozone": "Ozone",
-              "hybrid": "Hybrid"
-            }
-          },
+          "purifier_type": "Purifier Type",
           "room_volume": "Room Volume (m³)",
           "pm25": "PM2.5 Concentration (µg/m³)",
           "pm10": "PM10 Concentration (µg/m³)",
           "filter_life": "Filter Life (%)",
-          "weather_station_type": {
-            "label": "Weather Station Type",
-            "options": {
-              "basic": "Basic",
-              "professional": "Professional",
-              "home": "Home",
-              "outdoor": "Outdoor",
-              "marine": "Marine"
-            }
-          },
-          "temperature_unit": {
-            "label": "Temperature Unit",
-            "options": {
-              "celsius": "Celsius",
-              "fahrenheit": "Fahrenheit"
-            }
-          },
-          "wind_speed_unit": {
-            "label": "Wind Speed Unit",
-            "options": {
-              "kmh": "km/h",
-              "mph": "mph",
-              "ms": "m/s"
-            }
-          },
-          "pressure_unit": {
-            "label": "Pressure Unit",
-            "options": {
-              "hPa": "hPa",
-              "inHg": "inHg",
-              "mmHg": "mmHg"
-            }
-          },
-          "visibility_unit": {
-            "label": "Visibility Unit",
-            "options": {
-              "km": "km",
-              "miles": "miles"
-            }
-          },
+          "weather_station_type": "Weather Station Type",
+          "temperature_unit": "Temperature Unit",
+          "wind_speed_unit": "Wind Speed Unit",
+          "pressure_unit": "Pressure Unit",
+          "visibility_unit": "Visibility Unit",
           "min_temp": "Minimum Temperature (°C)",
           "max_temp": "Maximum Temperature (°C)",
           "temp_step": "Temperature Step (°C)",

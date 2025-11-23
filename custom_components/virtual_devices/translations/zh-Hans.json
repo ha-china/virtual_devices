@@ -6,29 +6,7 @@
         "description": "配置虚拟设备的基本信息。一个设备可以包含多个实体。",
         "data": {
           "device_name": "设备名称",
-          "device_type": {
-            "label": "设备类型",
-            "options": {
-              "light": "灯光",
-              "switch": "开关",
-              "climate": "空调",
-              "cover": "窗帘",
-              "fan": "风扇",
-              "sensor": "传感器",
-              "binary_sensor": "二进制传感器",
-              "button": "按钮",
-              "scene": "场景",
-              "media_player": "媒体播放器",
-              "vacuum": "扫地机器人",
-              "weather": "气象站",
-              "camera": "摄像头",
-              "lock": "智能门锁",
-              "valve": "水阀",
-              "water_heater": "热水器",
-              "humidifier": "加湿器",
-              "air_purifier": "空气净化器"
-            }
-          },
+          "device_type": "设备类型",
           "entity_count": "实体数量 (1-10)"
         }
       },
@@ -41,198 +19,47 @@
           "color_temp": "支持色温调节",
           "rgb": "支持RGB颜色",
           "effect": "支持灯效",
-          "cover_type": {
-            "label": "窗帘类型",
-            "options": {
-              "curtain": "窗帘",
-              "blind": "百叶窗",
-              "shade": "遮阳帘",
-              "garage": "车库门",
-              "gate": "大门"
-            }
-          },
+          "cover_type": "窗帘类型",
           "travel_time": "运行时间（秒）",
-          "sensor_type": {
-            "label": "传感器类型",
-            "options": {
-              "temperature": "温度",
-              "humidity": "湿度",
-              "pressure": "气压",
-              "light": "光照",
-              "motion": "人体感应",
-              "air_quality": "空气质量"
-            }
-          },
-          "binary_sensor_type": {
-            "label": "二进制传感器类型",
-            "options": {
-              "motion": "人体感应",
-              "door": "门磁",
-              "window": "窗磁",
-              "smoke": "烟雾",
-              "gas": "燃气",
-              "water_leak": "漏水"
-            }
-          },
-          "button_type": {
-            "label": "按钮类型",
-            "options": {
-              "generic": "通用按钮",
-              "doorbell": "门铃",
-              "emergency": "紧急按钮",
-              "reset": "重置按钮"
-            }
-          },
-          "media_player_type": {
-            "label": "媒体播放器类型",
-            "options": {
-              "speaker": "音响",
-              "tv": "电视",
-              "receiver": "接收器",
-              "soundbar": "条形音响"
-            }
-          },
+          "sensor_type": "传感器类型",
+          "binary_sensor_type": "二进制传感器类型",
+          "button_type": "按钮类型",
+          "media_player_type": "媒体播放器类型",
           "media_source_list": "媒体源列表",
           "supports_seek": "支持快进/快退",
-          "vacuum_status": {
-            "label": "扫地机器人状态",
-            "options": {
-              "docked": "充电中",
-              "cleaning": "清洁中",
-              "paused": "暂停",
-              "returning": "返回中",
-              "error": "错误"
-            }
-          },
-          "fan_speed": {
-            "label": "风扇速度",
-            "options": {
-              "quiet": "安静",
-              "low": "低速",
-              "medium": "中速",
-              "high": "高速",
-              "max": "最大"
-            }
-          },
+          "vacuum_status": "扫地机器人状态",
+          "fan_speed": "风扇速度",
           "battery_level": "电池电量",
-          "camera_type": {
-            "label": "摄像头类型",
-            "options": {
-              "indoor": "室内",
-              "outdoor": "室外",
-              "doorbell": "门铃",
-              "baby_monitor": "婴儿监护器"
-            }
-          },
+          "camera_type": "摄像头类型",
           "recording": "支持录像",
           "motion_detection": "支持运动检测",
           "night_vision": "支持夜视",
-          "lock_type": {
-            "label": "门锁类型",
-            "options": {
-              "smart_lock": "智能门锁",
-              "deadbolt": "十字锁",
-              "keypad": "密码锁",
-              "fingerprint": "指纹锁"
-            }
-          },
+          "lock_type": "门锁类型",
           "access_code": "访问密码",
           "auto_lock": "自动锁定",
           "auto_lock_delay": "自动锁定延迟（秒）",
-          "valve_type": {
-            "label": "阀门类型",
-            "options": {
-              "water_valve": "水阀",
-              "gas_valve": "燃气阀",
-              "irrigation": "灌溉阀",
-              "zone_valve": "区域阀"
-            }
-          },
+          "valve_type": "阀门类型",
           "valve_size": "阀门尺寸（mm）",
           "reports_position": "报告位置",
-          "travel_time": "运行时间（秒）",
-          "heater_type": {
-            "label": "热水器类型",
-            "options": {
-              "electric": "电热水器",
-              "gas": "燃气热水器",
-              "solar": "太阳能热水器",
-              "heat_pump": "热泵热水器",
-              "tankless": "即热式热水器"
-            }
-          },
+          "heater_type": "热水器类型",
           "current_temperature": "当前温度（°C）",
           "target_temperature": "目标温度（°C）",
           "tank_capacity": "水箱容量（升）",
           "efficiency": "能效比（0.1-1.0）",
-          "humidifier_type": {
-            "label": "加湿器类型",
-            "options": {
-              "ultrasonic": "超声波",
-              "evaporative": "蒸发式",
-              "steam": "蒸汽式",
-              "impeller": "离心式",
-              "warm_mist": "暖雾"
-            }
-          },
+          "humidifier_type": "加湿器类型",
           "current_humidity": "当前湿度（%）",
           "target_humidity": "目标湿度（%）",
           "water_level": "水位（%）",
-          "purifier_type": {
-            "label": "净化器类型",
-            "options": {
-              "hepa": "HEPA",
-              "activated_carbon": "活性炭",
-              "uv_c": "紫外线C",
-              "ionic": "离子",
-              "ozone": "臭氧",
-              "hybrid": "混合式"
-            }
-          },
+          "purifier_type": "净化器类型",
           "room_volume": "房间容积（m³）",
           "pm25": "PM2.5浓度（µg/m³）",
           "pm10": "PM10浓度（µg/m³）",
           "filter_life": "滤网寿命（%）",
-          "weather_station_type": {
-            "label": "气象站类型",
-            "options": {
-              "basic": "基础型",
-              "professional": "专业型",
-              "home": "家用型",
-              "outdoor": "户外型",
-              "marine": "海洋型"
-            }
-          },
-          "temperature_unit": {
-            "label": "温度单位",
-            "options": {
-              "celsius": "摄氏度",
-              "fahrenheit": "华氏度"
-            }
-          },
-          "wind_speed_unit": {
-            "label": "风速单位",
-            "options": {
-              "kmh": "公里/小时",
-              "mph": "英里/小时",
-              "ms": "米/秒"
-            }
-          },
-          "pressure_unit": {
-            "label": "气压单位",
-            "options": {
-              "hPa": "百帕",
-              "inHg": "英寸汞柱",
-              "mmHg": "毫米汞柱"
-            }
-          },
-          "visibility_unit": {
-            "label": "能见度单位",
-            "options": {
-              "km": "公里",
-              "miles": "英里"
-            }
-          },
+          "weather_station_type": "气象站类型",
+          "temperature_unit": "温度单位",
+          "wind_speed_unit": "风速单位",
+          "pressure_unit": "气压单位",
+          "visibility_unit": "能见度单位",
           "min_temp": "最低温度（°C）",
           "max_temp": "最高温度（°C）",
           "temp_step": "温度步长（°C）",
