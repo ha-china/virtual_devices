@@ -2,7 +2,6 @@
   "name": "Virtual Devices",
   "render_readme": true,
   "homeassistant": "2025.10.0",
-  "persistent_directory": "none",
   "zip_release": true,
   "filename": "virtual_devices.zip"
 }

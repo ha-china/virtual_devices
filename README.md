@@ -1,4 +1,4 @@
-# Virtual Devices Multi - 虚拟设备集成（多实体）
+# Virtual Devices Multi - Home Assistant Integration
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -7,95 +7,95 @@
 [![Code Size](https://img.shields.io/github/languages/code-size/ha-china/virtual_devices?color=green)](https://github.com/ha-china/virtual_devices)
 [![Last Commit](https://img.shields.io/github/last-commit/ha-china/virtual_devices?color=blue)](https://github.com/ha-china/virtual_devices)
 
-**Language**: [中文](README.md) | [English](README_EN.md)
+**Language**: [中文](README_CN.md) | [English](README.md)
 
-这是符合 Home Assistant 2025.10.0 标准的企业级虚拟设备集成，**支持在一个设备下创建多个相同类型的实体**，拥有超过11,000行代码的强大功能，为测试、演示、开发和学习提供完整的IoT设备模拟环境。
+An enterprise-grade virtual device integration for Home Assistant 2025.10.0+ with **multi-entity device support**. With over 11,000 lines of sophisticated code, it provides a complete IoT device simulation environment for testing, demonstrations, development, and educational purposes.
 
-## ✨ 核心特性
+## ✨ Core Features
 
-- 🎯 **一设备多实体**：一个设备包含1-10个相同类型实体，完美模拟真实设备
-- 🛠️ **18种设备类型**：覆盖智能家居所有主要设备类别
-- 🎨 **图形化配置**：Web界面分步向导，支持批量配置
-- 📊 **模板系统**：动态计算传感器数值、媒体内容、图像生成
-- 💾 **状态持久化**：自动保存和恢复设备状态
-- 🌍 **多语言支持**：完整的中英文界面
-- 🔧 **企业级质量**：HACS Silver认证，严格遵循HA规范
-- ⚡ **高性能**：异步操作，优化资源使用
-- 🎮 **自动化友好**：丰富的事件触发和状态反馈
+- 🎯 **Multi-Entity Devices**: Create 1-10 entities of the same type under one device
+- 🛠️ **18 Device Types**: Cover all major smart home device categories
+- 🎨 **Graphical Configuration**: Web-based wizard with step-by-step guidance
+- 📊 **Template System**: Dynamic sensor calculations, media content, and image generation
+- 💾 **State Persistence**: Automatic save and restore of device states
+- 🌍 **Multi-Language Support**: Complete Chinese and English interface
+- 🔧 **Enterprise Quality**: HACS Silver certified, strict HA standards compliance
+- ⚡ **High Performance**: Async operations with optimized resource usage
+- 🎮 **Automation Friendly**: Rich event triggers and state feedback
 
-## 📱 支持的设备类型
+## 📱 Supported Device Types
 
-### 🏠 核心家居设备
+### 🏠 Core Home Devices
 
-| 设备类型 | 功能特性 | 复杂度 |
-|---------|----------|--------|
-| 🔆 **灯光** | 亮度/色温/RGB/灯效 | ⭐⭐⭐ |
-| 🔌 **开关** | 基础开关/状态持久化 | ⭐ |
-| ❄️ **空调** | 温控/多模式/风速/摆风 | ⭐⭐⭐ |
-| 🪟 **窗帘** | 8种类型/位置控制 | ⭐⭐ |
-| 💨 **风扇** | 变速/模式/摆动/方向 | ⭐⭐ |
-| 🚨 **二进制传感器** | 13种状态监测 | ⭐⭐ |
+| Device Type | Features | Complexity |
+|-------------|----------|------------|
+| 🔆 **Light** | Brightness/Color Temp/RGB/Effects | ⭐⭐⭐ |
+| 🔌 **Switch** | Basic on/off with state persistence | ⭐ |
+| ❄️ **Climate** | Temp control/Multiple modes/Fan speeds | ⭐⭐⭐ |
+| 🪟 **Cover** | 8 types with position control | ⭐⭐ |
+| 💨 **Fan** | Variable speed/Modes/Oscillation | ⭐⭐ |
+| 🚨 **Binary Sensor** | 13 status monitoring types | ⭐⭐ |
 
-### 🎮 娱乐与通信
+### 🎮 Entertainment & Communication
 
-| 设备类型 | 功能特性 | 复杂度 |
-|---------|----------|--------|
-| 📺 **媒体播放器** | 6种类型/播放控制/音量 | ⭐⭐⭐⭐ |
-| 🎮 **按钮** | 4种类型/自动化触发 | ⭐ |
-| 🎬 **场景** | 多设备联动/状态恢复 | ⭐⭐ |
+| Device Type | Features | Complexity |
+|-------------|----------|------------|
+| 📺 **Media Player** | 6 types/Playback control/Volume | ⭐⭐⭐⭐ |
+| 🎮 **Button** | 4 types for automation triggers | ⭐ |
+| 🎬 **Scene** | Multi-device linkage/State recovery | ⭐⭐ |
 
-### 🏥 环境与健康
+### 🏥 Environmental & Health
 
-| 设备类型 | 功能特性 | 复杂度 |
-|---------|----------|--------|
-| 📊 **传感器** | 16种环境/电力/空气质量监测 | ⭐⭐⭐ |
-| 💧 **加湿器** | 5种模式/湿度控制/水位显示 | ⭐⭐⭐⭐ |
-| 🌬️ **空气净化器** | 6种净化模式/AQI监测 | ⭐⭐⭐⭐⭐ |
-| 🌤️ **气象站** | 完整天气/5天预报 | ⭐⭐⭐ |
+| Device Type | Features | Complexity |
+|-------------|----------|------------|
+| 📊 **Sensor** | 16 environmental/power/air quality types | ⭐⭐⭐ |
+| 💧 **Humidifier** | 5 modes/Humidity control/Water level | ⭐⭐⭐⭐ |
+| 🌬️ **Air Purifier** | 6 purification modes/AQI monitoring | ⭐⭐⭐⭐⭐ |
+| 🌤️ **Weather** | Complete weather/5-day forecast | ⭐⭐⭐ |
 
-### 🛡️ 安全与安防
+### 🛡️ Security & Safety
 
-| 设备类型 | 功能特性 | 复杂度 |
-|---------|----------|--------|
-| 🤖 **扫地机器人** | 清洁模式/充电/路径规划 | ⭐⭐⭐⭐ |
-| 📹 **摄像头** | 5种类型/录制/夜视/PTZ | ⭐⭐⭐⭐⭐ |
-| 🔒 **智能门锁** | 4种类型/密码/自动锁定 | ⭐⭐⭐ |
-| 🚰 **水阀** | 4种类型/流量控制/位置反馈 | ⭐⭐⭐⭐ |
+| Device Type | Features | Complexity |
+|-------------|----------|------------|
+| 🤖 **Vacuum** | Cleaning modes/Charging/Path planning | ⭐⭐⭐⭐ |
+| 📹 **Camera** | 5 types/Recording/Night vision/PTZ | ⭐⭐⭐⭐⭐ |
+| 🔒 **Lock** | 4 types/Passwords/Auto-lock | ⭐⭐⭐ |
+| 🚰 **Valve** | 4 types/Flow control/Position feedback | ⭐⭐⭐⭐ |
 
-### 🔧 公共设施
+### 🔧 Utilities
 
-| 设备类型 | 功能特性 | 复杂度 |
-|---------|----------|--------|
-| 🔋 **热水器** | 5种加热模式/能效管理 | ⭐⭐⭐ |
+| Device Type | Features | Complexity |
+|-------------|----------|------------|
+| 🔋 **Water Heater** | 5 heating modes/Energy management | ⭐⭐⭐ |
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 安装方法
+### Installation Methods
 
-#### 方法1：通过HACS安装（推荐）
-1. 打开 **HACS → 集成**
-2. 点击右上角 **菜单 → 自定义存储库**
-3. 添加仓库：`https://github.com/ha-china/virtual_devices`
-4. 搜索 **"虚拟设备集成（多实体）"** 并安装
-5. 重启Home Assistant
+#### Method 1: HACS Installation (Recommended)
+1. Go to **HACS → Integrations**
+2. Click **Menu → Custom Repositories**
+3. Add repository: `https://github.com/ha-china/virtual_devices`
+4. Search for **"Virtual Devices Multi"** and install
+5. Restart Home Assistant
 
-#### 方法2：手动安装
-1. 下载 [最新版本](https://github.com/ha-china/virtual_devices/releases)
-2. 解压到 `config/custom_components/virtual_devices/`
-3. 重启Home Assistant
+#### Method 2: Manual Installation
+1. Download the [latest release](https://github.com/ha-china/virtual_devices/releases)
+2. Extract to `config/custom_components/virtual_devices/`
+3. Restart Home Assistant
 
-### 添加设备
+### Adding Devices
 
-1. 进入 **设置 → 设备与服务 → 添加集成**
-2. 搜索 **"虚拟设备集成（多实体）"**
-3. 按照向导完成配置
+1. Go to **Settings → Devices & Services → Add Integration**
+2. Search for **"Virtual Devices Multi"**
+3. Follow the configuration wizard
 
-## 💡 使用场景
+## 💡 Use Cases
 
-### 🧪 开发测试
+### 🧪 Development & Testing
 ```yaml
-# 测试自动化规则
-- alias: "测试灯光场景"
+# Test automation rules
+- alias: "Test Light Scene"
   trigger:
     platform: state
     entity_id: button.test_scene_button
@@ -105,73 +105,62 @@
       entity_id: scene.test_living_room
 ```
 
-### 🏠 演示展示
+### 🏠 Demonstrations
 ```yaml
-# 创建完整的智能家居演示
-设备名称: 智能展厅设备组
-实体数量: 8个
-类型: 混合设备展示
+# Complete smart home demo
+Device Name: Smart Showroom Devices
+Entity Count: 8
+Type: Mixed Device Showcase
 ```
 
-### 📚 学习教育
+### 📚 Learning & Education
 ```yaml
-# Home Assistant学习环境
-- 传感器数据模拟
-- 自动化规则测试
-- UI界面定制
-- API接口学习
+# Home Assistant learning environment
+- Sensor data simulation
+- Automation rule testing
+- UI customization
+- API interface learning
 ```
 
-## 🔧 高级功能
+## 🤝 Contributing
+
+We welcome all forms of contributions!
+
+### 🐛 Bug Reports
+- Use [GitHub Issues](https://github.com/ha-china/virtual_devices/issues)
+- Provide detailed error logs
+- Include reproduction steps
+- Describe expected behavior
+
+### 💡 Feature Suggestions
+- Mark Issues as "enhancement"
+- Describe feature requirements in detail
+- Explain use cases
+- Consider implementation feasibility
+
+### 🔧 Code Contributions
+1. Fork the project repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Create a Pull Request
+
+### 📝 Documentation Improvements
+- Translate documentation to other languages
+- Improve existing documentation content
+- Add usage examples
+- Create video tutorials
 
 
-### 状态持久化
-- 所有设备状态自动保存
-- 重启后状态完全恢复
-- 支持状态历史查询
-- 可配置保存间隔
 
+## 📄 License
 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
 
-## 🤝 贡献指南
+## 🔗 Related Links
 
-我们欢迎各种形式的贡献！
-
-### 🐛 报告问题
-- 使用 [GitHub Issues](https://github.com/ha-china/virtual_devices/issues)
-- 提供详细的错误日志
-- 说明复现步骤
-- 描述期望行为
-
-### 💡 功能建议
-- 在Issues中标记为"enhancement"
-- 详细描述功能需求
-- 说明使用场景
-- 考虑实现可行性
-
-### 🔧 代码贡献
-1. Fork 项目仓库
-2. 创建功能分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add some amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 创建 Pull Request
-
-### 📝 文档改进
-- 翻译文档到其他语言
-- 改进现有文档内容
-- 添加使用示例
-- 制作视频教程
-
-
-## 📄 许可证
-
-本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
-
-## 🔗 相关链接
-
-- **GitHub仓库**: https://github.com/ha-china/virtual_devices
-- **问题反馈**: https://github.com/ha-china/virtual_devices/issues
-- **功能建议**: https://github.com/ha-china/virtual_devices/discussions
-- **更新日志**: [CHANGELOG.md](CHANGELOG.md)
-- **API文档**: [WIKI](https://github.com/ha-china/virtual_devices/wiki)
-
+- **GitHub Repository**: https://github.com/ha-china/virtual_devices
+- **Issue Reporting**: https://github.com/ha-china/virtual_devices/issues
+- **Feature Requests**: https://github.com/ha-china/virtual_devices/discussions
+- **Changelog**: [CHANGELOG.md](CHANGELOG.md)
+- **API Documentation**: [WIKI](https://github.com/ha-china/virtual_devices/wiki)
