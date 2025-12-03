@@ -9,7 +9,11 @@
       "Read(//c/Users/**)",
       "WebSearch",
       "Bash(git HEAD:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "mcp__serena__list_dir",
+      "mcp__exa__get_code_context_exa",
+      "Bash(del:*)",
+      "mcp__web-reader__webReader"
     ],
     "deny": [],
     "ask": []

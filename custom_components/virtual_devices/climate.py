@@ -72,6 +72,8 @@ class VirtualClimate(ClimateEntity):
         | ClimateEntityFeature.FAN_MODE
         | ClimateEntityFeature.SWING_MODE
         | ClimateEntityFeature.PRESET_MODE
+        | ClimateEntityFeature.TURN_ON
+        | ClimateEntityFeature.TURN_OFF
     )
     _attr_hvac_modes = [
         HVACMode.OFF,
@@ -189,11 +191,56 @@ class VirtualClimate(ClimateEntity):
         except Exception as ex:
             _LOGGER.error(f"Failed to save state for climate '{self._attr_name}': {ex}")
 
-    async def async_added_to_hass(self) -> None:
-        """Call when entity is added to hass."""
-        await super().async_added_to_hass()
-        # 加载保存的状态
-        await self.async_load_state()
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn on the climate device."""
+        # 如果当前是关闭状态，设置为制冷模式（可以根据需要改为AUTO模式）
+        if self._attr_hvac_mode == HVACMode.OFF:
+            self._attr_hvac_mode = HVACMode.COOL
+            self._update_hvac_action()
+
+            # 保存状态到存储
+            await self.async_save_state()
+
+            self.async_write_ha_state()
+            _LOGGER.debug(f"Virtual climate '{self._attr_name}' turned on")
+
+            # 触发模板更新事件
+            if self._templates:
+                self.hass.bus.async_fire(
+                    f"{DOMAIN}_climate_template_update",
+                    {
+                        "entity_id": self.entity_id,
+                        "device_id": self._config_entry_id,
+                        "hvac_mode": self._attr_hvac_mode,
+                        "target_temperature": self._attr_target_temperature,
+                        "current_temperature": self._attr_current_temperature,
+                    },
+                )
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn off the climate device."""
+        if self._attr_hvac_mode != HVACMode.OFF:
+            self._attr_hvac_mode = HVACMode.OFF
+            self._attr_hvac_action = HVACAction.OFF
+
+            # 保存状态到存储
+            await self.async_save_state()
+
+            self.async_write_ha_state()
+            _LOGGER.debug(f"Virtual climate '{self._attr_name}' turned off")
+
+            # 触发模板更新事件
+            if self._templates:
+                self.hass.bus.async_fire(
+                    f"{DOMAIN}_climate_template_update",
+                    {
+                        "entity_id": self.entity_id,
+                        "device_id": self._config_entry_id,
+                        "hvac_mode": HVACMode.OFF,
+                        "target_temperature": self._attr_target_temperature,
+                        "current_temperature": self._attr_current_temperature,
+                    },
+                )
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new target hvac mode."""
