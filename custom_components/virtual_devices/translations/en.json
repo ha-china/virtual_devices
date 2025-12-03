@@ -67,7 +67,17 @@
           "enable_temperature_simulation": "Enable Temperature Simulation",
           "target_reached_threshold": "Target Reached Threshold (°C)",
           "temperature_change_rate": "Temperature Change Rate",
-          "skip_remaining": "Skip remaining entities (use defaults)"
+          "skip_remaining": "Skip remaining entities (use defaults)",
+          "play_pause": "Play/Pause",
+          "next_track": "Next Track",
+          "previous_track": "Previous Track",
+          "volume_up": "Volume Up",
+          "volume_down": "Volume Down",
+          "volume_mute": "Mute",
+          "stop": "Stop",
+          "shuffle": "Shuffle",
+          "repeat": "Repeat",
+          "advanced_buttons": "Advanced Buttons"
         }
       }
     },

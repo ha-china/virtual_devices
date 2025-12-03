@@ -107,34 +107,37 @@ class VirtualLight(LightEntity):
         has_color_temp = entity_config.get(CONF_COLOR_TEMP, False)
         has_effects = entity_config.get(CONF_EFFECT, False)
 
-        # 设置支持的颜色模式和功能 - HA 2025.3+ 兼容性：只选择一个主要模式
+        # 设置支持的颜色模式和功能 - HA 2025.8+ 兼容性：支持多种颜色模式
         supported_modes = set()
         supported_features = LightEntityFeature(0)
 
         if has_rgb:
             supported_modes.add(ColorMode.RGB)
+            supported_features |= LightEntityFeature.COLOR
         if has_color_temp:
             supported_modes.add(ColorMode.COLOR_TEMP)
+            supported_features |= LightEntityFeature.COLOR_TEMP
         if has_brightness:
             supported_modes.add(ColorMode.BRIGHTNESS)
+            supported_features |= LightEntityFeature.BRIGHTNESS
 
         if not supported_modes:
             supported_modes.add(ColorMode.ONOFF)
 
-        # HA 2025.3+ 颜色模式兼容性：只能选择一个主要模式
+        # HA 2025.8+ 支持多种颜色模式并存，智能组合模式
         if len(supported_modes) > 1:
-            if ColorMode.RGB in supported_modes:
-                # 如果选择了RGB，只保留RGB模式（RGB包含亮度控制）
-                supported_modes = {ColorMode.RGB}
-                _LOGGER.info(f"Light '{self._attr_name}': Multiple modes detected, using RGB mode (includes brightness control)")
-            elif ColorMode.COLOR_TEMP in supported_modes:
-                # 如果选择了色温，只保留色温模式（色温包含亮度控制）
-                supported_modes = {ColorMode.COLOR_TEMP}
-                _LOGGER.info(f"Light '{self._attr_name}': Multiple modes detected, using COLOR_TEMP mode (includes brightness control)")
+            # 支持更复杂的颜色模式组合
+            if ColorMode.RGB in supported_modes and ColorMode.COLOR_TEMP in supported_modes:
+                # RGB + 色温模式
+                supported_modes = {ColorMode.RGB, ColorMode.COLOR_TEMP}
+                _LOGGER.info(f"Light '{self._attr_name}': RGB + Color temp mode supported")
+            elif ColorMode.RGB in supported_modes and ColorMode.BRIGHTNESS in supported_modes:
+                # RGB + 亮度模式
+                supported_modes = {ColorMode.RGB, ColorMode.BRIGHTNESS}
+                _LOGGER.info(f"Light '{self._attr_name}': RGB + Brightness mode supported")
             else:
-                # 否则只保留亮度模式
-                supported_modes = {ColorMode.BRIGHTNESS}
-                _LOGGER.info(f"Light '{self._attr_name}': Multiple modes detected, using BRIGHTNESS mode")
+                # 保持所有支持的模式
+                _LOGGER.info(f"Light '{self._attr_name}': Multiple modes supported: {supported_modes}")
 
         self._attr_color_mode = next(iter(supported_modes)) if supported_modes else ColorMode.ONOFF
         self._attr_supported_color_modes = supported_modes

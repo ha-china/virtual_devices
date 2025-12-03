@@ -1,6 +1,7 @@
 """Platform for virtual media player integration."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import random
 from datetime import datetime
@@ -138,14 +139,14 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self._setup_features()
 
         # 初始化状态 - 使用 MediaPlayerState 枚举
-        self._attr_state = MediaPlayerState.OFF
+        self._attr_state = MediaPlayerState.IDLE
         self._attr_media_content_type = MediaType.MUSIC
-        self._attr_media_title = None
-        self._attr_media_artist = None
-        self._attr_media_album_name = None
+        self._attr_media_title = "Virtual Song"
+        self._attr_media_artist = "Virtual Artist"
+        self._attr_media_album_name = "Virtual Album"
         self._attr_media_duration = entity_config.get(CONF_MEDIA_DURATION, 240)  # 默认4分钟
         self._attr_media_position = entity_config.get(CONF_MEDIA_POSITION, 0)
-        self._attr_media_position_updated_at = None
+        self._attr_media_position_updated_at = datetime.now()
         # 修复：使用正确的属性名 volume_level 而不是 media_volume_level
         self._attr_volume_level = entity_config.get(CONF_MEDIA_VOLUME_LEVEL, 0.5)
         self._attr_volume_muted = entity_config.get(CONF_MEDIA_VOLUME_MUTED, False)
@@ -163,6 +164,9 @@ class VirtualMediaPlayer(MediaPlayerEntity):
 
         # 设置默认暴露给语音助手
         self._attr_entity_registry_enabled_default = True
+
+        # 确保支持基本媒体操作
+        self._attr_assumed_state = True
 
         _LOGGER.info(f"Virtual media player '{self._attr_name}' initialized with state: {self._attr_state}")
 
@@ -213,35 +217,26 @@ class VirtualMediaPlayer(MediaPlayerEntity):
 
     def _setup_features(self) -> None:
         """Setup supported features based on media player type."""
+        # 为所有媒体播放器启用基本控制功能
         features = (
-            # TURN_ON和TURN_OFF在HA 2025.10.0中是默认的
-            MediaPlayerEntityFeature.VOLUME_SET
+            # 基础媒体控制
+            MediaPlayerEntityFeature.PLAY
+            | MediaPlayerEntityFeature.PAUSE
+            | MediaPlayerEntityFeature.STOP
+            | MediaPlayerEntityFeature.NEXT_TRACK
+            | MediaPlayerEntityFeature.PREVIOUS_TRACK
+            # 音量控制
+            | MediaPlayerEntityFeature.VOLUME_SET
             | MediaPlayerEntityFeature.VOLUME_MUTE
             | MediaPlayerEntityFeature.VOLUME_STEP
+            # 高级功能
+            | MediaPlayerEntityFeature.SHUFFLE_SET
+            | MediaPlayerEntityFeature.REPEAT_SET
             | MediaPlayerEntityFeature.SELECT_SOURCE
+            | MediaPlayerEntityFeature.PLAY_MEDIA
+            | MediaPlayerEntityFeature.TURN_ON
+            | MediaPlayerEntityFeature.TURN_OFF
         )
-
-        # 根据类型添加特定功能
-        if self._media_player_type in ["tv", "streaming", "receiver"]:
-            features |= (
-                MediaPlayerEntityFeature.PLAY_MEDIA
-                | MediaPlayerEntityFeature.PLAY
-                | MediaPlayerEntityFeature.PAUSE
-                | MediaPlayerEntityFeature.STOP
-                | MediaPlayerEntityFeature.NEXT_TRACK
-                | MediaPlayerEntityFeature.PREVIOUS_TRACK
-            )
-
-        if self._media_player_type in ["speaker", "receiver", "computer"]:
-            features |= (
-                MediaPlayerEntityFeature.PLAY
-                | MediaPlayerEntityFeature.PAUSE
-                | MediaPlayerEntityFeature.STOP
-                | MediaPlayerEntityFeature.NEXT_TRACK
-                | MediaPlayerEntityFeature.PREVIOUS_TRACK
-                | MediaPlayerEntityFeature.SHUFFLE_SET
-                | MediaPlayerEntityFeature.REPEAT_SET
-            )
 
         # 支持搜索功能的设备
         if self._entity_config.get(CONF_MEDIA_SUPPORTS_SEEK, False):
@@ -603,11 +598,33 @@ class VirtualMediaPlayer(MediaPlayerEntity):
             )
 
     async def async_set_repeat(self, repeat: str) -> None:
-        """Set repeat mode."""
-        self._attr_media_repeat = repeat
+        """Set repeat mode with automatic cycling."""
+        # 确保重复模式是有效的值
+        valid_repeat_modes = ["off", "one", "all"]
+        if repeat not in valid_repeat_modes:
+            _LOGGER.warning(f"Invalid repeat mode: {repeat}. Valid modes: {valid_repeat_modes}")
+            return
+
+        # 如果直接调用，执行循环切换逻辑
+        if hasattr(self, '_toggle_repeat_mode') and repeat == "toggle":
+            self._attr_media_repeat = self._toggle_repeat_mode(self._attr_media_repeat)
+        else:
+            self._attr_media_repeat = repeat
+
+        # 如果正在播放且媒体存在，更新媒体信息
+        if self._attr_state == MediaPlayerState.PLAYING and self._playlist:
+            self._select_current_track()
+
         await self.async_save_state()
+
+        # 强制状态更新，确保UI同步
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual media player '{self._attr_name}' repeat set to {repeat}")
+
+        # 再次更新状态，强制UI刷新
+        await asyncio.sleep(0.1)
+        self.async_write_ha_state()
+
+        _LOGGER.info(f"Virtual media player '{self._attr_name}' repeat set to {self._attr_media_repeat}")
 
         # 触发模板更新事件
         if self._templates:
@@ -617,18 +634,48 @@ class VirtualMediaPlayer(MediaPlayerEntity):
                     "entity_id": self.entity_id,
                     "device_id": self._config_entry_id,
                     "action": "set_repeat",
-                    "repeat": repeat,
+                    "repeat": self._attr_media_repeat,
                 },
             )
 
+    def _toggle_repeat_mode(self, current_mode: str) -> str:
+        """Cycle through repeat modes: off -> one -> all -> off."""
+        if current_mode == "off":
+            return "one"
+        elif current_mode == "one":
+            return "all"
+        else:
+            return "off"
+
     async def async_set_shuffle(self, shuffle: bool) -> None:
         """Enable/disable shuffle mode."""
+        old_shuffle = self._attr_media_shuffle
         self._attr_media_shuffle = shuffle
-        if shuffle:
+
+        # 如果启用随机播放且之前未启用，重新排列播放列表
+        if shuffle and not old_shuffle and self._playlist:
             random.shuffle(self._playlist)
+            self._current_track_index = 0
+            # 如果正在播放，更新当前曲目
+            if self._attr_state == MediaPlayerState.PLAYING:
+                self._select_current_track()
+
+        # 如果禁用随机播放，恢复原始播放列表顺序
+        elif not shuffle and old_shuffle and self._playlist:
+            self._current_track_index = 0
+            if self._attr_state == MediaPlayerState.PLAYING:
+                self._select_current_track()
+
         await self.async_save_state()
+
+        # 强制状态更新，确保UI同步
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual media player '{self._attr_name}' shuffle set to {shuffle}")
+
+        # 再次更新状态，强制UI刷新
+        await asyncio.sleep(0.1)
+        self.async_write_ha_state()
+
+        _LOGGER.info(f"Virtual media player '{self._attr_name}' shuffle set to {shuffle}")
 
         # 触发模板更新事件
         if self._templates:

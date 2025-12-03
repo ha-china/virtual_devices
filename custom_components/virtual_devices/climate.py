@@ -149,6 +149,21 @@ class VirtualClimate(ClimateEntity):
         """Return if this entity should be exposed to voice assistants."""
         return True
 
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn on the virtual climate device."""
+        self._attr_is_on = True
+        # 默认设置为制冷模式
+        self._attr_hvac_mode = "cool"
+        self.async_write_ha_state()
+        _LOGGER.info(f"Virtual climate '{self._attr_name}' turned on")
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn off the virtual climate device."""
+        self._attr_is_on = False
+        self._attr_hvac_mode = HVACMode.OFF
+        self.async_write_ha_state()
+        _LOGGER.info(f"Virtual climate '{self._attr_name}' turned off")
+
     async def async_added_to_hass(self) -> None:
         """Call when entity is added to hass."""
         await super().async_added_to_hass()

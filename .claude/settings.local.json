@@ -13,7 +13,9 @@
       "mcp__serena__list_dir",
       "mcp__exa__get_code_context_exa",
       "Bash(del:*)",
-      "mcp__web-reader__webReader"
+      "mcp__web-reader__webReader",
+      "mcp__serena__activate_project",
+      "mcp__serena__get_symbols_overview"
     ],
     "deny": [],
     "ask": []

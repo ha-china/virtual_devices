@@ -368,6 +368,53 @@ class VirtualVacuum(StateVacuumEntity):
                     },
                 )
 
+    async def async_turn_on(self) -> None:
+        """Turn on the vacuum cleaner."""
+        if self._attr_state in ["docked", "idle"]:
+            self._attr_state = "cleaning"
+            self._cleaning_started_at = datetime.now()
+            self._current_room = random.choice(PRESET_ROOMS) if random.random() > 0.3 else None
+            self.async_write_ha_state()
+            _LOGGER.debug(f"Virtual vacuum '{self._attr_name}' turned on")
+
+            # 触发模板更新事件
+            if self._templates:
+                self.hass.bus.async_fire(
+                    f"{DOMAIN}_vacuum_template_update",
+                    {
+                        "entity_id": self.entity_id,
+                        "device_id": self._config_entry_id,
+                        "action": "turn_on",
+                        "status": self._attr_state,
+                        "current_room": self._current_room,
+                    },
+                )
+
+    async def async_turn_off(self) -> None:
+        """Turn off the vacuum cleaner."""
+        if self._attr_state != "docked":
+            self._attr_state = "returning"
+            if self._cleaning_started_at:
+                self._cleaning_duration += (datetime.now() - self._cleaning_started_at).total_seconds()
+                self._cleaning_started_at = None
+            self.async_write_ha_state()
+            _LOGGER.debug(f"Virtual vacuum '{self._attr_name}' turning off")
+
+            # 触发模板更新事件
+            if self._templates:
+                self.hass.bus.async_fire(
+                    f"{DOMAIN}_vacuum_template_update",
+                    {
+                        "entity_id": self.entity_id,
+                        "device_id": self._config_entry_id,
+                        "action": "turn_off",
+                        "status": self._attr_state,
+                    },
+                )
+
+            # 模拟返回充电座的时间
+            self.hass.loop.call_later(30, self._dock_callback)
+
     async def async_update(self) -> None:
         """Update vacuum state and battery."""
         # 更新电池电量

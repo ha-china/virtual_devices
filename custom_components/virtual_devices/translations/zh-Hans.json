@@ -67,7 +67,17 @@
           "enable_temperature_simulation": "启用温度模拟",
           "target_reached_threshold": "目标达到阈值（°C）",
           "temperature_change_rate": "温度变化速率",
-          "skip_remaining": "跳过剩余实体配置（使用默认值）"
+          "skip_remaining": "跳过剩余实体配置（使用默认值）",
+          "play_pause": "播放/暂停",
+          "next_track": "下一曲",
+          "previous_track": "上一曲",
+          "volume_up": "音量+",
+          "volume_down": "音量-",
+          "volume_mute": "静音",
+          "stop": "停止",
+          "shuffle": "随机播放",
+          "repeat": "重复播放",
+          "advanced_buttons": "高级按钮"
         }
       }
     },
