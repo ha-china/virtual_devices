@@ -15,7 +15,8 @@
       "Bash(del:*)",
       "mcp__web-reader__webReader",
       "mcp__serena__activate_project",
-      "mcp__serena__get_symbols_overview"
+      "mcp__serena__get_symbols_overview",
+      "mcp__serena__search_for_pattern"
     ],
     "deny": [],
     "ask": []

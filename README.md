@@ -9,7 +9,7 @@
 
 **Language**: [中文](README_CN.md) | [English](README.md)
 
-An enterprise-grade virtual device integration for Home Assistant 2025.10.0+ with **multi-entity device support**. With over 11,000 lines of sophisticated code, it provides a complete IoT device simulation environment for testing, demonstrations, development, and educational purposes.
+An enterprise-grade virtual device integration for Home Assistant 2025.10.0+ with **multi-entity device support**. it provides a complete device simulation environment for testing, demonstrations, development, and educational purposes.
 
 ## ✨ Core Features
 
