@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import random
+import time
 from typing import Any
 
 from homeassistant.components.water_heater import (
@@ -10,23 +11,21 @@ from homeassistant.components.water_heater import (
     WaterHeaterEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    ATTR_TEMPERATURE,
-    UnitOfEnergy,
-    UnitOfPower,
-    UnitOfTemperature,
-)
+from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.storage import Store
 
+from .base_entity import STORAGE_VERSION
 from .const import (
     CONF_ENTITIES,
     CONF_ENTITY_NAME,
     DEVICE_TYPE_WATER_HEATER,
     DOMAIN,
-    TEMPLATE_ENABLED_DEVICE_TYPES,
     WATER_HEATER_TYPES,
 )
+from .types import WaterHeaterEntityConfig, WaterHeaterState
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,18 +36,18 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up virtual water heater entities."""
-    device_type = config_entry.data.get("device_type")
+    device_type: str | None = config_entry.data.get("device_type")
 
-    # 只有热水器类型的设备才设置热水器实体
     if device_type != DEVICE_TYPE_WATER_HEATER:
         return
 
-    device_info = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
-    entities = []
-    entities_config = config_entry.data.get(CONF_ENTITIES, [])
+    device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
+    entities: list[VirtualWaterHeater] = []
+    entities_config: list[WaterHeaterEntityConfig] = config_entry.data.get(CONF_ENTITIES, [])
 
     for idx, entity_config in enumerate(entities_config):
         entity = VirtualWaterHeater(
+            hass,
             config_entry.entry_id,
             entity_config,
             idx,
@@ -60,43 +59,55 @@ async def async_setup_entry(
 
 
 class VirtualWaterHeater(WaterHeaterEntity):
-    """Representation of a virtual water heater."""
+    """Representation of a virtual water heater.
+
+    This entity implements state persistence using the same pattern as BaseVirtualEntity.
+    """
+
+    _attr_should_poll: bool = True
+    _attr_entity_registry_enabled_default: bool = True
 
     def __init__(
         self,
+        hass: HomeAssistant,
         config_entry_id: str,
-        entity_config: dict[str, Any],
+        entity_config: WaterHeaterEntityConfig,
         index: int,
-        device_info: dict[str, Any],
+        device_info: DeviceInfo,
     ) -> None:
         """Initialize the virtual water heater."""
+        self._hass = hass
         self._config_entry_id = config_entry_id
         self._entity_config = entity_config
         self._index = index
-        self._device_info = device_info
 
-        entity_name = entity_config.get(CONF_ENTITY_NAME, f"water_heater_{index + 1}")
+        entity_name: str = entity_config.get(CONF_ENTITY_NAME, f"water_heater_{index + 1}")
         self._attr_name = entity_name
         self._attr_unique_id = f"{config_entry_id}_water_heater_{index}"
         self._attr_device_info = device_info
         self._attr_icon = "mdi:water-boiler"
 
         # Template support
-        self._templates = entity_config.get("templates", {})
+        self._templates: dict[str, Any] = entity_config.get("templates", {})
 
-        # 支持的功能
-        self._attr_supported_features = (
+        # Storage for state persistence
+        self._store: Store[WaterHeaterState] = Store(
+            hass, STORAGE_VERSION, f"virtual_devices_water_heater_{config_entry_id}_{index}"
+        )
+
+        # Supported features
+        self._attr_supported_features: WaterHeaterEntityFeature = (
             WaterHeaterEntityFeature.TARGET_TEMPERATURE
             | WaterHeaterEntityFeature.OPERATION_MODE
             | WaterHeaterEntityFeature.AWAY_MODE
         )
 
-        # 热水器类型
-        heater_type = entity_config.get("heater_type", "electric")
+        # Heater type
+        heater_type: str = entity_config.get("heater_type", "electric")
         self._heater_type = heater_type
 
-        # 根据类型设置图标和参数
-        icon_map = {
+        # Set icon based on type
+        icon_map: dict[str, str] = {
             "electric": "mdi:water-boiler",
             "gas": "mdi:fire",
             "solar": "mdi:solar-power",
@@ -105,47 +116,112 @@ class VirtualWaterHeater(WaterHeaterEntity):
         }
         self._attr_icon = icon_map.get(heater_type, "mdi:water-boiler")
 
-        # 初始状态
-        self._attr_operation_mode = "off"
-        self._attr_away_mode = False
+        # Initial state
+        self._attr_current_operation: str | None = "off"
+        self._attr_is_away_mode_on: bool = False
 
-        # 温度设置
-        self._attr_current_temperature = entity_config.get("current_temperature", 25)
-        self._attr_target_temperature = entity_config.get("target_temperature", 60)
+        # Temperature settings
+        self._attr_current_temperature: float = entity_config.get("current_temperature", 25)
+        self._attr_target_temperature: float = entity_config.get("target_temperature", 60)
 
-        # 根据热水器类型设置合理的温度范围
-        if heater_type == "electric":
-            self._attr_min_temp = 40
-            self._attr_max_temp = 75
-        elif heater_type == "gas":
-            self._attr_min_temp = 35
-            self._attr_max_temp = 80
-        elif heater_type == "solar":
-            self._attr_min_temp = 45
-            self._attr_max_temp = 70
-        elif heater_type == "heat_pump":
-            self._attr_min_temp = 35
-            self._attr_max_temp = 65
-        else:  # tankless
-            self._attr_min_temp = 35
-            self._attr_max_temp = 60
-
+        # Set temperature range based on heater type
+        temp_ranges: dict[str, tuple[int, int]] = {
+            "electric": (40, 75),
+            "gas": (35, 80),
+            "solar": (45, 70),
+            "heat_pump": (35, 65),
+            "tankless": (35, 60),
+        }
+        min_temp, max_temp = temp_ranges.get(heater_type, (40, 75))
+        self._attr_min_temp: float = min_temp
+        self._attr_max_temp: float = max_temp
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
 
-        # 能耗相关
-        self._attr_current_operation = None
-        self._attr_energy_consumed_today = entity_config.get("energy_consumed_today", 5.0)  # kWh
-        self._attr_power_consumption = 0  # W
-        self._attr_total_energy_consumed = entity_config.get("total_energy_consumed", 1000.0)  # kWh
+        # Operation modes
+        self._attr_operation_list: list[str] = ["off", "heat", "eco"]
 
-        # 容量和效率
-        self._tank_capacity = entity_config.get("tank_capacity", 80)  # 升
-        self._efficiency = entity_config.get("efficiency", 0.9)  # 90%效率
+        # Energy consumption
+        self._energy_consumed_today: float = entity_config.get("energy_consumed_today", 5.0)
+        self._power_consumption: float = 0
+        self._total_energy_consumed: float = entity_config.get("total_energy_consumed", 1000.0)
 
-        # 加热状态
-        self._is_heating = False
-        self._heating_start_time = None
-        self._last_update = None
+        # Capacity and efficiency
+        self._tank_capacity: int = entity_config.get("tank_capacity", 80)
+        self._efficiency: float = entity_config.get("efficiency", 0.9)
+
+        # Heating state
+        self._is_heating: bool = False
+        self._heating_start_time: float | None = None
+        self._last_update: float | None = None
+
+        _LOGGER.info(f"Virtual water heater '{self._attr_name}' initialized")
+
+    def get_default_state(self) -> WaterHeaterState:
+        """Return the default state for this entity type."""
+        return {
+            "current_operation": "off",
+            "target_temperature": 60.0,
+            "current_temperature": 25.0,
+        }
+
+    def apply_state(self, state: WaterHeaterState) -> None:
+        """Apply loaded state to entity attributes."""
+        self._attr_current_operation = state.get("current_operation", "off")
+        self._attr_target_temperature = state.get("target_temperature", 60.0)
+        self._attr_current_temperature = state.get("current_temperature", 25.0)
+
+    def get_current_state(self) -> WaterHeaterState:
+        """Get current state for persistence."""
+        return {
+            "current_operation": self._attr_current_operation or "off",
+            "target_temperature": self._attr_target_temperature,
+            "current_temperature": self._attr_current_temperature,
+        }
+
+    @property
+    def should_expose(self) -> bool:
+        """Return if this entity should be exposed to voice assistants."""
+        return True
+
+    async def async_load_state(self) -> None:
+        """Load saved state from storage."""
+        try:
+            data = await self._store.async_load()
+            if data:
+                self.apply_state(data)
+                _LOGGER.debug(f"Water heater '{self._attr_name}' state loaded")
+        except Exception as ex:
+            _LOGGER.error(f"Failed to load state for water heater '{self._attr_name}': {ex}")
+            self.apply_state(self.get_default_state())
+
+    async def async_save_state(self) -> None:
+        """Save current state to storage."""
+        try:
+            data = self.get_current_state()
+            await self._store.async_save(data)
+            _LOGGER.debug(f"Water heater '{self._attr_name}' state saved")
+        except Exception as ex:
+            _LOGGER.error(f"Failed to save state for water heater '{self._attr_name}': {ex}")
+
+    async def async_added_to_hass(self) -> None:
+        """Call when entity is added to hass."""
+        await super().async_added_to_hass()
+        await self.async_load_state()
+        self.async_write_ha_state()
+        _LOGGER.info(f"Virtual water heater '{self._attr_name}' added to Home Assistant")
+
+    def fire_template_event(self, action: str, **kwargs: Any) -> None:
+        """Fire a template update event if templates are configured."""
+        if self._templates:
+            self._hass.bus.async_fire(
+                f"{DOMAIN}_water_heater_template_update",
+                {
+                    "entity_id": self.entity_id,
+                    "device_id": self._config_entry_id,
+                    "action": action,
+                    **kwargs,
+                },
+            )
 
     @property
     def current_temperature(self) -> float | None:
@@ -158,46 +234,16 @@ class VirtualWaterHeater(WaterHeaterEntity):
         return self._attr_target_temperature
 
     @property
-    def min_temp(self) -> float:
-        """Return the minimum temperature."""
-        return self._attr_min_temp
-
-    @property
-    def max_temp(self) -> float:
-        """Return the maximum temperature."""
-        return self._attr_max_temp
-
-    @property
-    def operation_mode(self) -> str | None:
-        """Return the current operation mode."""
-        return self._attr_operation_mode
-
-    @property
-    def away_mode(self) -> bool:
-        """Return the away mode."""
-        return self._attr_away_mode
-
-    @property
     def current_operation(self) -> str | None:
-        """Return the current operation."""
+        """Return the current operation mode."""
         return self._attr_current_operation
 
     @property
-    def energy_consumed_today(self) -> float | None:
-        """Return the energy consumed today in kWh."""
-        return self._attr_energy_consumed_today
+    def is_away_mode_on(self) -> bool:
+        """Return the away mode."""
+        return self._attr_is_away_mode_on
 
-    @property
-    def power_consumption(self) -> float | None:
-        """Return the current power consumption in W."""
-        return self._attr_power_consumption
-
-    @property
-    def total_energy_consumed(self) -> float | None:
-        """Return the total energy consumed in kWh."""
-        return self._attr_total_energy_consumed
-
-    async def async_set_temperature(self, **kwargs) -> None:
+    async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set new target temperature."""
         temperature = kwargs.get("temperature")
         if temperature is None:
@@ -205,205 +251,150 @@ class VirtualWaterHeater(WaterHeaterEntity):
 
         if self._attr_min_temp <= temperature <= self._attr_max_temp:
             self._attr_target_temperature = temperature
+            await self.async_save_state()
             self.async_write_ha_state()
-            _LOGGER.debug(f"Virtual water heater '{self._attr_name}' target temperature set to {temperature}°C")
-
-            # 触发模板更新事件
-            if self._templates:
-                self.hass.bus.async_fire(
-                    f"{DOMAIN}_water_heater_template_update",
-                    {
-                        "entity_id": self.entity_id,
-                        "device_id": self._config_entry_id,
-                        "action": "set_temperature",
-                        "temperature": temperature,
-                    },
-                )
+            _LOGGER.debug(f"Water heater '{self._attr_name}' target temperature set to {temperature}°C")
+            self.fire_template_event("set_temperature", temperature=temperature)
 
     async def async_set_operation_mode(self, operation_mode: str) -> None:
         """Set new operation mode."""
-        self._attr_operation_mode = operation_mode
+        self._attr_current_operation = operation_mode
         self._update_heating_state()
+        await self.async_save_state()
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual water heater '{self._attr_name}' operation mode set to {operation_mode}")
-
-        # 触发模板更新事件
-        if self._templates:
-            self.hass.bus.async_fire(
-                f"{DOMAIN}_water_heater_template_update",
-                {
-                    "entity_id": self.entity_id,
-                    "device_id": self._config_entry_id,
-                    "action": "set_operation_mode",
-                    "operation_mode": operation_mode,
-                },
-            )
+        _LOGGER.debug(f"Water heater '{self._attr_name}' operation mode set to {operation_mode}")
+        self.fire_template_event("set_operation_mode", operation_mode=operation_mode)
 
     async def async_turn_away_mode_on(self) -> None:
         """Turn away mode on."""
-        self._attr_away_mode = True
+        self._attr_is_away_mode_on = True
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual water heater '{self._attr_name}' away mode turned on")
-
-        # 触发模板更新事件
-        if self._templates:
-            self.hass.bus.async_fire(
-                f"{DOMAIN}_water_heater_template_update",
-                {
-                    "entity_id": self.entity_id,
-                    "device_id": self._config_entry_id,
-                    "action": "turn_away_mode_on",
-                },
-            )
+        _LOGGER.debug(f"Water heater '{self._attr_name}' away mode turned on")
+        self.fire_template_event("turn_away_mode_on")
 
     async def async_turn_away_mode_off(self) -> None:
         """Turn away mode off."""
-        self._attr_away_mode = False
+        self._attr_is_away_mode_on = False
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual water heater '{self._attr_name}' away mode turned off")
-
-        # 触发模板更新事件
-        if self._templates:
-            self.hass.bus.async_fire(
-                f"{DOMAIN}_water_heater_template_update",
-                {
-                    "entity_id": self.entity_id,
-                    "device_id": self._config_entry_id,
-                    "action": "turn_away_mode_off",
-                },
-            )
+        _LOGGER.debug(f"Water heater '{self._attr_name}' away mode turned off")
+        self.fire_template_event("turn_away_mode_off")
 
     def _update_heating_state(self) -> None:
         """Update heating state based on operation mode."""
-        import time
-
         was_heating = self._is_heating
 
-        if self._attr_operation_mode == "heat":
-            # 检查是否需要加热
-            if self._attr_current_temperature < self._attr_target_temperature - 2:  # 2度容差
+        if self._attr_current_operation == "heat":
+            if self._attr_current_temperature < self._attr_target_temperature - 2:
                 if not self._is_heating:
                     self._is_heating = True
                     self._heating_start_time = time.time()
-                    self._attr_current_operation = "heating"
             elif self._attr_current_temperature >= self._attr_target_temperature:
                 if self._is_heating:
                     self._is_heating = False
                     self._heating_start_time = None
-                    self._attr_current_operation = "idle"
-            else:
-                self._attr_current_operation = "maintaining"
         else:
-            # 非加热模式
             self._is_heating = False
             self._heating_start_time = None
-            self._attr_current_operation = "idle"
 
-        # 如果加热状态改变，更新功率
         if was_heating != self._is_heating:
             self._update_power_consumption()
 
     def _update_power_consumption(self) -> None:
         """Update power consumption based on heating state and heater type."""
         if self._is_heating:
-            # 根据热水器类型设置功率
-            power_map = {
-                "electric": random.uniform(2000, 3000),  # 2-3kW
-                "gas": random.uniform(3000, 5000),        # 3-5kW
-                "solar": random.uniform(1000, 2000),     # 1-2kW
-                "heat_pump": random.uniform(800, 1500),   # 0.8-1.5kW
-                "tankless": random.uniform(5000, 8000),  # 5-8kW
+            power_map: dict[str, tuple[float, float]] = {
+                "electric": (2000, 3000),
+                "gas": (3000, 5000),
+                "solar": (1000, 2000),
+                "heat_pump": (800, 1500),
+                "tankless": (5000, 8000),
             }
-            self._attr_power_consumption = round(power_map.get(self._heater_type, 2000), 0)
+            min_power, max_power = power_map.get(self._heater_type, (2000, 3000))
+            self._power_consumption = round(random.uniform(min_power, max_power), 0)
         else:
-            # 待机功率
-            standby_power_map = {
-                "electric": random.uniform(5, 15),      # 5-15W
-                "gas": random.uniform(10, 30),          # 10-30W
-                "solar": random.uniform(2, 5),           # 2-5W
-                "heat_pump": random.uniform(5, 20),        # 5-20W
-                "tankless": random.uniform(5, 10),        # 5-10W
+            standby_map: dict[str, tuple[float, float]] = {
+                "electric": (5, 15),
+                "gas": (10, 30),
+                "solar": (2, 5),
+                "heat_pump": (5, 20),
+                "tankless": (5, 10),
             }
-            self._attr_power_consumption = round(standby_power_map.get(self._heater_type, 10), 0)
+            min_power, max_power = standby_map.get(self._heater_type, (5, 15))
+            self._power_consumption = round(random.uniform(min_power, max_power), 0)
 
     async def async_update(self) -> None:
         """Update water heater state."""
-        import time
+        current_time = time.time()
 
-        # 模拟温度变化
-        if self._is_heating and self._attr_operation_mode == "heat":
+        # Simulate temperature change
+        if self._is_heating and self._attr_current_operation == "heat":
             if self._heating_start_time:
-                elapsed = time.time() - self._heating_start_time
-                # 根据热水器类型计算加热速度
-                heating_rate_map = {
-                    "electric": 0.5,    # 0.5°C/分钟
-                    "gas": 1.2,          # 1.2°C/分钟
-                    "solar": 0.3,        # 0.3°C/分钟
-                    "heat_pump": 0.4,    # 0.4°C/分钟
-                    "tankless": 2.0,     # 2.0°C/分钟
+                elapsed = current_time - self._heating_start_time
+                heating_rate_map: dict[str, float] = {
+                    "electric": 0.5,
+                    "gas": 1.2,
+                    "solar": 0.3,
+                    "heat_pump": 0.4,
+                    "tankless": 2.0,
                 }
                 heating_rate = heating_rate_map.get(self._heater_type, 0.5)
-
                 temp_increase = (heating_rate * elapsed / 60) * self._efficiency
                 self._attr_current_temperature = min(
                     self._attr_target_temperature,
                     self._attr_current_temperature + temp_increase
                 )
         else:
-            # 自然冷却
-            if self._attr_current_temperature > 20:  # 室温基准
-                cooling_rate = 0.1  # 0.1°C/分钟
-                time_diff = time.time() - (self._last_update or time.time())
+            # Natural cooling
+            if self._attr_current_temperature > 20:
+                cooling_rate = 0.1
+                time_diff = current_time - (self._last_update or current_time)
                 self._attr_current_temperature = max(
                     20,
                     self._attr_current_temperature - (cooling_rate * time_diff / 60)
                 )
 
-        # 更新能耗
-        self._last_update = time.time()
-        if self._attr_power_consumption > 0:
-            # 计算本次更新的能耗 (kWh)
-            time_diff = 1.0 / 3600  # 假设每秒更新一次
-            energy_increase = (self._attr_power_consumption / 1000) * time_diff
+        # Update energy consumption
+        self._last_update = current_time
+        if self._power_consumption > 0:
+            time_diff = 1.0 / 3600
+            energy_increase = (self._power_consumption / 1000) * time_diff
+            self._energy_consumed_today += energy_increase
+            self._total_energy_consumed += energy_increase
 
-            self._attr_energy_consumed_today += energy_increase
-            self._attr_total_energy_consumed += energy_increase
-
-        # 更新加热状态
         self._update_heating_state()
-
+        await self.async_save_state()
         self.async_write_ha_state()
 
-        # 触发模板更新事件
         if self._templates:
-            self.hass.bus.async_fire(
+            self._hass.bus.async_fire(
                 f"{DOMAIN}_water_heater_template_update",
                 {
                     "entity_id": self.entity_id,
                     "device_id": self._config_entry_id,
                     "current_temperature": self._attr_current_temperature,
                     "target_temperature": self._attr_target_temperature,
-                    "operation_mode": self._attr_operation_mode,
+                    "operation_mode": self._attr_current_operation,
                     "is_heating": self._is_heating,
-                    "power_consumption": self._attr_power_consumption,
+                    "power_consumption": self._power_consumption,
                 },
             )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
-        attrs = {
+        attrs: dict[str, Any] = {
             "heater_type": WATER_HEATER_TYPES.get(self._heater_type, self._heater_type),
             "tank_capacity": f"{self._tank_capacity}L",
             "efficiency": f"{self._efficiency * 100:.0f}%",
             "is_heating": self._is_heating,
+            "power_consumption": f"{self._power_consumption:.0f}W",
+            "energy_consumed_today": f"{self._energy_consumed_today:.2f}kWh",
+            "total_energy_consumed": f"{self._total_energy_consumed:.2f}kWh",
         }
 
         if self._heating_start_time:
-            import time
             attrs["heating_duration"] = round(time.time() - self._heating_start_time, 1)
 
-        # 添加热水器特定属性
         if self._heater_type == "solar":
             attrs["solar_boost_available"] = random.choice([True, False])
         elif self._heater_type == "gas":

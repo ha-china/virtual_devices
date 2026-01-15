@@ -1,3 +1,10 @@
 backup/
 .spec-workflow
 .claude
+.kiro
+.hypothesis
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+tests

@@ -2,35 +2,31 @@
 from __future__ import annotations
 
 import logging
-import math
 from typing import Any
 
 from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.storage import Store
+from homeassistant.util.percentage import int_states_in_range
 
-STORAGE_VERSION = 1
-from homeassistant.util.percentage import (
-    int_states_in_range,
-    percentage_to_ranged_value,
-    ranged_value_to_percentage,
-)
-
+from .base_entity import BaseVirtualEntity
 from .const import (
     CONF_ENTITIES,
-    CONF_ENTITY_NAME,
     DEVICE_TYPE_AIR_PURIFIER,
     DEVICE_TYPE_FAN,
     DOMAIN,
-    TEMPLATE_ENABLED_DEVICE_TYPES,
 )
+from .types import FanEntityConfig, FanState
 
 _LOGGER = logging.getLogger(__name__)
 
-SPEED_RANGE = (1, 100)
-PRESET_MODES = ["sleep", "nature", "strong"]
+# Speed range for percentage calculation (1-100)
+SPEED_RANGE: tuple[int, int] = (1, 100)
+
+# Available preset modes for the fan
+PRESET_MODES: list[str] = ["sleep", "nature", "strong"]
 
 
 async def async_setup_entry(
@@ -39,21 +35,21 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up virtual fan and air purifier entities."""
-    device_type = config_entry.data.get("device_type")
+    device_type: str | None = config_entry.data.get("device_type")
 
-    # 只处理风扇和空气净化器类型的设备
+    # Only handle fan and air purifier device types
     if device_type not in (DEVICE_TYPE_FAN, DEVICE_TYPE_AIR_PURIFIER):
         return
 
-    device_info = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
-    entities = []
-    entities_config = config_entry.data.get(CONF_ENTITIES, [])
+    device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
+    entities: list[VirtualFan] = []
+    entities_config: list[FanEntityConfig] = config_entry.data.get(CONF_ENTITIES, [])
 
-    # 根据设备类型创建相应的实体
+    # Create entities based on device type
     if device_type == DEVICE_TYPE_AIR_PURIFIER:
-        # 导入 air_purifier 模块并创建实体
+        # Import air_purifier module and create entities
         from .air_purifier import VirtualAirPurifier
-        
+
         for idx, entity_config in enumerate(entities_config):
             entity = VirtualAirPurifier(
                 hass,
@@ -64,7 +60,7 @@ async def async_setup_entry(
             )
             entities.append(entity)
     else:
-        # 创建普通风扇实体
+        # Create regular fan entities
         for idx, entity_config in enumerate(entities_config):
             entity = VirtualFan(
                 hass,
@@ -78,10 +74,10 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class VirtualFan(FanEntity):
+class VirtualFan(BaseVirtualEntity[FanEntityConfig, FanState], FanEntity):
     """Representation of a virtual fan."""
 
-    _attr_supported_features = (
+    _attr_supported_features: FanEntityFeature = (
         FanEntityFeature.TURN_ON
         | FanEntityFeature.TURN_OFF
         | FanEntityFeature.SET_SPEED
@@ -94,79 +90,55 @@ class VirtualFan(FanEntity):
         self,
         hass: HomeAssistant,
         config_entry_id: str,
-        entity_config: dict[str, Any],
+        entity_config: FanEntityConfig,
         index: int,
-        device_info: dict[str, Any],
+        device_info: DeviceInfo,
     ) -> None:
         """Initialize the virtual fan."""
-        self._config_entry_id = config_entry_id
-        self._entity_config = entity_config
-        self._index = index
-        self._device_info = device_info
-        self._hass = hass
+        super().__init__(hass, config_entry_id, entity_config, index, device_info, "fan")
 
-        entity_name = entity_config.get(CONF_ENTITY_NAME, f"Fan {index + 1}")
-        self._attr_name = entity_name
-        self._attr_unique_id = f"{config_entry_id}_fan_{index}"
-        self._attr_device_info = device_info
+        # Fan-specific attributes
         self._attr_preset_modes = PRESET_MODES
-
-        # Template support
-        self._templates = entity_config.get("templates", {})
-
-        # 存储实体状态
-        self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, f"virtual_devices_fan_{config_entry_id}_{index}")
-
-        # 状态 - 默认值，稍后从存储恢复
-        self._is_on = False
-        self._percentage = 50
-        self._preset_mode = None
-        self._oscillating = False
-        self._direction = "forward"
-
         self._attr_speed_count = int_states_in_range(SPEED_RANGE)
 
-        # 设置默认暴露给语音助手
-        self._attr_entity_registry_enabled_default = True
+        # State attributes - will be populated by async_load_state
+        self._is_on: bool = False
+        self._percentage: int = 50
+        self._preset_mode: str | None = None
+        self._oscillating: bool = False
+        self._direction: str = "forward"
 
-    @property
-    def should_expose(self) -> bool:
-        """Return if this entity should be exposed to voice assistants."""
-        return True
+    def get_default_state(self) -> FanState:
+        """Return the default state for this fan entity."""
+        return {
+            "is_on": False,
+            "percentage": 50,
+            "preset_mode": None,
+            "oscillating": False,
+            "direction": "forward",
+        }
 
-    async def async_load_state(self) -> None:
-        """Load saved state from storage."""
-        try:
-            data = await self._store.async_load()
-            if data:
-                self._is_on = data.get("is_on", False)
-                self._percentage = data.get("percentage", 50)
-                self._preset_mode = data.get("preset_mode")
-                self._oscillating = data.get("oscillating", False)
-                self._direction = data.get("direction", "forward")
-                _LOGGER.info(f"Fan '{self._attr_name}' state loaded from storage")
-        except Exception as ex:
-            _LOGGER.error(f"Failed to load state for fan '{self._attr_name}': {ex}")
+    def apply_state(self, state: FanState) -> None:
+        """Apply loaded state to entity attributes."""
+        self._is_on = state.get("is_on", False)
+        self._percentage = state.get("percentage", 50)
+        self._preset_mode = state.get("preset_mode")
+        self._oscillating = state.get("oscillating", False)
+        self._direction = state.get("direction", "forward")
+        _LOGGER.debug(
+            "Applied state for fan '%s': is_on=%s, percentage=%d, preset_mode=%s",
+            self._attr_name, self._is_on, self._percentage, self._preset_mode,
+        )
 
-    async def async_save_state(self) -> None:
-        """Save current state to storage."""
-        try:
-            data = {
-                "is_on": self._is_on,
-                "percentage": self._percentage,
-                "preset_mode": self._preset_mode,
-                "oscillating": self._oscillating,
-                "direction": self._direction,
-            }
-            await self._store.async_save(data)
-        except Exception as ex:
-            _LOGGER.error(f"Failed to save state for fan '{self._attr_name}': {ex}")
-
-    async def async_added_to_hass(self) -> None:
-        """Call when entity is added to hass."""
-        await super().async_added_to_hass()
-        # 加载保存的状态
-        await self.async_load_state()
+    def get_current_state(self) -> FanState:
+        """Get current state for persistence."""
+        return {
+            "is_on": self._is_on,
+            "percentage": self._percentage,
+            "preset_mode": self._preset_mode,
+            "oscillating": self._oscillating,
+            "direction": self._direction,
+        }
 
     @property
     def is_on(self) -> bool:
@@ -211,32 +183,30 @@ class VirtualFan(FanEntity):
             self._preset_mode = preset_mode
             self._percentage = 50
 
-        # 保存状态到存储
         await self.async_save_state()
-
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual fan '{self._attr_name}' turned on")
+        self.fire_template_event("turn_on", percentage=percentage, preset_mode=preset_mode)
+        _LOGGER.debug("Virtual fan '%s' turned on", self._attr_name)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the fan off."""
         self._is_on = False
 
-        # 保存状态到存储
         await self.async_save_state()
-
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual fan '{self._attr_name}' turned off")
+        self.fire_template_event("turn_off")
+        _LOGGER.debug("Virtual fan '%s' turned off", self._attr_name)
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the speed percentage of the fan."""
-        # 修复：添加百分比范围验证 (0-100)
-        original_percentage = percentage
+        # Validate percentage range (0-100)
+        original_percentage: int = percentage
         percentage = max(0, min(100, percentage))
 
         if original_percentage != percentage:
             _LOGGER.warning(
-                f"Fan percentage {original_percentage}% out of range (0-100%), "
-                f"clamped to {percentage}%"
+                "Fan percentage %d%% out of range (0-100%%), clamped to %d%%",
+                original_percentage, percentage,
             )
 
         self._percentage = percentage
@@ -246,43 +216,39 @@ class VirtualFan(FanEntity):
         else:
             self._is_on = True
 
-        # 保存状态到存储
         await self.async_save_state()
-
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual fan '{self._attr_name}' speed set to {percentage}%")
+        self.fire_template_event("set_percentage", percentage=percentage)
+        _LOGGER.debug("Virtual fan '%s' speed set to %d%%", self._attr_name, percentage)
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set the preset mode of the fan."""
         self._preset_mode = preset_mode
         self._is_on = True
 
-        # 保存状态到存储
         await self.async_save_state()
-
         self.async_write_ha_state()
+        self.fire_template_event("set_preset_mode", preset_mode=preset_mode)
         _LOGGER.debug(
-            f"Virtual fan '{self._attr_name}' preset mode set to {preset_mode}"
+            "Virtual fan '%s' preset mode set to %s", self._attr_name, preset_mode
         )
 
     async def async_oscillate(self, oscillating: bool) -> None:
         """Set oscillation."""
         self._oscillating = oscillating
 
-        # 保存状态到存储
         await self.async_save_state()
-
         self.async_write_ha_state()
+        self.fire_template_event("oscillate", oscillating=oscillating)
         _LOGGER.debug(
-            f"Virtual fan '{self._attr_name}' oscillation set to {oscillating}"
+            "Virtual fan '%s' oscillation set to %s", self._attr_name, oscillating
         )
 
     async def async_set_direction(self, direction: str) -> None:
         """Set the direction of the fan."""
         self._direction = direction
 
-        # 保存状态到存储
         await self.async_save_state()
-
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual fan '{self._attr_name}' direction set to {direction}")
+        self.fire_template_event("set_direction", direction=direction)
+        _LOGGER.debug("Virtual fan '%s' direction set to %s", self._attr_name, direction)

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 import random
-from typing import Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -11,21 +10,22 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .base_entity import BaseVirtualEntity
 from .const import (
     CONF_ENTITIES,
-    CONF_ENTITY_NAME,
     DEVICE_TYPE_BINARY_SENSOR,
     DOMAIN,
-    TEMPLATE_ENABLED_DEVICE_TYPES,
 )
+from .types import BinarySensorEntityConfig, BinarySensorState
 
 _LOGGER = logging.getLogger(__name__)
 
-# 二进制传感器类型映射
-BINARY_SENSOR_TYPE_MAP = {
+# Binary sensor type mapping
+BINARY_SENSOR_TYPE_MAP: dict[str, BinarySensorDeviceClass] = {
     "motion": BinarySensorDeviceClass.MOTION,
     "door": BinarySensorDeviceClass.DOOR,
     "window": BinarySensorDeviceClass.WINDOW,
@@ -48,18 +48,18 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up virtual binary sensor entities."""
-    device_type = config_entry.data.get("device_type")
+    device_type: str | None = config_entry.data.get("device_type")
 
-    # 只有二进制传感器类型的设备才设置二进制传感器实体
     if device_type != DEVICE_TYPE_BINARY_SENSOR:
         return
 
-    device_info = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
-    entities = []
-    entities_config = config_entry.data.get(CONF_ENTITIES, [])
+    device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
+    entities: list[VirtualBinarySensor] = []
+    entities_config: list[BinarySensorEntityConfig] = config_entry.data.get(CONF_ENTITIES, [])
 
     for idx, entity_config in enumerate(entities_config):
         entity = VirtualBinarySensor(
+            hass,
             config_entry.entry_id,
             entity_config,
             idx,
@@ -70,51 +70,55 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class VirtualBinarySensor(BinarySensorEntity):
+class VirtualBinarySensor(BaseVirtualEntity[BinarySensorEntityConfig, BinarySensorState], BinarySensorEntity):
     """Representation of a virtual binary sensor."""
 
     def __init__(
         self,
+        hass: HomeAssistant,
         config_entry_id: str,
-        entity_config: dict[str, Any],
+        entity_config: BinarySensorEntityConfig,
         index: int,
-        device_info: dict[str, Any],
+        device_info: DeviceInfo,
     ) -> None:
         """Initialize the virtual binary sensor."""
-        self._config_entry_id = config_entry_id
-        self._entity_config = entity_config
-        self._index = index
-        self._device_info = device_info
+        super().__init__(hass, config_entry_id, entity_config, index, device_info, "binary_sensor")
 
-        entity_name = entity_config.get(CONF_ENTITY_NAME, f"Binary Sensor_{index + 1}")
-        self._attr_name = entity_name
-        self._attr_unique_id = f"{config_entry_id}_binary_sensor_{index}"
-        self._attr_device_info = device_info
-
-        # Template support
-        self._templates = entity_config.get("templates", {})
-
-        # Entity category支持
-        entity_category = entity_config.get("entity_category")
+        # Entity category support
+        entity_category: str | None = entity_config.get("entity_category")
         if entity_category:
-            category_map = {
+            category_map: dict[str, EntityCategory] = {
                 "config": EntityCategory.CONFIG,
                 "diagnostic": EntityCategory.DIAGNOSTIC,
             }
             self._attr_entity_category = category_map.get(entity_category)
         else:
-            self._attr_entity_category = EntityCategory.DIAGNOSTIC  # 默认为诊断类别
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
-        # 设置设备类型
-        sensor_type = entity_config.get("sensor_type", "motion")
+        # Set device class
+        sensor_type: str = entity_config.get("sensor_type", "motion")
         self._attr_device_class = BINARY_SENSOR_TYPE_MAP.get(
             sensor_type, BinarySensorDeviceClass.MOTION
         )
 
-        # 初始状态
-        self._attr_is_on = False
+        # Initial state
+        self._attr_is_on: bool = False
+
+    def get_default_state(self) -> BinarySensorState:
+        """Return the default state for this binary sensor entity."""
+        return BinarySensorState(is_on=False)
+
+    def apply_state(self, state: BinarySensorState) -> None:
+        """Apply loaded state to entity attributes."""
+        self._attr_is_on = state.get("is_on", False)
+        _LOGGER.info("Loaded state for binary sensor '%s': is_on=%s", self._attr_name, self._attr_is_on)
+
+    def get_current_state(self) -> BinarySensorState:
+        """Get current state for persistence."""
+        return BinarySensorState(is_on=self._attr_is_on)
 
     async def async_update(self) -> None:
         """Update the binary sensor state."""
-        # 随机生成状态变化
+        # Randomly generate state changes
         self._attr_is_on = random.choice([True, False])
+        await self.async_save_state()

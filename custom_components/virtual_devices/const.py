@@ -1,10 +1,15 @@
 """Constants for the Virtual Devices Multi integration."""
 
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any, Callable
+
 from homeassistant.const import EntityCategory
 
 DOMAIN = "virtual_devices"
-MANUFACTURER = "Yunuo Intelligence"
-MODEL = "Virtual Device Multi-Entity"
+MANUFACTURER = "ha-china"
+MODEL = "Virtual Device"
 
 # 配置键名
 CONF_DEVICE_NAME = "device_name"
@@ -34,6 +39,25 @@ DEVICE_TYPE_VALVE = "valve"
 DEVICE_TYPE_WATER_HEATER = "water_heater"
 DEVICE_TYPE_HUMIDIFIER = "humidifier"
 DEVICE_TYPE_AIR_PURIFIER = "air_purifier"
+
+
+@dataclass
+class DeviceTypeInfo:
+    """Information about a device type.
+
+    Attributes:
+        key: The unique identifier for the device type (e.g., "light", "switch")
+        display_name_key: Translation key for the display name
+        icon: Material Design Icon identifier (e.g., "mdi:lightbulb")
+        default_config: Default configuration dictionary for this device type
+        schema_builder: Optional callable that returns device-specific schema fields
+    """
+    key: str
+    display_name_key: str
+    icon: str
+    default_config: dict[str, Any] = field(default_factory=dict)
+    schema_builder: Callable[[], dict[str, Any]] | None = None
+
 
 # 支持的设备类型 - 使用常量键值，翻译由翻译文件处理
 DEVICE_TYPES = {
@@ -410,3 +434,249 @@ TEMPLATE_ENABLED_DEVICE_TYPES = {
     DEVICE_TYPE_HUMIDIFIER,
     DEVICE_TYPE_AIR_PURIFIER,
 }
+
+# =============================================================================
+# Device Type Registry - Centralized device type definitions
+# =============================================================================
+
+DEVICE_TYPE_REGISTRY: dict[str, DeviceTypeInfo] = {
+    DEVICE_TYPE_LIGHT: DeviceTypeInfo(
+        key=DEVICE_TYPE_LIGHT,
+        display_name_key="device_type.light",
+        icon="mdi:lightbulb",
+        default_config={
+            "brightness": True,
+            "color_temp": False,
+            "rgb": False,
+            "effect": False,
+        },
+    ),
+    DEVICE_TYPE_SWITCH: DeviceTypeInfo(
+        key=DEVICE_TYPE_SWITCH,
+        display_name_key="device_type.switch",
+        icon="mdi:electric-switch",
+        default_config={},
+    ),
+    DEVICE_TYPE_CLIMATE: DeviceTypeInfo(
+        key=DEVICE_TYPE_CLIMATE,
+        display_name_key="device_type.climate",
+        icon="mdi:air-conditioner",
+        default_config={
+            "min_temp": 16,
+            "max_temp": 30,
+            "enable_humidity_sensor": True,
+        },
+    ),
+    DEVICE_TYPE_COVER: DeviceTypeInfo(
+        key=DEVICE_TYPE_COVER,
+        display_name_key="device_type.cover",
+        icon="mdi:curtains",
+        default_config={
+            "cover_type": "curtain",
+            "travel_time": 15,
+        },
+    ),
+    DEVICE_TYPE_FAN: DeviceTypeInfo(
+        key=DEVICE_TYPE_FAN,
+        display_name_key="device_type.fan",
+        icon="mdi:fan",
+        default_config={},
+    ),
+    DEVICE_TYPE_SENSOR: DeviceTypeInfo(
+        key=DEVICE_TYPE_SENSOR,
+        display_name_key="device_type.sensor",
+        icon="mdi:thermometer",
+        default_config={
+            "sensor_type": "temperature",
+        },
+    ),
+    DEVICE_TYPE_BINARY_SENSOR: DeviceTypeInfo(
+        key=DEVICE_TYPE_BINARY_SENSOR,
+        display_name_key="device_type.binary_sensor",
+        icon="mdi:motion-sensor",
+        default_config={
+            "sensor_type": "motion",
+        },
+    ),
+    DEVICE_TYPE_BUTTON: DeviceTypeInfo(
+        key=DEVICE_TYPE_BUTTON,
+        display_name_key="device_type.button",
+        icon="mdi:gesture-tap-button",
+        default_config={
+            "button_type": "generic",
+        },
+    ),
+    DEVICE_TYPE_SCENE: DeviceTypeInfo(
+        key=DEVICE_TYPE_SCENE,
+        display_name_key="device_type.scene",
+        icon="mdi:palette",
+        default_config={},
+    ),
+    DEVICE_TYPE_MEDIA_PLAYER: DeviceTypeInfo(
+        key=DEVICE_TYPE_MEDIA_PLAYER,
+        display_name_key="device_type.media_player",
+        icon="mdi:speaker",
+        default_config={
+            "media_player_type": "speaker",
+            "media_source_list": ["local_music", "online_radio"],
+            "supports_seek": False,
+        },
+    ),
+    DEVICE_TYPE_VACUUM: DeviceTypeInfo(
+        key=DEVICE_TYPE_VACUUM,
+        display_name_key="device_type.vacuum",
+        icon="mdi:robot-vacuum",
+        default_config={
+            "vacuum_status": "docked",
+            "fan_speed": "medium",
+            "battery_level": 100,
+        },
+    ),
+    DEVICE_TYPE_WEATHER: DeviceTypeInfo(
+        key=DEVICE_TYPE_WEATHER,
+        display_name_key="device_type.weather",
+        icon="mdi:weather-partly-cloudy",
+        default_config={
+            "weather_station_type": "home",
+            "temperature_unit": "celsius",
+            "wind_speed_unit": "kmh",
+            "pressure_unit": "hPa",
+            "visibility_unit": "km",
+        },
+    ),
+    DEVICE_TYPE_CAMERA: DeviceTypeInfo(
+        key=DEVICE_TYPE_CAMERA,
+        display_name_key="device_type.camera",
+        icon="mdi:cctv",
+        default_config={
+            "camera_type": "indoor",
+            "recording": False,
+            "motion_detection": True,
+            "night_vision": True,
+        },
+    ),
+    DEVICE_TYPE_LOCK: DeviceTypeInfo(
+        key=DEVICE_TYPE_LOCK,
+        display_name_key="device_type.lock",
+        icon="mdi:lock",
+        default_config={
+            "lock_type": "smart_lock",
+            "access_code": "1234",
+            "auto_lock": True,
+            "auto_lock_delay": 30,
+        },
+    ),
+    DEVICE_TYPE_VALVE: DeviceTypeInfo(
+        key=DEVICE_TYPE_VALVE,
+        display_name_key="device_type.valve",
+        icon="mdi:valve",
+        default_config={
+            "valve_type": "water_valve",
+            "valve_size": 25,
+            "reports_position": True,
+            "travel_time": 10,
+        },
+    ),
+    DEVICE_TYPE_WATER_HEATER: DeviceTypeInfo(
+        key=DEVICE_TYPE_WATER_HEATER,
+        display_name_key="device_type.water_heater",
+        icon="mdi:water-boiler",
+        default_config={
+            "heater_type": "electric",
+            "current_temperature": 25,
+            "target_temperature": 60,
+            "tank_capacity": 80,
+            "efficiency": 0.9,
+        },
+    ),
+    DEVICE_TYPE_HUMIDIFIER: DeviceTypeInfo(
+        key=DEVICE_TYPE_HUMIDIFIER,
+        display_name_key="device_type.humidifier",
+        icon="mdi:air-humidifier",
+        default_config={
+            "humidifier_type": "ultrasonic",
+            "current_humidity": 45,
+            "target_humidity": 60,
+            "water_level": 80,
+            "tank_capacity": 4.0,
+        },
+    ),
+    DEVICE_TYPE_AIR_PURIFIER: DeviceTypeInfo(
+        key=DEVICE_TYPE_AIR_PURIFIER,
+        display_name_key="device_type.air_purifier",
+        icon="mdi:air-purifier",
+        default_config={
+            "purifier_type": "hepa",
+            "room_volume": 50,
+            "pm25": 35,
+            "pm10": 50,
+            "filter_life": 80,
+        },
+    ),
+}
+
+
+def get_device_type_info(device_type: str) -> DeviceTypeInfo | None:
+    """Get device type information from registry.
+
+    Args:
+        device_type: The device type key (e.g., "light", "switch")
+
+    Returns:
+        DeviceTypeInfo object if found, None otherwise
+    """
+    return DEVICE_TYPE_REGISTRY.get(device_type)
+
+
+def get_all_device_types() -> list[str]:
+    """Get list of all supported device types.
+
+    Returns:
+        List of device type keys
+    """
+    return list(DEVICE_TYPE_REGISTRY.keys())
+
+
+def get_device_type_display_name(device_type: str) -> str:
+    """Get the display name for a device type.
+
+    This is a fallback function that returns a formatted device type name.
+    For translated names, use the translation system with display_name_key.
+
+    Args:
+        device_type: The device type key
+
+    Returns:
+        Formatted display name (e.g., "Light", "Binary Sensor")
+    """
+    info = DEVICE_TYPE_REGISTRY.get(device_type)
+    if info:
+        # Return a formatted version of the key as fallback
+        return device_type.replace("_", " ").title()
+    return device_type
+
+
+def get_device_icon(device_type: str) -> str:
+    """Get the icon for a device type.
+
+    Args:
+        device_type: The device type key
+
+    Returns:
+        Material Design Icon identifier (e.g., "mdi:lightbulb")
+    """
+    info = DEVICE_TYPE_REGISTRY.get(device_type)
+    return info.icon if info else "mdi:help-circle"
+
+
+def get_default_entity_config(device_type: str) -> dict[str, Any]:
+    """Get default entity configuration for a device type.
+
+    Args:
+        device_type: The device type key
+
+    Returns:
+        Copy of the default configuration dictionary
+    """
+    info = DEVICE_TYPE_REGISTRY.get(device_type)
+    return info.default_config.copy() if info else {}

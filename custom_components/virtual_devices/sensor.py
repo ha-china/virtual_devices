@@ -21,22 +21,21 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.storage import Store
 
-STORAGE_VERSION = 1
-
+from .base_entity import BaseVirtualEntity
 from .const import (
     CONF_ENTITIES,
-    CONF_ENTITY_NAME,
     DEVICE_TYPE_SENSOR,
     DOMAIN,
 )
+from .types import SensorEntityConfig, SensorState
 
 _LOGGER = logging.getLogger(__name__)
 
-# 传感器类型配置
-SENSOR_TYPE_CONFIG = {
+# Sensor type configuration mapping
+SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
     "temperature": {
         "device_class": SensorDeviceClass.TEMPERATURE,
         "unit": UnitOfTemperature.CELSIUS,
@@ -109,111 +108,94 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up virtual sensor entities."""
-    device_type = config_entry.data.get("device_type")
+    device_type: str | None = config_entry.data.get("device_type")
 
-    # 只有传感器类型的设备才设置传感器实体
+    # Only set up sensor entities for sensor device type
     if device_type != DEVICE_TYPE_SENSOR:
         return
 
-    device_info = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
-    entities = []
-    entities_config = config_entry.data.get(CONF_ENTITIES, [])
+    device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
+    entities: list[VirtualSensor] = []
+    entities_config: list[SensorEntityConfig] = config_entry.data.get(CONF_ENTITIES, [])
 
     for idx, entity_config in enumerate(entities_config):
-        entity = VirtualSensor(
-            hass,
-            config_entry.entry_id,
-            entity_config,
-            idx,
-            device_info,
-        )
-        entities.append(entity)
+        try:
+            entity = VirtualSensor(
+                hass,
+                config_entry.entry_id,
+                entity_config,
+                idx,
+                device_info,
+            )
+            entities.append(entity)
+        except Exception as e:
+            _LOGGER.error("Failed to create VirtualSensor %d: %s", idx, e)
 
     async_add_entities(entities)
 
 
-class VirtualSensor(SensorEntity):
+class VirtualSensor(BaseVirtualEntity[SensorEntityConfig, SensorState], SensorEntity):
     """Representation of a virtual sensor."""
 
     def __init__(
         self,
         hass: HomeAssistant,
         config_entry_id: str,
-        entity_config: dict[str, Any],
+        entity_config: SensorEntityConfig,
         index: int,
-        device_info: dict[str, Any],
+        device_info: DeviceInfo,
     ) -> None:
         """Initialize the virtual sensor."""
-        self._config_entry_id = config_entry_id
-        self._entity_config = entity_config
-        self._index = index
-        self._device_info = device_info
-        self._hass = hass
+        # Set sensor type BEFORE super().__init__() because get_default_state() needs it
+        self._sensor_type: str = entity_config.get("sensor_type", "temperature")
 
-        entity_name = entity_config.get(CONF_ENTITY_NAME, f"sensor_{index + 1}")
-        self._attr_name = entity_name
-        self._attr_unique_id = f"{config_entry_id}_sensor_{index}"
-        self._attr_device_info = device_info
+        super().__init__(hass, config_entry_id, entity_config, index, device_info, "sensor")
 
-        # 存储实体状态
-        self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, f"virtual_devices_sensor_{config_entry_id}_{index}")
+        # Get sensor type configuration
+        type_config: dict[str, Any] = SENSOR_TYPE_CONFIG.get(self._sensor_type, {})
 
-        # 传感器特定配置
-        sensor_type = entity_config.get("sensor_type", "temperature")
-        self._sensor_type = sensor_type
-
-        # 获取传感器类型配置
-        type_config = SENSOR_TYPE_CONFIG.get(sensor_type, {})
-
-        # 设置传感器属性
+        # Set sensor attributes from type configuration
         self._attr_device_class = type_config.get("device_class")
         self._attr_native_unit_of_measurement = type_config.get("unit")
         self._attr_state_class = type_config.get("state_class")
         self._attr_icon = type_config.get("icon", "mdi:eye")
 
-        # 传感器状态 - 默认值，稍后从存储恢复
-        self._attr_native_value = self._generate_initial_value(type_config)
+        # Simulation settings
+        self._simulation_enabled: bool = entity_config.get("enable_simulation", True)
+        self._update_frequency: int = entity_config.get("update_frequency", 30)
 
-        # 模拟设置
-        self._simulation_enabled = entity_config.get("enable_simulation", True)
-        self._update_frequency = entity_config.get("update_frequency", 30)  # 秒
+        # Initialize native value - will be populated by async_load_state
+        self._native_value: float | int | str | None = self._generate_initial_value(type_config)
 
-        # 设置默认暴露给语音助手
-        self._attr_entity_registry_enabled_default = True
+    def get_default_state(self) -> SensorState:
+        """Return the default state for this sensor entity."""
+        type_config: dict[str, Any] = SENSOR_TYPE_CONFIG.get(self._sensor_type, {})
+        return {
+            "native_value": self._generate_initial_value(type_config),
+        }
+
+    def apply_state(self, state: SensorState) -> None:
+        """Apply loaded state to entity attributes."""
+        type_config: dict[str, Any] = SENSOR_TYPE_CONFIG.get(self._sensor_type, {})
+        self._native_value = state.get("native_value", self._generate_initial_value(type_config))
+        _LOGGER.debug(
+            "Applied state for sensor '%s': native_value=%s",
+            self._attr_name, self._native_value,
+        )
+
+    def get_current_state(self) -> SensorState:
+        """Get current state for persistence."""
+        return {
+            "native_value": self._native_value,
+        }
 
     @property
-    def should_expose(self) -> bool:
-        """Return if this entity should be exposed to voice assistants."""
-        return True
+    def native_value(self) -> float | int | str | None:
+        """Return the native value of the sensor."""
+        return self._native_value
 
-    async def async_load_state(self) -> None:
-        """Load saved state from storage."""
-        try:
-            data = await self._store.async_load()
-            if data:
-                self._attr_native_value = data.get("native_value", self._generate_initial_value(SENSOR_TYPE_CONFIG.get(self._sensor_type, {})))
-                _LOGGER.info(f"Sensor '{self._attr_name}' state loaded from storage: {self._attr_native_value}")
-        except Exception as ex:
-            _LOGGER.error(f"Failed to load state for sensor '{self._attr_name}': {ex}")
-
-    async def async_save_state(self) -> None:
-        """Save current state to storage."""
-        try:
-            data = {
-                "native_value": self._attr_native_value,
-            }
-            await self._store.async_save(data)
-        except Exception as ex:
-            _LOGGER.error(f"Failed to save state for sensor '{self._attr_name}': {ex}")
-
-    async def async_added_to_hass(self) -> None:
-        """Call when entity is added to hass."""
-        await super().async_added_to_hass()
-        # 加载保存的状态
-        await self.async_load_state()
-
-    def _generate_initial_value(self, type_config: dict[str, Any]) -> Any:
-        """根据传感器类型生成初始值。"""
+    def _generate_initial_value(self, type_config: dict[str, Any]) -> float | int:
+        """Generate initial value based on sensor type."""
         if self._sensor_type == "temperature":
             return round(random.uniform(18, 25), 1)
         elif self._sensor_type == "humidity":
@@ -222,8 +204,8 @@ class VirtualSensor(SensorEntity):
             return round(random.uniform(980, 1020), 1)
         elif self._sensor_type == "illuminance":
             return round(random.uniform(100, 1000), 1)
-        elif self._sensor_type in ["power", "voltage", "current"]:
-            range_vals = type_config.get("range", (0, 100))
+        elif self._sensor_type in ("power", "voltage", "current"):
+            range_vals: tuple[int, int] = type_config.get("range", (0, 100))
             return round(random.uniform(range_vals[0], range_vals[1]), 1)
         elif self._sensor_type == "battery":
             return random.randint(20, 100)
@@ -232,27 +214,29 @@ class VirtualSensor(SensorEntity):
 
     async def async_update(self) -> None:
         """Update sensor value if simulation is enabled."""
-        if self._simulation_enabled:
-            # 模拟传感器数值变化
-            if self._sensor_type == "temperature":
-                self._attr_native_value = round(random.uniform(18, 28), 1)
-            elif self._sensor_type == "humidity":
-                self._attr_native_value = round(random.uniform(30, 80), 1)
-            elif self._sensor_type == "pressure":
-                self._attr_native_value = round(random.uniform(980, 1030), 1)
-            elif self._sensor_type == "battery":
-                # 电池电量变化较慢
-                current = self._attr_native_value if isinstance(self._attr_native_value, (int, float)) else 50
-                change = random.uniform(-5, 5)
-                new_value = max(0, min(100, current + change))
-                self._attr_native_value = round(new_value)
-            elif self._sensor_type == "illuminance":
-                self._attr_native_value = round(random.uniform(0, 5000), 1)
-            else:
-                # 其他传感器类型
-                type_config = SENSOR_TYPE_CONFIG.get(self._sensor_type, {})
-                range_vals = type_config.get("range", (0, 100))
-                self._attr_native_value = round(random.uniform(range_vals[0], range_vals[1]), 1)
+        if not self._simulation_enabled:
+            return
 
-            # 保存状态到存储
-            await self.async_save_state()
+        # Simulate sensor value changes based on sensor type
+        if self._sensor_type == "temperature":
+            self._native_value = round(random.uniform(18, 28), 1)
+        elif self._sensor_type == "humidity":
+            self._native_value = round(random.uniform(30, 80), 1)
+        elif self._sensor_type == "pressure":
+            self._native_value = round(random.uniform(980, 1030), 1)
+        elif self._sensor_type == "battery":
+            # Battery level changes slowly
+            current: float | int = self._native_value if isinstance(self._native_value, (int, float)) else 50
+            change: float = random.uniform(-5, 5)
+            new_value: float = max(0, min(100, current + change))
+            self._native_value = round(new_value)
+        elif self._sensor_type == "illuminance":
+            self._native_value = round(random.uniform(0, 5000), 1)
+        else:
+            # Other sensor types
+            type_config: dict[str, Any] = SENSOR_TYPE_CONFIG.get(self._sensor_type, {})
+            range_vals: tuple[int, int] = type_config.get("range", (0, 100))
+            self._native_value = round(random.uniform(range_vals[0], range_vals[1]), 1)
+
+        # Save state to storage
+        await self.async_save_state()

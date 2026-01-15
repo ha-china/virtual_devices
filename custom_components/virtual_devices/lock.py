@@ -9,21 +9,19 @@ from typing import Any
 from homeassistant.components.lock import LockEntity, LockState
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.storage import Store
 
-STORAGE_VERSION = 1
-
+from .base_entity import BaseVirtualEntity
 from .const import (
     CONF_ENTITIES,
-    CONF_ENTITY_NAME,
     CONF_LOCK_BATTERY_LEVEL,
     CONF_LOCK_STATE,
     DEVICE_TYPE_LOCK,
     DOMAIN,
     LOCK_TYPES,
-    TEMPLATE_ENABLED_DEVICE_TYPES,
 )
+from .types import LockEntityConfig, LockState as LockStateType
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,15 +32,14 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up virtual lock entities."""
-    device_type = config_entry.data.get("device_type")
+    device_type: str | None = config_entry.data.get("device_type")
 
-    # 只有锁类型的设备才设置锁实体
     if device_type != DEVICE_TYPE_LOCK:
         return
 
-    device_info = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
-    entities = []
-    entities_config = config_entry.data.get(CONF_ENTITIES, [])
+    device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
+    entities: list[VirtualLock] = []
+    entities_config: list[LockEntityConfig] = config_entry.data.get(CONF_ENTITIES, [])
 
     for idx, entity_config in enumerate(entities_config):
         entity = VirtualLock(
@@ -57,41 +54,26 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class VirtualLock(LockEntity):
+class VirtualLock(BaseVirtualEntity[LockEntityConfig, LockStateType], LockEntity):
     """Representation of a virtual lock."""
 
     def __init__(
         self,
         hass: HomeAssistant,
         config_entry_id: str,
-        entity_config: dict[str, Any],
+        entity_config: LockEntityConfig,
         index: int,
-        device_info: dict[str, Any],
+        device_info: DeviceInfo,
     ) -> None:
         """Initialize the virtual lock."""
-        self._config_entry_id = config_entry_id
-        self._entity_config = entity_config
-        self._index = index
-        self._device_info = device_info
-        self._hass = hass
+        super().__init__(hass, config_entry_id, entity_config, index, device_info, "lock")
 
-        entity_name = entity_config.get(CONF_ENTITY_NAME, f"Lock {index + 1}")
-        self._attr_name = entity_name
-        self._attr_unique_id = f"{config_entry_id}_lock_{index}"
-        self._attr_device_info = device_info
-
-        # Template support
-        self._templates = entity_config.get("templates", {})
-
-        # 存储实体状态
-        self._store = Store[dict[str, Any]](hass, STORAGE_VERSION, f"virtual_devices_lock_{config_entry_id}_{index}")
-
-        # 锁类型
-        lock_type = entity_config.get("lock_type", "smart_lock")
+        # Lock type
+        lock_type: str = entity_config.get("lock_type", "smart_lock")
         self._lock_type = lock_type
 
-        # 根据类型设置图标
-        icon_map = {
+        # Set icon based on type
+        icon_map: dict[str, str] = {
             "deadbolt": "mdi:lock",
             "door_lock": "mdi:lock-outline",
             "padlock": "mdi:lock-open-variant",
@@ -99,56 +81,41 @@ class VirtualLock(LockEntity):
         }
         self._attr_icon = icon_map.get(lock_type, "mdi:lock")
 
-        # 初始化状态
-        initial_state = entity_config.get(CONF_LOCK_STATE, "locked")
+        # Initialize state
+        initial_state: str = entity_config.get(CONF_LOCK_STATE, "locked")
         self._attr_state = LockState.LOCKED if initial_state == "locked" else LockState.UNLOCKED
 
-        # 电池电量
-        self._attr_battery_level = entity_config.get(CONF_LOCK_BATTERY_LEVEL, random.randint(20, 100))
+        # Battery level
+        self._attr_battery_level: int = entity_config.get(CONF_LOCK_BATTERY_LEVEL, random.randint(20, 100))
 
-        # 锁的其他属性
-        self._is_jammed = False
-        self._last_access = None
-        self._access_code = entity_config.get("access_code", "1234")
-        self._auto_lock_enabled = entity_config.get("auto_lock", True)
-        self._auto_lock_delay = entity_config.get("auto_lock_delay", 30)  # 秒
-        self._jamming_enabled = entity_config.get("enable_jamming", False)  # 默认禁用随机卡滞
+        # Lock attributes
+        self._is_jammed: bool = False
+        self._last_access: datetime | None = None
+        self._access_code: str = entity_config.get("access_code", "1234")
+        self._auto_lock_enabled: bool = entity_config.get("auto_lock", True)
+        self._auto_lock_delay: int = entity_config.get("auto_lock_delay", 30)
+        self._jamming_enabled: bool = entity_config.get("enable_jamming", False)
 
-        # 设置默认暴露给语音助手
-        self._attr_entity_registry_enabled_default = True
+    def get_default_state(self) -> LockStateType:
+        """Return the default state for this lock entity."""
+        return LockStateType(
+            state="locked",
+            battery_level=100,
+        )
 
-    @property
-    def should_expose(self) -> bool:
-        """Return if this entity should be exposed to voice assistants."""
-        return True
+    def apply_state(self, state: LockStateType) -> None:
+        """Apply loaded state to entity attributes."""
+        state_str: str = state.get("state", "locked")
+        self._attr_state = LockState.LOCKED if state_str == "locked" else LockState.UNLOCKED
+        self._attr_battery_level = state.get("battery_level", 100)
+        _LOGGER.info("Lock '%s' state loaded from storage", self._attr_name)
 
-    async def async_load_state(self) -> None:
-        """Load saved state from storage."""
-        try:
-            data = await self._store.async_load()
-            if data:
-                state_str = data.get("state", "locked")
-                self._attr_state = LockState.LOCKED if state_str == "locked" else LockState.UNLOCKED
-                self._attr_battery_level = data.get("battery_level", 100)
-                _LOGGER.info(f"Lock '{self._attr_name}' state loaded from storage")
-        except Exception as ex:
-            _LOGGER.error(f"Failed to load state for lock '{self._attr_name}': {ex}")
-
-    async def async_save_state(self) -> None:
-        """Save current state to storage."""
-        try:
-            data = {
-                "state": "locked" if self._attr_state == LockState.LOCKED else "unlocked",
-                "battery_level": self._attr_battery_level,
-            }
-            await self._store.async_save(data)
-        except Exception as ex:
-            _LOGGER.error(f"Failed to save state for lock '{self._attr_name}': {ex}")
-
-    async def async_added_to_hass(self) -> None:
-        """Call when entity is added to hass."""
-        await super().async_added_to_hass()
-        await self.async_load_state()
+    def get_current_state(self) -> LockStateType:
+        """Get current state for persistence."""
+        return LockStateType(
+            state="locked" if self._attr_state == LockState.LOCKED else "unlocked",
+            battery_level=self._attr_battery_level,
+        )
 
     @property
     def is_locked(self) -> bool:
@@ -168,29 +135,19 @@ class VirtualLock(LockEntity):
     async def async_lock(self, **kwargs: Any) -> None:
         """Lock the lock."""
         if self._is_jammed:
-            _LOGGER.warning(f"Virtual lock '{self._attr_name}' is jammed, cannot lock")
+            _LOGGER.warning("Virtual lock '%s' is jammed, cannot lock", self._attr_name)
             return
 
         self._attr_state = LockState.LOCKED
         self._last_access = datetime.now()
         await self.async_save_state()
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual lock '{self._attr_name}' locked")
+        _LOGGER.debug("Virtual lock '%s' locked", self._attr_name)
 
-        # 触发模板更新事件
-        if self._templates:
-            self.hass.bus.async_fire(
-                f"{DOMAIN}_lock_template_update",
-                {
-                    "entity_id": self.entity_id,
-                    "device_id": self._config_entry_id,
-                    "action": "lock",
-                    "state": "locked",
-                },
-            )
+        self.fire_template_event("lock", state="locked")
 
-        # 触发锁状态变化事件
-        self.hass.bus.async_fire(
+        # Fire lock state changed event
+        self._hass.bus.async_fire(
             f"{DOMAIN}_lock_state_changed",
             {
                 "entity_id": self.entity_id,
@@ -203,29 +160,19 @@ class VirtualLock(LockEntity):
     async def async_unlock(self, **kwargs: Any) -> None:
         """Unlock the lock."""
         if self._is_jammed:
-            _LOGGER.warning(f"Virtual lock '{self._attr_name}' is jammed, cannot unlock")
+            _LOGGER.warning("Virtual lock '%s' is jammed, cannot unlock", self._attr_name)
             return
 
         self._attr_state = LockState.UNLOCKED
         self._last_access = datetime.now()
         await self.async_save_state()
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual lock '{self._attr_name}' unlocked")
+        _LOGGER.debug("Virtual lock '%s' unlocked", self._attr_name)
 
-        # 触发模板更新事件
-        if self._templates:
-            self.hass.bus.async_fire(
-                f"{DOMAIN}_lock_template_update",
-                {
-                    "entity_id": self.entity_id,
-                    "device_id": self._config_entry_id,
-                    "action": "unlock",
-                    "state": "unlocked",
-                },
-            )
+        self.fire_template_event("unlock", state="unlocked")
 
-        # 触发锁状态变化事件
-        self.hass.bus.async_fire(
+        # Fire lock state changed event
+        self._hass.bus.async_fire(
             f"{DOMAIN}_lock_state_changed",
             {
                 "entity_id": self.entity_id,
@@ -235,9 +182,9 @@ class VirtualLock(LockEntity):
             },
         )
 
-        # 自动锁定（如果启用）
+        # Auto-lock if enabled
         if self._auto_lock_enabled:
-            self.hass.loop.call_later(self._auto_lock_delay, self._auto_lock_callback)
+            self._hass.loop.call_later(self._auto_lock_delay, self._auto_lock_callback)
 
     async def async_open(self, **kwargs: Any) -> None:
         """Open the lock (unlocked)."""
@@ -245,7 +192,7 @@ class VirtualLock(LockEntity):
 
     async def async_update(self) -> None:
         """Update lock state."""
-        # 模拟电池消耗
+        # Simulate battery consumption
         if self._attr_state == LockState.UNLOCKED:
             self._attr_battery_level = max(0, self._attr_battery_level - random.uniform(0.01, 0.05))
         else:
@@ -253,28 +200,28 @@ class VirtualLock(LockEntity):
 
         await self.async_save_state()
 
-        # 模拟随机卡滞（可配置）
-        if self._jamming_enabled and random.random() < 0.01:  # 1% 概率卡滞
+        # Simulate random jamming (configurable)
+        if self._jamming_enabled and random.random() < 0.01:
             self._is_jammed = True
             self.async_write_ha_state()
-            _LOGGER.warning(f"Virtual lock '{self._attr_name}' is jammed")
-        elif self._is_jammed and random.random() < 0.1:  # 10% 概率恢复
+            _LOGGER.warning("Virtual lock '%s' is jammed", self._attr_name)
+        elif self._is_jammed and random.random() < 0.1:
             self._is_jammed = False
             self.async_write_ha_state()
-            _LOGGER.info(f"Virtual lock '{self._attr_name}' is no longer jammed")
+            _LOGGER.info("Virtual lock '%s' is no longer jammed", self._attr_name)
 
         self.async_write_ha_state()
 
     def _auto_lock_callback(self) -> None:
         """Callback for auto-lock functionality."""
         if self._attr_state == LockState.UNLOCKED and self._auto_lock_enabled:
-            self.hass.create_task(self.async_lock())
-            _LOGGER.debug(f"Virtual lock '{self._attr_name}' auto-locked")
+            self._hass.create_task(self.async_lock())
+            _LOGGER.debug("Virtual lock '%s' auto-locked", self._attr_name)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
-        attrs = {
+        attrs: dict[str, Any] = {
             "lock_type": LOCK_TYPES.get(self._lock_type, self._lock_type),
             "auto_lock_enabled": self._auto_lock_enabled,
             "auto_lock_delay": self._auto_lock_delay,

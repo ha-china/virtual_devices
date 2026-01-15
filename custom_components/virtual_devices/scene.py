@@ -7,17 +7,24 @@ from typing import Any
 from homeassistant.components.scene import Scene
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .base_entity import BaseVirtualEntity
 from .const import (
     CONF_ENTITIES,
-    CONF_ENTITY_NAME,
     DEVICE_TYPE_SCENE,
     DOMAIN,
-    TEMPLATE_ENABLED_DEVICE_TYPES,
 )
+from .types import SceneEntityConfig, EntityState
 
 _LOGGER = logging.getLogger(__name__)
+
+
+# Scene state is stateless, but we need a TypedDict for the base class
+class SceneState(EntityState):
+    """State structure for scene entities (stateless)."""
+    pass
 
 
 async def async_setup_entry(
@@ -26,18 +33,18 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up virtual scene entities."""
-    device_type = config_entry.data.get("device_type")
+    device_type: str | None = config_entry.data.get("device_type")
 
-    # 只有场景类型的设备才设置场景实体
     if device_type != DEVICE_TYPE_SCENE:
         return
 
-    device_info = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
-    entities = []
-    entities_config = config_entry.data.get(CONF_ENTITIES, [])
+    device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
+    entities: list[VirtualScene] = []
+    entities_config: list[SceneEntityConfig] = config_entry.data.get(CONF_ENTITIES, [])
 
     for idx, entity_config in enumerate(entities_config):
         entity = VirtualScene(
+            hass,
             config_entry.entry_id,
             entity_config,
             idx,
@@ -48,35 +55,41 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class VirtualScene(Scene):
+class VirtualScene(BaseVirtualEntity[SceneEntityConfig, SceneState], Scene):
     """Representation of a virtual scene."""
 
     def __init__(
         self,
+        hass: HomeAssistant,
         config_entry_id: str,
-        entity_config: dict[str, Any],
+        entity_config: SceneEntityConfig,
         index: int,
-        device_info: dict[str, Any],
+        device_info: DeviceInfo,
     ) -> None:
         """Initialize the virtual scene."""
-        self._config_entry_id = config_entry_id
-        self._entity_config = entity_config
-        self._index = index
-        self._device_info = device_info
+        super().__init__(hass, config_entry_id, entity_config, index, device_info, "scene")
 
-        entity_name = entity_config.get(CONF_ENTITY_NAME, f"scene_{index + 1}")
-        self._attr_name = entity_name
-        self._attr_unique_id = f"{config_entry_id}_scene_{index}"
-        self._attr_device_info = device_info
+    def get_default_state(self) -> SceneState:
+        """Return the default state for this scene entity."""
+        # Scenes are stateless
+        return SceneState()
 
-        # Template support
-        self._templates = entity_config.get("templates", {})
+    def apply_state(self, state: SceneState) -> None:
+        """Apply loaded state to entity attributes."""
+        # Scenes are stateless, nothing to apply
+        pass
+
+    def get_current_state(self) -> SceneState:
+        """Get current state for persistence."""
+        # Scenes are stateless
+        return SceneState()
 
     async def async_activate(self, **kwargs: Any) -> None:
         """Activate the scene."""
-        _LOGGER.info(f"Virtual scene '{self._attr_name}' activated")
-        # 虚拟场景被激活，触发事件供自动化使用
-        self.hass.bus.async_fire(
+        _LOGGER.info("Virtual scene '%s' activated", self._attr_name)
+
+        # Fire scene activated event for automations
+        self._hass.bus.async_fire(
             f"{DOMAIN}_scene_activated",
             {
                 "entity_id": self.entity_id,
@@ -84,3 +97,5 @@ class VirtualScene(Scene):
                 "device_id": self._config_entry_id,
             },
         )
+
+        self.fire_template_event("activate")
