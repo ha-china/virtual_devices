@@ -8,7 +8,7 @@ from typing import Any, Callable
 from homeassistant.const import EntityCategory
 
 DOMAIN = "virtual_devices"
-MANUFACTURER = "ha-china"
+MANUFACTURER = "Home Assistant China (unofficial)"
 MODEL = "Virtual Device"
 
 # 配置键名
