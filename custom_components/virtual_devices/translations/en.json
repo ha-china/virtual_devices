@@ -114,25 +114,5 @@
     "abort": {
       "invalid_entity_index": "Invalid entity index"
     }
-  },
-  "device_type": {
-    "switch": "Switch",
-    "light": "Light",
-    "climate": "Climate",
-    "cover": "Cover",
-    "fan": "Fan",
-    "sensor": "Sensor",
-    "binary_sensor": "Binary Sensor",
-    "button": "Button",
-    "scene": "Scene",
-    "media_player": "Media Player",
-    "vacuum": "Vacuum",
-    "weather": "Weather",
-    "camera": "Camera",
-    "lock": "Lock",
-    "valve": "Valve",
-    "water_heater": "Water Heater",
-    "humidifier": "Humidifier",
-    "air_purifier": "Air Purifier"
   }
 }

@@ -114,25 +114,5 @@
     "abort": {
       "invalid_entity_index": "无效的实体索引"
     }
-  },
-  "device_type": {
-    "switch": "开关",
-    "light": "灯光",
-    "climate": "空调",
-    "cover": "窗帘",
-    "fan": "风扇",
-    "sensor": "传感器",
-    "binary_sensor": "二进制传感器",
-    "button": "按钮",
-    "scene": "场景",
-    "media_player": "媒体播放器",
-    "vacuum": "扫地机器人",
-    "weather": "气象站",
-    "camera": "摄像头",
-    "lock": "智能门锁",
-    "valve": "水阀",
-    "water_heater": "热水器",
-    "humidifier": "加湿器",
-    "air_purifier": "空气净化器"
   }
 }
