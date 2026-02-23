@@ -6,19 +6,20 @@ import random
 from datetime import datetime
 from typing import Any
 
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.components.vacuum import (
     StateVacuumEntity,
     VacuumEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.const import PERCENTAGE
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .base_entity import BaseVirtualEntity
 from .const import (
     CONF_ENTITIES,
-    CONF_VACUUM_BATTERY_LEVEL,
     CONF_VACUUM_FAN_SPEED,
     CONF_VACUUM_STATUS,
     DEVICE_TYPE_VACUUM,
@@ -53,18 +54,29 @@ async def async_setup_entry(
         return
 
     device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
-    entities: list[VirtualVacuum] = []
+    entities: list[StateVacuumEntity | SensorEntity] = []
     entities_config: list[VacuumEntityConfig] = config_entry.data.get(CONF_ENTITIES, [])
 
     for idx, entity_config in enumerate(entities_config):
-        entity = VirtualVacuum(
+        vacuum = VirtualVacuum(
             hass,
             config_entry.entry_id,
             entity_config,
             idx,
             device_info,
         )
-        entities.append(entity)
+        entities.append(vacuum)
+
+        # Create linked battery sensor
+        battery_sensor = VirtualVacuumBatterySensor(
+            hass,
+            config_entry.entry_id,
+            entity_config,
+            idx,
+            device_info,
+            vacuum,
+        )
+        entities.append(battery_sensor)
 
     async_add_entities(entities)
 
@@ -103,8 +115,8 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
             initial_status = "docked"
         self._attr_state: str = initial_status
 
-        # Battery level
-        self._battery_level: int = entity_config.get(CONF_VACUUM_BATTERY_LEVEL, 100)
+        # Battery level (internal tracking, exposed via battery sensor)
+        self._battery_level: int = 100
 
         # Fan speed
         fan_speeds: list[str] = list(VACUUM_FAN_SPEEDS.keys())
@@ -128,7 +140,6 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
         """Return the default state for this vacuum entity."""
         return VacuumState(
             state="docked",
-            battery_level=100,
             fan_speed="medium",
             cleaned_area=0,
             cleaning_duration=0,
@@ -138,7 +149,6 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
     def apply_state(self, state: VacuumState) -> None:
         """Apply loaded state to entity attributes."""
         self._attr_state = state.get("state", "docked")
-        self._battery_level = state.get("battery_level", 100)
         self._attr_fan_speed = state.get("fan_speed", "medium")
         self._cleaned_area = state.get("cleaned_area", 0)
         self._cleaning_duration = state.get("cleaning_duration", 0)
@@ -149,7 +159,6 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
         """Get current state for persistence."""
         return VacuumState(
             state=self._attr_state,
-            battery_level=self._battery_level,
             fan_speed=self._attr_fan_speed,
             cleaned_area=self._cleaned_area,
             cleaning_duration=self._cleaning_duration,
@@ -168,8 +177,8 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
         return self._attr_state
 
     @property
-    def battery_level(self) -> int | None:
-        """Return the battery level of the vacuum cleaner."""
+    def battery_level_internal(self) -> int:
+        """Return the battery level for internal use by battery sensor."""
         return self._battery_level
 
     @property
@@ -440,3 +449,40 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
         attrs["available_rooms"] = PRESET_ROOMS
 
         return attrs
+
+
+class VirtualVacuumBatterySensor(SensorEntity):
+    """Battery sensor for virtual vacuum."""
+
+    _attr_device_class = SensorDeviceClass.BATTERY
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = "diagnostic"
+    _attr_should_poll = True
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config_entry_id: str,
+        entity_config: VacuumEntityConfig,
+        index: int,
+        device_info: DeviceInfo,
+        vacuum: VirtualVacuum,
+    ) -> None:
+        """Initialize the battery sensor."""
+        self._hass = hass
+        self._vacuum = vacuum
+        entity_name = entity_config.get("entity_name", f"vacuum_{index + 1}")
+        self._attr_name = f"{entity_name} Battery"
+        self._attr_unique_id = f"{config_entry_id}_vacuum_{index}_battery"
+        self._attr_device_info = device_info
+
+    @property
+    def native_value(self) -> int:
+        """Return the battery level."""
+        return self._vacuum.battery_level_internal
+
+    async def async_update(self) -> None:
+        """Update the sensor state."""
+        # Battery level is updated by the vacuum entity, we just read it
+        pass

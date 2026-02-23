@@ -29,7 +29,6 @@
           "supports_seek": "支持快进/快退",
           "vacuum_status": "扫地机器人状态",
           "fan_speed": "风扇速度",
-          "battery_level": "电池电量",
           "camera_type": "摄像头类型",
           "recording": "支持录像",
           "motion_detection": "支持运动检测",

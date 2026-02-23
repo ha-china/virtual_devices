@@ -29,7 +29,6 @@
           "supports_seek": "Supports Seek",
           "vacuum_status": "Vacuum Status",
           "fan_speed": "Fan Speed",
-          "battery_level": "Battery Level",
           "camera_type": "Camera Type",
           "recording": "Supports Recording",
           "motion_detection": "Motion Detection",

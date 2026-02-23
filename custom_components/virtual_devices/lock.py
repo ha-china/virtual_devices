@@ -7,7 +7,9 @@ from datetime import datetime
 from typing import Any
 
 from homeassistant.components.lock import LockEntity, LockState
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import PERCENTAGE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -15,7 +17,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .base_entity import BaseVirtualEntity
 from .const import (
     CONF_ENTITIES,
-    CONF_LOCK_BATTERY_LEVEL,
     CONF_LOCK_STATE,
     DEVICE_TYPE_LOCK,
     DOMAIN,
@@ -38,18 +39,29 @@ async def async_setup_entry(
         return
 
     device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
-    entities: list[VirtualLock] = []
+    entities: list[LockEntity | SensorEntity] = []
     entities_config: list[LockEntityConfig] = config_entry.data.get(CONF_ENTITIES, [])
 
     for idx, entity_config in enumerate(entities_config):
-        entity = VirtualLock(
+        lock = VirtualLock(
             hass,
             config_entry.entry_id,
             entity_config,
             idx,
             device_info,
         )
-        entities.append(entity)
+        entities.append(lock)
+
+        # Create linked battery sensor
+        battery_sensor = VirtualLockBatterySensor(
+            hass,
+            config_entry.entry_id,
+            entity_config,
+            idx,
+            device_info,
+            lock,
+        )
+        entities.append(battery_sensor)
 
     async_add_entities(entities)
 
@@ -85,8 +97,8 @@ class VirtualLock(BaseVirtualEntity[LockEntityConfig, LockStateType], LockEntity
         initial_state: str = entity_config.get(CONF_LOCK_STATE, "locked")
         self._attr_state = LockState.LOCKED if initial_state == "locked" else LockState.UNLOCKED
 
-        # Battery level
-        self._attr_battery_level: int = entity_config.get(CONF_LOCK_BATTERY_LEVEL, random.randint(20, 100))
+        # Battery level (internal tracking, exposed via battery sensor)
+        self._attr_battery_level: int = random.randint(20, 100)
 
         # Lock attributes
         self._is_jammed: bool = False
@@ -100,21 +112,18 @@ class VirtualLock(BaseVirtualEntity[LockEntityConfig, LockStateType], LockEntity
         """Return the default state for this lock entity."""
         return LockStateType(
             state="locked",
-            battery_level=100,
         )
 
     def apply_state(self, state: LockStateType) -> None:
         """Apply loaded state to entity attributes."""
         state_str: str = state.get("state", "locked")
         self._attr_state = LockState.LOCKED if state_str == "locked" else LockState.UNLOCKED
-        self._attr_battery_level = state.get("battery_level", 100)
         _LOGGER.info("Lock '%s' state loaded from storage", self._attr_name)
 
     def get_current_state(self) -> LockStateType:
         """Get current state for persistence."""
         return LockStateType(
             state="locked" if self._attr_state == LockState.LOCKED else "unlocked",
-            battery_level=self._attr_battery_level,
         )
 
     @property
@@ -128,8 +137,8 @@ class VirtualLock(BaseVirtualEntity[LockEntityConfig, LockStateType], LockEntity
         return self._is_jammed
 
     @property
-    def battery_level(self) -> int | None:
-        """Return the battery level of the lock."""
+    def battery_level_internal(self) -> int:
+        """Return the battery level for internal use by battery sensor."""
         return self._attr_battery_level
 
     async def async_lock(self, **kwargs: Any) -> None:
@@ -233,3 +242,40 @@ class VirtualLock(BaseVirtualEntity[LockEntityConfig, LockStateType], LockEntity
             attrs["last_access"] = self._last_access.isoformat()
 
         return attrs
+
+
+class VirtualLockBatterySensor(SensorEntity):
+    """Battery sensor for virtual lock."""
+
+    _attr_device_class = SensorDeviceClass.BATTERY
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = "diagnostic"
+    _attr_should_poll = True
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config_entry_id: str,
+        entity_config: LockEntityConfig,
+        index: int,
+        device_info: DeviceInfo,
+        lock: VirtualLock,
+    ) -> None:
+        """Initialize the battery sensor."""
+        self._hass = hass
+        self._lock = lock
+        entity_name = entity_config.get("entity_name", f"lock_{index + 1}")
+        self._attr_name = f"{entity_name} Battery"
+        self._attr_unique_id = f"{config_entry_id}_lock_{index}_battery"
+        self._attr_device_info = device_info
+
+    @property
+    def native_value(self) -> int:
+        """Return the battery level."""
+        return self._lock.battery_level_internal
+
+    async def async_update(self) -> None:
+        """Update the sensor state."""
+        # Battery level is updated by the lock entity, we just read it
+        pass

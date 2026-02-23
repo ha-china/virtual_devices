@@ -170,7 +170,6 @@ CONF_MEDIA_SUPPORTS_SEEK = "supports_seek"
 
 # 扫地机器人功能
 CONF_VACUUM_STATUS = "vacuum_status"
-CONF_VACUUM_BATTERY_LEVEL = "battery_level"
 CONF_VACUUM_FAN_SPEED = "fan_speed"
 
 # 摄像头功能
@@ -180,7 +179,6 @@ CONF_CAMERA_MOTION_DETECTION = "motion_detection"
 
 # 锁功能
 CONF_LOCK_STATE = "lock_state"
-CONF_LOCK_BATTERY_LEVEL = "battery_level"
 
 # 水阀功能
 CONF_VALVE_POSITION = "valve_position"
@@ -529,7 +527,6 @@ DEVICE_TYPE_REGISTRY: dict[str, DeviceTypeInfo] = {
         default_config={
             "vacuum_status": "docked",
             "fan_speed": "medium",
-            "battery_level": 100,
         },
     ),
     DEVICE_TYPE_WEATHER: DeviceTypeInfo(

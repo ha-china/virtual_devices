@@ -178,14 +178,12 @@ class FanState(EntityState):
 class VacuumEntityConfig(EntityConfigBase):
     """Configuration for vacuum entities."""
     vacuum_status: NotRequired[str]
-    battery_level: NotRequired[int]
     fan_speed: NotRequired[str]
 
 
 class VacuumState(EntityState):
     """State structure for vacuum entities."""
     state: str
-    battery_level: int
     fan_speed: str
     cleaned_area: NotRequired[float]
     cleaning_duration: NotRequired[float]
@@ -200,7 +198,6 @@ class LockEntityConfig(EntityConfigBase):
     """Configuration for lock entities."""
     lock_type: NotRequired[str]
     lock_state: NotRequired[str]
-    battery_level: NotRequired[int]
     access_code: NotRequired[str]
     auto_lock: NotRequired[bool]
     auto_lock_delay: NotRequired[int]
@@ -210,7 +207,6 @@ class LockEntityConfig(EntityConfigBase):
 class LockState(EntityState):
     """State structure for lock entities."""
     state: str
-    battery_level: int
 
 
 # =============================================================================

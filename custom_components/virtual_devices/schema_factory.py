@@ -192,7 +192,6 @@ class SchemaFactory:
             vol.Optional("fan_speed", default="medium"): vol.In(
                 ["quiet", "low", "medium", "high", "max", "turbo"]
             ),
-            vol.Optional("battery_level", default=100): int,
         }
 
     @staticmethod

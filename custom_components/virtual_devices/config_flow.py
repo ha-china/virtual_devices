@@ -234,7 +234,7 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "button": ["button_type"],
             "climate": ["min_temp", "max_temp", "enable_humidity_sensor"],
             "media_player": ["media_player_type", "media_source_list", "supports_seek"],
-            "vacuum": ["vacuum_status", "fan_speed", "battery_level"],
+            "vacuum": ["vacuum_status", "fan_speed"],
             "camera": ["camera_type", "recording", "motion_detection", "night_vision"],
             "lock": ["lock_type", "access_code", "auto_lock", "auto_lock_delay"],
             "valve": ["valve_type", "valve_size", "reports_position", "travel_time"],
