@@ -5,7 +5,7 @@ for improved type safety and IDE support across the integration.
 """
 from __future__ import annotations
 
-from typing import Any, NotRequired, Protocol, TypedDict
+from typing import Any, Literal, NotRequired, Protocol, TypedDict
 
 
 # =============================================================================
@@ -17,6 +17,7 @@ TemplateDict = dict[str, Any]
 RGBColor = tuple[int, int, int]
 ConfigEntryId = str
 EntityIndex = int
+EntityCategoryOption = Literal["config", "diagnostic"]
 
 
 # =============================================================================
@@ -232,7 +233,7 @@ class SensorState(EntityState):
 class BinarySensorEntityConfig(EntityConfigBase):
     """Configuration for binary sensor entities."""
     sensor_type: NotRequired[str]
-    entity_category: NotRequired[str]
+    entity_category: NotRequired[EntityCategoryOption]
 
 
 class BinarySensorState(EntityState):

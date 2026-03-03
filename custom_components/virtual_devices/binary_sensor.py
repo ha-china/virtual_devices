@@ -11,7 +11,6 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .base_entity import BaseVirtualEntity
@@ -20,6 +19,7 @@ from .const import (
     DEVICE_TYPE_BINARY_SENSOR,
     DOMAIN,
 )
+from .entity_category import parse_entity_category
 from .types import BinarySensorEntityConfig, BinarySensorState
 
 _LOGGER = logging.getLogger(__name__)
@@ -84,16 +84,10 @@ class VirtualBinarySensor(BaseVirtualEntity[BinarySensorEntityConfig, BinarySens
         """Initialize the virtual binary sensor."""
         super().__init__(hass, config_entry_id, entity_config, index, device_info, "binary_sensor")
 
-        # Entity category support
-        entity_category: str | None = entity_config.get("entity_category")
-        if entity_category:
-            category_map: dict[str, EntityCategory] = {
-                "config": EntityCategory.CONFIG,
-                "diagnostic": EntityCategory.DIAGNOSTIC,
-            }
-            self._attr_entity_category = category_map.get(entity_category)
-        else:
-            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_entity_category = parse_entity_category(
+            entity_config.get("entity_category"),
+            context=f"binary_sensor '{self._attr_name}'",
+        )
 
         # Set device class
         sensor_type: str = entity_config.get("sensor_type", "motion")
