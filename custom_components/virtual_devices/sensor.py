@@ -13,6 +13,7 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
+    UnitOfTime,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfEnergy,
@@ -27,9 +28,12 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .base_entity import BaseVirtualEntity
 from .const import (
     CONF_ENTITIES,
+    DEVICE_TYPE_DRYER,
     DEVICE_TYPE_SENSOR,
+    DEVICE_TYPE_WASHER,
     DOMAIN,
 )
+from .laundry import get_laundry_bundles
 from .types import SensorEntityConfig, SensorState
 
 _LOGGER = logging.getLogger(__name__)
@@ -111,11 +115,36 @@ async def async_setup_entry(
     device_type: str | None = config_entry.data.get("device_type")
 
     # Only set up sensor entities for sensor device type
-    if device_type != DEVICE_TYPE_SENSOR:
+    if device_type not in (DEVICE_TYPE_SENSOR, DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER):
         return
 
     device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
-    entities: list[VirtualSensor] = []
+    entities: list[VirtualSensor | VirtualLaundrySensor] = []
+
+    if device_type in (DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER):
+        sensor_kinds = [
+            "operation_state",
+            "remaining_time",
+            "total_time",
+            "program_progress",
+            "finish_time",
+        ]
+        for index, bundle in enumerate(get_laundry_bundles(hass, config_entry.entry_id)):
+            for sensor_kind in sensor_kinds:
+                entities.append(
+                    VirtualLaundrySensor(
+                        hass,
+                        config_entry.entry_id,
+                        bundle.base_name,
+                        index,
+                        device_info,
+                        bundle.manager,
+                        sensor_kind,
+                    )
+                )
+        async_add_entities(entities)
+        return
+
     entities_config: list[SensorEntityConfig] = config_entry.data.get(CONF_ENTITIES, [])
 
     for idx, entity_config in enumerate(entities_config):
@@ -240,3 +269,68 @@ class VirtualSensor(BaseVirtualEntity[SensorEntityConfig, SensorState], SensorEn
 
         # Save state to storage
         await self.async_save_state()
+
+
+class VirtualLaundrySensor(SensorEntity):
+    """Core sensors for a washer or dryer."""
+
+    _attr_should_poll = True
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config_entry_id: str,
+        base_name: str,
+        index: int,
+        device_info: DeviceInfo,
+        manager: Any,
+        sensor_kind: str,
+    ) -> None:
+        self._hass = hass
+        self._manager = manager
+        self._sensor_kind = sensor_kind
+        self._attr_name = f"{base_name} {sensor_kind.replace('_', ' ').title()}"
+        self._attr_unique_id = f"{config_entry_id}_laundry_{index}_{sensor_kind}"
+        self._attr_device_info = device_info
+
+        if sensor_kind == "program_progress":
+            self._attr_native_unit_of_measurement = PERCENTAGE
+        elif sensor_kind in ("remaining_time", "total_time"):
+            self._attr_native_unit_of_measurement = UnitOfTime.MINUTES
+
+    @property
+    def native_value(self) -> Any:
+        """Return current sensor value."""
+        state = self._manager.state
+        if self._sensor_kind == "operation_state":
+            return state["operation_state"]
+        if self._sensor_kind == "remaining_time":
+            return state["remaining_seconds"] // 60
+        if self._sensor_kind == "total_time":
+            return state["total_seconds"] // 60
+        if self._sensor_kind == "program_progress":
+            return self._manager.progress_percent
+        finish_time = self._manager.finish_time
+        return finish_time.isoformat() if finish_time else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return related laundry state attributes."""
+        state = self._manager.state
+        attrs: dict[str, Any] = {
+            "selected_program": state["selected_program"],
+            "power_on": state["power_on"],
+            "remote_start_enabled": state["remote_start_enabled"],
+            "remote_control_enabled": state["remote_control_enabled"],
+        }
+        if "temperature" in state:
+            attrs["temperature"] = state["temperature"]
+        if "spin_speed" in state:
+            attrs["spin_speed"] = state["spin_speed"]
+        if "drying_target" in state:
+            attrs["drying_target"] = state["drying_target"]
+        return attrs
+
+    async def async_update(self) -> None:
+        """Refresh shared laundry state."""
+        await self._manager.async_refresh()

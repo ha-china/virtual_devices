@@ -13,11 +13,14 @@ from homeassistant.helpers import selector
 
 from .const import (
     CONF_BRIGHTNESS,
+    CONF_CYCLE_DURATION_MINUTES,
     CONF_COLOR_TEMP,
     CONF_EFFECT,
     CONF_ENTITY_NAME,
+    CONF_LAUNDRY_MODE,
     CONF_MEDIA_SOURCE_LIST,
     CONF_RGB,
+    CONF_SUPPORTS_PAUSE,
     DEVICE_TYPE_AIR_PURIFIER,
     DEVICE_TYPE_BINARY_SENSOR,
     DEVICE_TYPE_BUTTON,
@@ -32,8 +35,10 @@ from .const import (
     DEVICE_TYPE_SCENE,
     DEVICE_TYPE_SENSOR,
     DEVICE_TYPE_SWITCH,
+    DEVICE_TYPE_DRYER,
     DEVICE_TYPE_VACUUM,
     DEVICE_TYPE_VALVE,
+    DEVICE_TYPE_WASHER,
     DEVICE_TYPE_WATER_HEATER,
     DEVICE_TYPE_WEATHER,
 )
@@ -101,6 +106,46 @@ class SchemaFactory:
     def _build_switch_schema() -> dict[vol.Marker, Any]:
         """Build schema fields for switch entities."""
         return {}
+
+    @staticmethod
+    def _build_laundry_schema(programs: list[str], default_program: str, default_duration: int) -> dict[vol.Marker, Any]:
+        """Build shared schema fields for washer and dryer entities."""
+        return {
+            vol.Optional(CONF_LAUNDRY_MODE, default=default_program): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=programs,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            vol.Optional(CONF_CYCLE_DURATION_MINUTES, default=default_duration): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=5,
+                    max=240,
+                    step=5,
+                    unit_of_measurement="min",
+                    mode=selector.NumberSelectorMode.SLIDER,
+                )
+            ),
+            vol.Optional(CONF_SUPPORTS_PAUSE, default=True): bool,
+        }
+
+    @staticmethod
+    def _build_washer_schema() -> dict[vol.Marker, Any]:
+        """Build schema fields for washer entities."""
+        return SchemaFactory._build_laundry_schema(
+            ["quick", "cotton", "eco", "rinse_spin", "delicates"],
+            "quick",
+            45,
+        )
+
+    @staticmethod
+    def _build_dryer_schema() -> dict[vol.Marker, Any]:
+        """Build schema fields for dryer entities."""
+        return SchemaFactory._build_laundry_schema(
+            ["quick_dry", "cotton", "eco_dry", "mixed", "towels"],
+            "quick_dry",
+            60,
+        )
 
     @staticmethod
     def _build_climate_schema() -> dict[vol.Marker, Any]:
@@ -403,6 +448,8 @@ class SchemaFactory:
 SCHEMA_BUILDERS: dict[str, SchemaBuilderFunc] = {
     DEVICE_TYPE_LIGHT: SchemaFactory._build_light_schema,
     DEVICE_TYPE_SWITCH: SchemaFactory._build_switch_schema,
+    DEVICE_TYPE_WASHER: SchemaFactory._build_washer_schema,
+    DEVICE_TYPE_DRYER: SchemaFactory._build_dryer_schema,
     DEVICE_TYPE_CLIMATE: SchemaFactory._build_climate_schema,
     DEVICE_TYPE_COVER: SchemaFactory._build_cover_schema,
     DEVICE_TYPE_FAN: SchemaFactory._build_fan_schema,

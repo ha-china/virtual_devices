@@ -14,10 +14,11 @@ An enterprise-grade virtual device integration for Home Assistant 2025.10.0+ wit
 ## ✨ Core Features
 
 - 🎯 **Multi-Entity Devices**: Create 1-10 entities of the same type under one device
-- 🛠️ **18 Device Types**: Cover all major smart home device categories
+- 🛠️ **20 Device Types**: Cover all major smart home device categories
 - 🎨 **Graphical Configuration**: Web-based wizard with step-by-step guidance
 - 📊 **Template System**: Dynamic sensor calculations, media content, and image generation
 - 💾 **State Persistence**: Automatic save and restore of device states
+- 🧺 **Complete Laundry Simulation**: Washer and dryer include program selection, delay start, control buttons, and core runtime sensors
 - 🌍 **Multi-Language Support**: Complete Chinese and English interface
 - 🔧 **Enterprise Quality**: HACS Silver certified, strict HA standards compliance
 - ⚡ **High Performance**: Async operations with optimized resource usage
@@ -67,6 +68,19 @@ An enterprise-grade virtual device integration for Home Assistant 2025.10.0+ wit
 | Device Type | Features | Complexity |
 |-------------|----------|------------|
 | 🔋 **Water Heater** | 5 heating modes/Energy management | ⭐⭐⭐ |
+| 🧺 **Washer** | Program selection/Delay start/Start-Pause-Resume-Stop/5 core sensors | ⭐⭐⭐⭐ |
+| 👕 **Dryer** | Program selection/Drying target/Delay start/5 core sensors | ⭐⭐⭐⭐ |
+
+### 🧺 Laundry Entity Set
+
+Washer and dryer are exposed as complete appliance groups instead of a single toggle. Each configured laundry device can provide:
+
+- `switch`: power control
+- `select`: program selection, plus washer temperature/spin speed or dryer drying target
+- `button`: start, pause, resume, and stop
+- `number`: delay start minutes
+- `sensor`: operation state, remaining time, total time, progress, and finish time
+- `binary_sensor`: door, remote start, and remote control
 
 ## 🚀 Quick Start
 

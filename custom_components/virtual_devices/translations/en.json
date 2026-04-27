@@ -8,6 +8,28 @@
           "device_name": "Device Name",
           "device_type": "Device Type",
           "entity_count": "Entity Count (1-10)"
+        },
+        "options": {
+          "light": "Light",
+          "switch": "Switch",
+          "climate": "Climate",
+          "cover": "Cover",
+          "fan": "Fan",
+          "sensor": "Sensor",
+          "binary_sensor": "Binary Sensor",
+          "button": "Button",
+          "scene": "Scene",
+          "media_player": "Media Player",
+          "vacuum": "Vacuum",
+          "weather": "Weather",
+          "camera": "Camera",
+          "lock": "Lock",
+          "valve": "Valve",
+          "water_heater": "Water Heater",
+          "humidifier": "Humidifier",
+          "air_purifier": "Air Purifier",
+          "washer": "Washer",
+          "dryer": "Dryer"
         }
       },
       "entity_config": {
@@ -61,6 +83,9 @@
           "visibility_unit": "Visibility Unit",
           "min_temp": "Minimum Temperature (°C)",
           "max_temp": "Maximum Temperature (°C)",
+          "laundry_mode": "Laundry Program",
+          "cycle_duration_minutes": "Cycle Duration (minutes)",
+          "supports_pause": "Supports Pause/Resume",
           "temp_step": "Temperature Step (°C)",
           "enable_humidity_sensor": "Enable Humidity Sensor",
           "enable_temperature_simulation": "Enable Temperature Simulation",

@@ -13,9 +13,12 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .base_entity import BaseVirtualEntity
 from .const import (
     CONF_ENTITIES,
+    DEVICE_TYPE_DRYER,
     DEVICE_TYPE_SWITCH,
+    DEVICE_TYPE_WASHER,
     DOMAIN,
 )
+from .laundry import get_laundry_bundles
 from .types import SwitchEntityConfig, SwitchState
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,15 +32,30 @@ async def async_setup_entry(
     """Set up virtual switch entities."""
     device_type: str | None = config_entry.data.get("device_type")
 
-    # Only create switch entities for switch device types
-    if device_type != DEVICE_TYPE_SWITCH:
+    if device_type not in (DEVICE_TYPE_SWITCH, DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER):
         _LOGGER.debug("Skipping switch setup for device type: %s", device_type)
         return
 
     _LOGGER.info("Setting up switch entities for device type: %s", device_type)
 
     device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
-    entities: list[VirtualSwitch] = []
+    entities: list[VirtualSwitch | VirtualLaundryPowerSwitch] = []
+
+    if device_type in (DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER):
+        for index, bundle in enumerate(get_laundry_bundles(hass, config_entry.entry_id)):
+            entities.append(
+                VirtualLaundryPowerSwitch(
+                    hass,
+                    config_entry.entry_id,
+                    bundle.base_name,
+                    index,
+                    device_info,
+                    bundle.manager,
+                )
+            )
+        async_add_entities(entities)
+        return
+
     entities_config: list[SwitchEntityConfig] = config_entry.data.get(CONF_ENTITIES, [])
 
     for idx, entity_config in enumerate(entities_config):
@@ -108,3 +126,45 @@ class VirtualSwitch(BaseVirtualEntity[SwitchEntityConfig, SwitchState], SwitchEn
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug("Virtual switch '%s' turned off", self._attr_name)
+
+
+class VirtualLaundryPowerSwitch(SwitchEntity):
+    """Power switch for a virtual washer or dryer."""
+
+    _attr_should_poll = True
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config_entry_id: str,
+        base_name: str,
+        index: int,
+        device_info: DeviceInfo,
+        manager: Any,
+    ) -> None:
+        self._hass = hass
+        self._config_entry_id = config_entry_id
+        self._manager = manager
+        self._attr_name = f"{base_name} Power"
+        self._attr_unique_id = f"{config_entry_id}_laundry_{index}_power"
+        self._attr_device_info = device_info
+        self._attr_icon = "mdi:power"
+
+    @property
+    def is_on(self) -> bool:
+        """Return current power state."""
+        return self._manager.state["power_on"]
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn appliance power on."""
+        await self._manager.async_set_power(True)
+        self.async_write_ha_state()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn appliance power off."""
+        await self._manager.async_set_power(False)
+        self.async_write_ha_state()
+
+    async def async_update(self) -> None:
+        """Refresh shared laundry state."""
+        await self._manager.async_refresh()

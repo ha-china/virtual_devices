@@ -19,6 +19,9 @@ CONF_ENTITIES = "entities"
 CONF_ENTITY_NAME = "entity_name"
 CONF_ENTITY_TYPE = "entity_type"
 CONF_ENTITY_ID_SUFFIX = "entity_id_suffix"
+CONF_LAUNDRY_MODE = "laundry_mode"
+CONF_CYCLE_DURATION_MINUTES = "cycle_duration_minutes"
+CONF_SUPPORTS_PAUSE = "supports_pause"
 
 # 设备类型
 DEVICE_TYPE_SWITCH = "switch"
@@ -39,6 +42,8 @@ DEVICE_TYPE_VALVE = "valve"
 DEVICE_TYPE_WATER_HEATER = "water_heater"
 DEVICE_TYPE_HUMIDIFIER = "humidifier"
 DEVICE_TYPE_AIR_PURIFIER = "air_purifier"
+DEVICE_TYPE_WASHER = "washer"
+DEVICE_TYPE_DRYER = "dryer"
 
 
 @dataclass
@@ -79,6 +84,8 @@ DEVICE_TYPES = {
     DEVICE_TYPE_WATER_HEATER: DEVICE_TYPE_WATER_HEATER,
     DEVICE_TYPE_HUMIDIFIER: DEVICE_TYPE_HUMIDIFIER,
     DEVICE_TYPE_AIR_PURIFIER: DEVICE_TYPE_AIR_PURIFIER,
+    DEVICE_TYPE_WASHER: DEVICE_TYPE_WASHER,
+    DEVICE_TYPE_DRYER: DEVICE_TYPE_DRYER,
 }
 
 # 灯光支持的功能
@@ -608,6 +615,26 @@ DEVICE_TYPE_REGISTRY: dict[str, DeviceTypeInfo] = {
             "pm25": 35,
             "pm10": 50,
             "filter_life": 80,
+        },
+    ),
+    DEVICE_TYPE_WASHER: DeviceTypeInfo(
+        key=DEVICE_TYPE_WASHER,
+        display_name_key="device_type.washer",
+        icon="mdi:washing-machine",
+        default_config={
+            CONF_LAUNDRY_MODE: "quick",
+            CONF_CYCLE_DURATION_MINUTES: 45,
+            CONF_SUPPORTS_PAUSE: True,
+        },
+    ),
+    DEVICE_TYPE_DRYER: DeviceTypeInfo(
+        key=DEVICE_TYPE_DRYER,
+        display_name_key="device_type.dryer",
+        icon="mdi:tumble-dryer",
+        default_config={
+            CONF_LAUNDRY_MODE: "quick_dry",
+            CONF_CYCLE_DURATION_MINUTES: 60,
+            CONF_SUPPORTS_PAUSE: True,
         },
     ),
 }

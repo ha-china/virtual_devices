@@ -387,3 +387,31 @@ class WeatherState(EntityState):
     pressure: float
     wind_speed: float
     wind_bearing: NotRequired[float]
+
+
+# =============================================================================
+# Laundry Entity Types
+# =============================================================================
+
+class LaundryEntityConfig(EntityConfigBase):
+    """Configuration for washer and dryer entities."""
+    laundry_mode: NotRequired[str]
+    cycle_duration_minutes: NotRequired[int]
+    supports_pause: NotRequired[bool]
+
+
+class LaundryState(EntityState):
+    """State structure for washer and dryer entities."""
+    power_on: bool
+    operation_state: str
+    selected_program: str
+    total_seconds: int
+    remaining_seconds: int
+    delay_start_minutes: int
+    supports_pause: bool
+    remote_start_enabled: bool
+    remote_control_enabled: bool
+    door_open: bool
+    temperature: NotRequired[str]
+    spin_speed: NotRequired[str]
+    drying_target: NotRequired[str]

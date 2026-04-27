@@ -12,15 +12,20 @@ from homeassistant.helpers import selector
 from homeassistant.helpers import translation
 
 from .const import (
+    CONF_CYCLE_DURATION_MINUTES,
     CONF_DEVICE_NAME,
     CONF_DEVICE_TYPE,
     CONF_ENTITIES,
     CONF_ENTITY_COUNT,
     CONF_ENTITY_NAME,
+    CONF_LAUNDRY_MODE,
     CONF_MEDIA_SOURCE_LIST,
+    CONF_SUPPORTS_PAUSE,
     DEFAULT_ENTITY_COUNT,
     DEVICE_TYPES,
+    DEVICE_TYPE_DRYER,
     DEVICE_TYPE_LIGHT,
+    DEVICE_TYPE_WASHER,
     DOMAIN,
     DEVICE_TYPE_REGISTRY,
     get_device_type_display_name,
@@ -252,6 +257,12 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "weather": [
                 "weather_station_type", "temperature_unit", "wind_speed_unit",
                 "pressure_unit", "visibility_unit"
+            ],
+            DEVICE_TYPE_WASHER: [
+                CONF_LAUNDRY_MODE, CONF_CYCLE_DURATION_MINUTES, CONF_SUPPORTS_PAUSE,
+            ],
+            DEVICE_TYPE_DRYER: [
+                CONF_LAUNDRY_MODE, CONF_CYCLE_DURATION_MINUTES, CONF_SUPPORTS_PAUSE,
             ],
         }
         return field_map.get(self._device_type, [])
