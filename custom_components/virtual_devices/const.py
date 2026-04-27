@@ -22,6 +22,22 @@ CONF_ENTITY_ID_SUFFIX = "entity_id_suffix"
 CONF_LAUNDRY_MODE = "laundry_mode"
 CONF_CYCLE_DURATION_MINUTES = "cycle_duration_minutes"
 CONF_SUPPORTS_PAUSE = "supports_pause"
+CONF_SIREN_TONE = "siren_tone"
+CONF_SIREN_DURATION = "siren_duration"
+CONF_SIREN_VOLUME = "siren_volume"
+CONF_ALARM_CODE = "alarm_code"
+CONF_ALARM_TRIGGER_TIME = "alarm_trigger_time"
+CONF_SUPPORTS_ARM_NIGHT = "supports_arm_night"
+CONF_SUPPORTS_ARM_VACATION = "supports_arm_vacation"
+CONF_REMOTE_ACTIVITY = "remote_activity"
+CONF_REMOTE_COMMANDS = "remote_commands"
+CONF_MOWER_ZONE = "mower_zone"
+CONF_MOWER_CUTTING_HEIGHT = "mower_cutting_height"
+CONF_APPLIANCE_PROGRAM = "appliance_program"
+CONF_DELAY_START_MINUTES = "delay_start_minutes"
+CONF_FRIDGE_TEMPERATURE = "fridge_temperature"
+CONF_FREEZER_TEMPERATURE = "freezer_temperature"
+CONF_DOORBELL_CHIME = "doorbell_chime"
 
 # 设备类型
 DEVICE_TYPE_SWITCH = "switch"
@@ -44,6 +60,14 @@ DEVICE_TYPE_HUMIDIFIER = "humidifier"
 DEVICE_TYPE_AIR_PURIFIER = "air_purifier"
 DEVICE_TYPE_WASHER = "washer"
 DEVICE_TYPE_DRYER = "dryer"
+DEVICE_TYPE_SIREN = "siren"
+DEVICE_TYPE_ALARM_CONTROL_PANEL = "alarm_control_panel"
+DEVICE_TYPE_REMOTE = "remote"
+DEVICE_TYPE_LAWN_MOWER = "lawn_mower"
+DEVICE_TYPE_DEHUMIDIFIER = "dehumidifier"
+DEVICE_TYPE_DISHWASHER = "dishwasher"
+DEVICE_TYPE_REFRIGERATOR = "refrigerator"
+DEVICE_TYPE_DOORBELL = "doorbell"
 
 
 @dataclass
@@ -86,6 +110,67 @@ DEVICE_TYPES = {
     DEVICE_TYPE_AIR_PURIFIER: DEVICE_TYPE_AIR_PURIFIER,
     DEVICE_TYPE_WASHER: DEVICE_TYPE_WASHER,
     DEVICE_TYPE_DRYER: DEVICE_TYPE_DRYER,
+    DEVICE_TYPE_SIREN: DEVICE_TYPE_SIREN,
+    DEVICE_TYPE_ALARM_CONTROL_PANEL: DEVICE_TYPE_ALARM_CONTROL_PANEL,
+    DEVICE_TYPE_REMOTE: DEVICE_TYPE_REMOTE,
+    DEVICE_TYPE_LAWN_MOWER: DEVICE_TYPE_LAWN_MOWER,
+    DEVICE_TYPE_DEHUMIDIFIER: DEVICE_TYPE_DEHUMIDIFIER,
+    DEVICE_TYPE_DISHWASHER: DEVICE_TYPE_DISHWASHER,
+    DEVICE_TYPE_REFRIGERATOR: DEVICE_TYPE_REFRIGERATOR,
+    DEVICE_TYPE_DOORBELL: DEVICE_TYPE_DOORBELL,
+}
+
+SIREN_TONES = {
+    "alarm": "alarm",
+    "fire": "fire",
+    "police": "police",
+    "doorbell": "doorbell",
+    "chime": "chime",
+}
+
+ALARM_STATES = {
+    "disarmed": "disarmed",
+    "armed_home": "armed_home",
+    "armed_away": "armed_away",
+    "armed_night": "armed_night",
+    "armed_vacation": "armed_vacation",
+    "armed_custom_bypass": "armed_custom_bypass",
+    "triggered": "triggered",
+}
+
+REMOTE_ACTIVITIES = {
+    "tv": "tv",
+    "movie": "movie",
+    "music": "music",
+    "game": "game",
+}
+
+MOWER_ZONES = {
+    "front_yard": "front_yard",
+    "back_yard": "back_yard",
+    "full_lawn": "full_lawn",
+}
+
+DISHWASHER_PROGRAMS = {
+    "eco": "eco",
+    "auto": "auto",
+    "intensive": "intensive",
+    "quick": "quick",
+    "rinse": "rinse",
+}
+
+REFRIGERATOR_MODES = {
+    "normal": "normal",
+    "eco": "eco",
+    "quick_cool": "quick_cool",
+    "vacation": "vacation",
+}
+
+DOORBELL_CHIMES = {
+    "classic": "classic",
+    "digital": "digital",
+    "westminster": "westminster",
+    "silent": "silent",
 }
 
 # 灯光支持的功能
@@ -635,6 +720,89 @@ DEVICE_TYPE_REGISTRY: dict[str, DeviceTypeInfo] = {
             CONF_LAUNDRY_MODE: "quick_dry",
             CONF_CYCLE_DURATION_MINUTES: 60,
             CONF_SUPPORTS_PAUSE: True,
+        },
+    ),
+    DEVICE_TYPE_SIREN: DeviceTypeInfo(
+        key=DEVICE_TYPE_SIREN,
+        display_name_key="device_type.siren",
+        icon="mdi:bullhorn",
+        default_config={
+            CONF_SIREN_TONE: "alarm",
+            CONF_SIREN_DURATION: 30,
+            CONF_SIREN_VOLUME: 1.0,
+        },
+    ),
+    DEVICE_TYPE_ALARM_CONTROL_PANEL: DeviceTypeInfo(
+        key=DEVICE_TYPE_ALARM_CONTROL_PANEL,
+        display_name_key="device_type.alarm_control_panel",
+        icon="mdi:shield-home",
+        default_config={
+            CONF_ALARM_CODE: "1234",
+            CONF_ALARM_TRIGGER_TIME: 180,
+            CONF_SUPPORTS_ARM_NIGHT: True,
+            CONF_SUPPORTS_ARM_VACATION: True,
+        },
+    ),
+    DEVICE_TYPE_REMOTE: DeviceTypeInfo(
+        key=DEVICE_TYPE_REMOTE,
+        display_name_key="device_type.remote",
+        icon="mdi:remote",
+        default_config={
+            CONF_REMOTE_ACTIVITY: "tv",
+            CONF_REMOTE_COMMANDS: ["power", "volume_up", "volume_down", "mute", "channel_up", "channel_down"],
+        },
+    ),
+    DEVICE_TYPE_LAWN_MOWER: DeviceTypeInfo(
+        key=DEVICE_TYPE_LAWN_MOWER,
+        display_name_key="device_type.lawn_mower",
+        icon="mdi:robot-mower",
+        default_config={
+            CONF_MOWER_ZONE: "full_lawn",
+            CONF_MOWER_CUTTING_HEIGHT: 45,
+        },
+    ),
+    DEVICE_TYPE_DEHUMIDIFIER: DeviceTypeInfo(
+        key=DEVICE_TYPE_DEHUMIDIFIER,
+        display_name_key="device_type.dehumidifier",
+        icon="mdi:air-humidifier-off",
+        default_config={
+            "humidifier_type": "compressor",
+            "current_humidity": 60,
+            "target_humidity": 45,
+            "water_level": 20,
+            "tank_capacity": 3.0,
+        },
+    ),
+    DEVICE_TYPE_DISHWASHER: DeviceTypeInfo(
+        key=DEVICE_TYPE_DISHWASHER,
+        display_name_key="device_type.dishwasher",
+        icon="mdi:dishwasher",
+        default_config={
+            CONF_APPLIANCE_PROGRAM: "eco",
+            CONF_CYCLE_DURATION_MINUTES: 120,
+            CONF_DELAY_START_MINUTES: 0,
+        },
+    ),
+    DEVICE_TYPE_REFRIGERATOR: DeviceTypeInfo(
+        key=DEVICE_TYPE_REFRIGERATOR,
+        display_name_key="device_type.refrigerator",
+        icon="mdi:fridge-outline",
+        default_config={
+            "refrigerator_mode": "normal",
+            CONF_FRIDGE_TEMPERATURE: 4,
+            CONF_FREEZER_TEMPERATURE: -18,
+        },
+    ),
+    DEVICE_TYPE_DOORBELL: DeviceTypeInfo(
+        key=DEVICE_TYPE_DOORBELL,
+        display_name_key="device_type.doorbell",
+        icon="mdi:doorbell-video",
+        default_config={
+            CONF_DOORBELL_CHIME: "classic",
+            "camera_type": "doorbell",
+            "motion_detection": True,
+            "recording": False,
+            "night_vision": True,
         },
     ),
 }

@@ -415,3 +415,58 @@ class LaundryState(EntityState):
     temperature: NotRequired[str]
     spin_speed: NotRequired[str]
     drying_target: NotRequired[str]
+
+
+class SirenEntityConfig(EntityConfigBase):
+    """Configuration for siren entities."""
+    siren_tone: NotRequired[str]
+    siren_duration: NotRequired[int]
+    siren_volume: NotRequired[float]
+
+
+class SirenState(EntityState):
+    """State structure for siren entities."""
+    is_on: bool
+    tone: str
+    duration: int
+    volume_level: float
+
+
+class AlarmControlPanelEntityConfig(EntityConfigBase):
+    """Configuration for alarm control panel entities."""
+    alarm_code: NotRequired[str]
+    alarm_trigger_time: NotRequired[int]
+    supports_arm_night: NotRequired[bool]
+    supports_arm_vacation: NotRequired[bool]
+
+
+class AlarmControlPanelStateDict(EntityState):
+    """State structure for alarm control panel entities."""
+    state: str
+
+
+class RemoteEntityConfig(EntityConfigBase):
+    """Configuration for remote entities."""
+    remote_activity: NotRequired[str]
+    remote_commands: NotRequired[list[str] | str]
+
+
+class RemoteState(EntityState):
+    """State structure for remote entities."""
+    is_on: bool
+    current_activity: str
+    last_command: NotRequired[str | None]
+
+
+class LawnMowerEntityConfig(EntityConfigBase):
+    """Configuration for lawn mower entities."""
+    mower_zone: NotRequired[str]
+    mower_cutting_height: NotRequired[int]
+
+
+class LawnMowerState(EntityState):
+    """State structure for lawn mower entities."""
+    state: str
+    battery_level: int
+    current_zone: str
+    cutting_height: int

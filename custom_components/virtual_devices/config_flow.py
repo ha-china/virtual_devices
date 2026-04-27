@@ -12,7 +12,11 @@ from homeassistant.helpers import selector
 from homeassistant.helpers import translation
 
 from .const import (
+    CONF_ALARM_CODE,
+    CONF_ALARM_TRIGGER_TIME,
+    CONF_APPLIANCE_PROGRAM,
     CONF_CYCLE_DURATION_MINUTES,
+    CONF_DELAY_START_MINUTES,
     CONF_DEVICE_NAME,
     CONF_DEVICE_TYPE,
     CONF_ENTITIES,
@@ -20,11 +24,28 @@ from .const import (
     CONF_ENTITY_NAME,
     CONF_LAUNDRY_MODE,
     CONF_MEDIA_SOURCE_LIST,
+    CONF_MOWER_CUTTING_HEIGHT,
+    CONF_MOWER_ZONE,
+    CONF_REMOTE_ACTIVITY,
+    CONF_REMOTE_COMMANDS,
+    CONF_SIREN_DURATION,
+    CONF_SIREN_TONE,
+    CONF_SIREN_VOLUME,
     CONF_SUPPORTS_PAUSE,
+    CONF_SUPPORTS_ARM_NIGHT,
+    CONF_SUPPORTS_ARM_VACATION,
+    DEVICE_TYPE_ALARM_CONTROL_PANEL,
+    DEVICE_TYPE_DEHUMIDIFIER,
+    DEVICE_TYPE_DISHWASHER,
+    DEVICE_TYPE_DOORBELL,
     DEFAULT_ENTITY_COUNT,
     DEVICE_TYPES,
     DEVICE_TYPE_DRYER,
     DEVICE_TYPE_LIGHT,
+    DEVICE_TYPE_LAWN_MOWER,
+    DEVICE_TYPE_REFRIGERATOR,
+    DEVICE_TYPE_REMOTE,
+    DEVICE_TYPE_SIREN,
     DEVICE_TYPE_WASHER,
     DOMAIN,
     DEVICE_TYPE_REGISTRY,
@@ -263,6 +284,32 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ],
             DEVICE_TYPE_DRYER: [
                 CONF_LAUNDRY_MODE, CONF_CYCLE_DURATION_MINUTES, CONF_SUPPORTS_PAUSE,
+            ],
+            DEVICE_TYPE_SIREN: [
+                CONF_SIREN_TONE, CONF_SIREN_DURATION, CONF_SIREN_VOLUME,
+            ],
+            DEVICE_TYPE_ALARM_CONTROL_PANEL: [
+                CONF_ALARM_CODE, CONF_ALARM_TRIGGER_TIME,
+                CONF_SUPPORTS_ARM_NIGHT, CONF_SUPPORTS_ARM_VACATION,
+            ],
+            DEVICE_TYPE_REMOTE: [
+                CONF_REMOTE_ACTIVITY, CONF_REMOTE_COMMANDS,
+            ],
+            DEVICE_TYPE_LAWN_MOWER: [
+                CONF_MOWER_ZONE, CONF_MOWER_CUTTING_HEIGHT,
+            ],
+            DEVICE_TYPE_DISHWASHER: [
+                CONF_APPLIANCE_PROGRAM, CONF_CYCLE_DURATION_MINUTES, CONF_DELAY_START_MINUTES,
+            ],
+            DEVICE_TYPE_DEHUMIDIFIER: [
+                "humidifier_type", "current_humidity", "target_humidity",
+                "water_level", "tank_capacity",
+            ],
+            DEVICE_TYPE_REFRIGERATOR: [
+                "refrigerator_mode", "fridge_temperature", "freezer_temperature",
+            ],
+            DEVICE_TYPE_DOORBELL: [
+                "doorbell_chime", "recording", "motion_detection", "night_vision",
             ],
         }
         return field_map.get(self._device_type, [])

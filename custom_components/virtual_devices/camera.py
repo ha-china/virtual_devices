@@ -22,8 +22,10 @@ from .const import (
     CONF_CAMERA_MOTION_DETECTION,
     CONF_CAMERA_RECORDING,
     DEVICE_TYPE_CAMERA,
+    DEVICE_TYPE_DOORBELL,
     DOMAIN,
 )
+from .appliance import get_appliance_bundles
 from .types import CameraEntityConfig, CameraState
 
 _LOGGER = logging.getLogger(__name__)
@@ -45,12 +47,22 @@ async def async_setup_entry(
     """Set up virtual camera entities."""
     device_type: str | None = config_entry.data.get("device_type")
 
-    if device_type != DEVICE_TYPE_CAMERA:
+    if device_type not in (DEVICE_TYPE_CAMERA, DEVICE_TYPE_DOORBELL):
         return
 
     device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
     entities: list[VirtualCamera] = []
     entities_config: list[CameraEntityConfig] = config_entry.data.get(CONF_ENTITIES, [])
+
+    if device_type == DEVICE_TYPE_DOORBELL and not entities_config:
+        for bundle in get_appliance_bundles(hass, config_entry.entry_id):
+            entities_config.append({
+                CONF_ENTITY_NAME: f"{bundle.base_name} Camera",
+                "camera_type": "doorbell",
+                "motion_detection": True,
+                "recording": False,
+                "night_vision": True,
+            })
 
     for idx, entity_config in enumerate(entities_config):
         entity = VirtualCamera(

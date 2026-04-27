@@ -12,28 +12,52 @@ import voluptuous as vol
 from homeassistant.helpers import selector
 
 from .const import (
+    CONF_ALARM_CODE,
+    CONF_ALARM_TRIGGER_TIME,
+    CONF_APPLIANCE_PROGRAM,
     CONF_BRIGHTNESS,
     CONF_CYCLE_DURATION_MINUTES,
     CONF_COLOR_TEMP,
+    CONF_DELAY_START_MINUTES,
+    CONF_DOORBELL_CHIME,
     CONF_EFFECT,
     CONF_ENTITY_NAME,
+    CONF_FREEZER_TEMPERATURE,
+    CONF_FRIDGE_TEMPERATURE,
     CONF_LAUNDRY_MODE,
     CONF_MEDIA_SOURCE_LIST,
+    CONF_MOWER_CUTTING_HEIGHT,
+    CONF_MOWER_ZONE,
+    CONF_REMOTE_ACTIVITY,
+    CONF_REMOTE_COMMANDS,
     CONF_RGB,
+    CONF_SIREN_DURATION,
+    CONF_SIREN_TONE,
+    CONF_SIREN_VOLUME,
     CONF_SUPPORTS_PAUSE,
+    CONF_SUPPORTS_ARM_NIGHT,
+    CONF_SUPPORTS_ARM_VACATION,
+    DEVICE_TYPE_ALARM_CONTROL_PANEL,
     DEVICE_TYPE_AIR_PURIFIER,
     DEVICE_TYPE_BINARY_SENSOR,
     DEVICE_TYPE_BUTTON,
     DEVICE_TYPE_CAMERA,
     DEVICE_TYPE_CLIMATE,
     DEVICE_TYPE_COVER,
+    DEVICE_TYPE_DEHUMIDIFIER,
+    DEVICE_TYPE_DISHWASHER,
+    DEVICE_TYPE_DOORBELL,
     DEVICE_TYPE_FAN,
     DEVICE_TYPE_HUMIDIFIER,
     DEVICE_TYPE_LIGHT,
+    DEVICE_TYPE_LAWN_MOWER,
     DEVICE_TYPE_LOCK,
     DEVICE_TYPE_MEDIA_PLAYER,
+    DEVICE_TYPE_REFRIGERATOR,
+    DEVICE_TYPE_REMOTE,
     DEVICE_TYPE_SCENE,
     DEVICE_TYPE_SENSOR,
+    DEVICE_TYPE_SIREN,
     DEVICE_TYPE_SWITCH,
     DEVICE_TYPE_DRYER,
     DEVICE_TYPE_VACUUM,
@@ -41,6 +65,12 @@ from .const import (
     DEVICE_TYPE_WASHER,
     DEVICE_TYPE_WATER_HEATER,
     DEVICE_TYPE_WEATHER,
+    DISHWASHER_PROGRAMS,
+    DOORBELL_CHIMES,
+    MOWER_ZONES,
+    REFRIGERATOR_MODES,
+    REMOTE_ACTIVITIES,
+    SIREN_TONES,
 )
 
 
@@ -106,6 +136,100 @@ class SchemaFactory:
     def _build_switch_schema() -> dict[vol.Marker, Any]:
         """Build schema fields for switch entities."""
         return {}
+
+    @staticmethod
+    def _build_siren_schema() -> dict[vol.Marker, Any]:
+        """Build schema fields for siren entities."""
+        return {
+            vol.Optional(CONF_SIREN_TONE, default="alarm"): vol.In(list(SIREN_TONES.keys())),
+            vol.Optional(CONF_SIREN_DURATION, default=30): vol.All(
+                vol.Coerce(int), vol.Range(min=1, max=600)
+            ),
+            vol.Optional(CONF_SIREN_VOLUME, default=1.0): vol.All(
+                vol.Coerce(float), vol.Range(min=0.1, max=1.0)
+            ),
+        }
+
+    @staticmethod
+    def _build_alarm_control_panel_schema() -> dict[vol.Marker, Any]:
+        """Build schema fields for alarm control panel entities."""
+        return {
+            vol.Optional(CONF_ALARM_CODE, default="1234"): str,
+            vol.Optional(CONF_ALARM_TRIGGER_TIME, default=180): vol.All(
+                vol.Coerce(int), vol.Range(min=10, max=1800)
+            ),
+            vol.Optional(CONF_SUPPORTS_ARM_NIGHT, default=True): bool,
+            vol.Optional(CONF_SUPPORTS_ARM_VACATION, default=True): bool,
+        }
+
+    @staticmethod
+    def _build_remote_schema() -> dict[vol.Marker, Any]:
+        """Build schema fields for remote entities."""
+        return {
+            vol.Optional(CONF_REMOTE_ACTIVITY, default="tv"): vol.In(list(REMOTE_ACTIVITIES.keys())),
+            vol.Optional(CONF_REMOTE_COMMANDS, default="power,volume_up,volume_down,mute"): str,
+        }
+
+    @staticmethod
+    def _build_lawn_mower_schema() -> dict[vol.Marker, Any]:
+        """Build schema fields for lawn mower entities."""
+        return {
+            vol.Optional(CONF_MOWER_ZONE, default="full_lawn"): vol.In(list(MOWER_ZONES.keys())),
+            vol.Optional(CONF_MOWER_CUTTING_HEIGHT, default=45): vol.All(
+                vol.Coerce(int), vol.Range(min=20, max=80)
+            ),
+        }
+
+    @staticmethod
+    def _build_dishwasher_schema() -> dict[vol.Marker, Any]:
+        """Build schema fields for dishwasher entities."""
+        return {
+            vol.Optional(CONF_APPLIANCE_PROGRAM, default="eco"): vol.In(list(DISHWASHER_PROGRAMS.keys())),
+            vol.Optional(CONF_CYCLE_DURATION_MINUTES, default=120): vol.All(
+                vol.Coerce(int), vol.Range(min=15, max=300)
+            ),
+            vol.Optional(CONF_DELAY_START_MINUTES, default=0): vol.All(
+                vol.Coerce(int), vol.Range(min=0, max=1440)
+            ),
+        }
+
+    @staticmethod
+    def _build_dehumidifier_schema() -> dict[vol.Marker, Any]:
+        """Build schema fields for dehumidifier entities."""
+        return {
+            vol.Optional("humidifier_type", default="compressor"): vol.In(
+                ["compressor", "desiccant", "whole_home", "portable"]
+            ),
+            vol.Optional("current_humidity", default=60): vol.All(
+                vol.Coerce(int), vol.Range(min=20, max=90)
+            ),
+            vol.Optional("target_humidity", default=45): vol.All(
+                vol.Coerce(int), vol.Range(min=20, max=80)
+            ),
+        }
+
+    @staticmethod
+    def _build_refrigerator_schema() -> dict[vol.Marker, Any]:
+        """Build schema fields for refrigerator entities."""
+        return {
+            vol.Optional("refrigerator_mode", default="normal"): vol.In(list(REFRIGERATOR_MODES.keys())),
+            vol.Optional(CONF_FRIDGE_TEMPERATURE, default=4): vol.All(
+                vol.Coerce(int), vol.Range(min=1, max=8)
+            ),
+            vol.Optional(CONF_FREEZER_TEMPERATURE, default=-18): vol.All(
+                vol.Coerce(int), vol.Range(min=-30, max=-10)
+            ),
+        }
+
+    @staticmethod
+    def _build_doorbell_schema() -> dict[vol.Marker, Any]:
+        """Build schema fields for doorbell entities."""
+        return {
+            vol.Optional(CONF_DOORBELL_CHIME, default="classic"): vol.In(list(DOORBELL_CHIMES.keys())),
+            vol.Optional("recording", default=False): bool,
+            vol.Optional("motion_detection", default=True): bool,
+            vol.Optional("night_vision", default=True): bool,
+        }
 
     @staticmethod
     def _build_laundry_schema(programs: list[str], default_program: str, default_duration: int) -> dict[vol.Marker, Any]:
@@ -450,6 +574,14 @@ SCHEMA_BUILDERS: dict[str, SchemaBuilderFunc] = {
     DEVICE_TYPE_SWITCH: SchemaFactory._build_switch_schema,
     DEVICE_TYPE_WASHER: SchemaFactory._build_washer_schema,
     DEVICE_TYPE_DRYER: SchemaFactory._build_dryer_schema,
+    DEVICE_TYPE_SIREN: SchemaFactory._build_siren_schema,
+    DEVICE_TYPE_ALARM_CONTROL_PANEL: SchemaFactory._build_alarm_control_panel_schema,
+    DEVICE_TYPE_REMOTE: SchemaFactory._build_remote_schema,
+    DEVICE_TYPE_LAWN_MOWER: SchemaFactory._build_lawn_mower_schema,
+    DEVICE_TYPE_DISHWASHER: SchemaFactory._build_dishwasher_schema,
+    DEVICE_TYPE_DEHUMIDIFIER: SchemaFactory._build_dehumidifier_schema,
+    DEVICE_TYPE_REFRIGERATOR: SchemaFactory._build_refrigerator_schema,
+    DEVICE_TYPE_DOORBELL: SchemaFactory._build_doorbell_schema,
     DEVICE_TYPE_CLIMATE: SchemaFactory._build_climate_schema,
     DEVICE_TYPE_COVER: SchemaFactory._build_cover_schema,
     DEVICE_TYPE_FAN: SchemaFactory._build_fan_schema,

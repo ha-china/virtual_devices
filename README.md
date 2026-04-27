@@ -14,7 +14,7 @@ An enterprise-grade virtual device integration for Home Assistant 2025.10.0+ wit
 ## ✨ Core Features
 
 - 🎯 **Multi-Entity Devices**: Create 1-10 entities of the same type under one device
-- 🛠️ **20 Device Types**: Cover all major smart home device categories
+- 🛠️ **26 Device Types**: Cover all major smart home device categories
 - 🎨 **Graphical Configuration**: Web-based wizard with step-by-step guidance
 - 📊 **Template System**: Dynamic sensor calculations, media content, and image generation
 - 💾 **State Persistence**: Automatic save and restore of device states
@@ -70,6 +70,14 @@ An enterprise-grade virtual device integration for Home Assistant 2025.10.0+ wit
 | 🔋 **Water Heater** | 5 heating modes/Energy management | ⭐⭐⭐ |
 | 🧺 **Washer** | Program selection/Delay start/Start-Pause-Resume-Stop/5 core sensors | ⭐⭐⭐⭐ |
 | 👕 **Dryer** | Program selection/Drying target/Delay start/5 core sensors | ⭐⭐⭐⭐ |
+| 🚨 **Siren** | Tone/Duration/Volume control | ⭐⭐⭐ |
+| 🛡️ **Alarm Control Panel** | Arm home/away/night/vacation/Trigger | ⭐⭐⭐⭐ |
+| 🎛️ **Remote** | Activity selection/Command dispatch/Power control | ⭐⭐⭐ |
+| 🌿 **Lawn Mower** | Start/Pause/Dock/Battery tracking | ⭐⭐⭐⭐ |
+| 💦 **Dehumidifier** | Target humidity/Mode/Device-class simulation | ⭐⭐⭐ |
+| 🍽️ **Dishwasher** | Program/Delay start/Start-Pause-Resume-Stop | ⭐⭐⭐⭐ |
+| 🧊 **Refrigerator** | Fridge-freezer temps/Modes/Door states | ⭐⭐⭐⭐ |
+| 🔔 **Doorbell** | Camera/Ring/Motion/Chime | ⭐⭐⭐⭐ |
 
 ### 🧺 Laundry Entity Set
 

@@ -13,11 +13,14 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .base_entity import BaseVirtualEntity
 from .const import (
     CONF_ENTITIES,
+    DEVICE_TYPE_DISHWASHER,
     DEVICE_TYPE_DRYER,
+    DEVICE_TYPE_REFRIGERATOR,
     DEVICE_TYPE_SWITCH,
     DEVICE_TYPE_WASHER,
     DOMAIN,
 )
+from .appliance import get_appliance_bundles
 from .laundry import get_laundry_bundles
 from .types import SwitchEntityConfig, SwitchState
 
@@ -32,7 +35,7 @@ async def async_setup_entry(
     """Set up virtual switch entities."""
     device_type: str | None = config_entry.data.get("device_type")
 
-    if device_type not in (DEVICE_TYPE_SWITCH, DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER):
+    if device_type not in (DEVICE_TYPE_SWITCH, DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER, DEVICE_TYPE_DISHWASHER, DEVICE_TYPE_REFRIGERATOR):
         _LOGGER.debug("Skipping switch setup for device type: %s", device_type)
         return
 
@@ -46,6 +49,20 @@ async def async_setup_entry(
             entities.append(
                 VirtualLaundryPowerSwitch(
                     hass,
+                    config_entry.entry_id,
+                    bundle.base_name,
+                    index,
+                    device_info,
+                    bundle.manager,
+                )
+            )
+        async_add_entities(entities)
+        return
+
+    if device_type in (DEVICE_TYPE_DISHWASHER, DEVICE_TYPE_REFRIGERATOR):
+        for index, bundle in enumerate(get_appliance_bundles(hass, config_entry.entry_id)):
+            entities.append(
+                VirtualAppliancePowerSwitch(
                     config_entry.entry_id,
                     bundle.base_name,
                     index,
@@ -167,4 +184,32 @@ class VirtualLaundryPowerSwitch(SwitchEntity):
 
     async def async_update(self) -> None:
         """Refresh shared laundry state."""
+        await self._manager.async_refresh()
+
+
+class VirtualAppliancePowerSwitch(SwitchEntity):
+    """Power switch for grouped appliances."""
+
+    _attr_should_poll = True
+
+    def __init__(self, config_entry_id: str, base_name: str, index: int, device_info: DeviceInfo, manager: Any) -> None:
+        self._manager = manager
+        self._attr_name = f"{base_name} Power"
+        self._attr_unique_id = f"{config_entry_id}_{manager.device_type}_{index}_power"
+        self._attr_device_info = device_info
+        self._attr_icon = "mdi:power"
+
+    @property
+    def is_on(self) -> bool:
+        return self._manager.state.get("power_on", False)
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self._manager.async_set_power(True)
+        self.async_write_ha_state()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self._manager.async_set_power(False)
+        self.async_write_ha_state()
+
+    async def async_update(self) -> None:
         await self._manager.async_refresh()

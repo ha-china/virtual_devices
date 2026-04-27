@@ -49,6 +49,14 @@ DEVICE_TYPE_HUMIDIFIER = "humidifier"
 DEVICE_TYPE_AIR_PURIFIER = "air_purifier"
 DEVICE_TYPE_WASHER = "washer"
 DEVICE_TYPE_DRYER = "dryer"
+DEVICE_TYPE_SIREN = "siren"
+DEVICE_TYPE_ALARM_CONTROL_PANEL = "alarm_control_panel"
+DEVICE_TYPE_REMOTE = "remote"
+DEVICE_TYPE_LAWN_MOWER = "lawn_mower"
+DEVICE_TYPE_DEHUMIDIFIER = "dehumidifier"
+DEVICE_TYPE_DISHWASHER = "dishwasher"
+DEVICE_TYPE_REFRIGERATOR = "refrigerator"
+DEVICE_TYPE_DOORBELL = "doorbell"
 
 
 # Copy of DEVICE_TYPE_REGISTRY from const.py for testing without homeassistant deps
@@ -246,6 +254,89 @@ DEVICE_TYPE_REGISTRY: dict[str, DeviceTypeInfo] = {
             "supports_pause": True,
         },
     ),
+    DEVICE_TYPE_SIREN: DeviceTypeInfo(
+        key=DEVICE_TYPE_SIREN,
+        display_name_key="device_type.siren",
+        icon="mdi:bullhorn",
+        default_config={
+            "siren_tone": "alarm",
+            "siren_duration": 30,
+            "siren_volume": 1.0,
+        },
+    ),
+    DEVICE_TYPE_ALARM_CONTROL_PANEL: DeviceTypeInfo(
+        key=DEVICE_TYPE_ALARM_CONTROL_PANEL,
+        display_name_key="device_type.alarm_control_panel",
+        icon="mdi:shield-home",
+        default_config={
+            "alarm_code": "1234",
+            "alarm_trigger_time": 180,
+            "supports_arm_night": True,
+            "supports_arm_vacation": True,
+        },
+    ),
+    DEVICE_TYPE_REMOTE: DeviceTypeInfo(
+        key=DEVICE_TYPE_REMOTE,
+        display_name_key="device_type.remote",
+        icon="mdi:remote",
+        default_config={
+            "remote_activity": "tv",
+            "remote_commands": ["power", "volume_up", "volume_down", "mute", "channel_up", "channel_down"],
+        },
+    ),
+    DEVICE_TYPE_LAWN_MOWER: DeviceTypeInfo(
+        key=DEVICE_TYPE_LAWN_MOWER,
+        display_name_key="device_type.lawn_mower",
+        icon="mdi:robot-mower",
+        default_config={
+            "mower_zone": "full_lawn",
+            "mower_cutting_height": 45,
+        },
+    ),
+    DEVICE_TYPE_DEHUMIDIFIER: DeviceTypeInfo(
+        key=DEVICE_TYPE_DEHUMIDIFIER,
+        display_name_key="device_type.dehumidifier",
+        icon="mdi:air-humidifier-off",
+        default_config={
+            "humidifier_type": "compressor",
+            "current_humidity": 60,
+            "target_humidity": 45,
+            "water_level": 20,
+            "tank_capacity": 3.0,
+        },
+    ),
+    DEVICE_TYPE_DISHWASHER: DeviceTypeInfo(
+        key=DEVICE_TYPE_DISHWASHER,
+        display_name_key="device_type.dishwasher",
+        icon="mdi:dishwasher",
+        default_config={
+            "appliance_program": "eco",
+            "cycle_duration_minutes": 120,
+            "delay_start_minutes": 0,
+        },
+    ),
+    DEVICE_TYPE_REFRIGERATOR: DeviceTypeInfo(
+        key=DEVICE_TYPE_REFRIGERATOR,
+        display_name_key="device_type.refrigerator",
+        icon="mdi:fridge-outline",
+        default_config={
+            "refrigerator_mode": "normal",
+            "fridge_temperature": 4,
+            "freezer_temperature": -18,
+        },
+    ),
+    DEVICE_TYPE_DOORBELL: DeviceTypeInfo(
+        key=DEVICE_TYPE_DOORBELL,
+        display_name_key="device_type.doorbell",
+        icon="mdi:doorbell-video",
+        default_config={
+            "doorbell_chime": "classic",
+            "camera_type": "doorbell",
+            "motion_detection": True,
+            "recording": False,
+            "night_vision": True,
+        },
+    ),
 }
 
 
@@ -377,7 +468,7 @@ class TestDeviceTypeRegistryCompleteness:
         )
 
     def test_registry_has_expected_device_types(self) -> None:
-        """The registry SHALL contain all 20 expected device types.
+        """The registry SHALL contain all 26 expected device types.
         
         Feature: code-refactoring, Property 1: Device Type Registry Completeness
         Validates: Requirements 1.1, 1.2
@@ -386,7 +477,9 @@ class TestDeviceTypeRegistryCompleteness:
             "light", "switch", "climate", "cover", "fan", "sensor",
             "binary_sensor", "button", "scene", "media_player", "vacuum",
             "weather", "camera", "lock", "valve", "water_heater",
-            "humidifier", "air_purifier", "washer", "dryer"
+            "humidifier", "air_purifier", "washer", "dryer", "siren",
+            "alarm_control_panel", "remote", "lawn_mower", "dehumidifier",
+            "dishwasher", "refrigerator", "doorbell"
         }
         
         actual_types = set(DEVICE_TYPE_REGISTRY.keys())

@@ -17,10 +17,14 @@ from .base_entity import BaseVirtualEntity
 from .const import (
     CONF_ENTITIES,
     DEVICE_TYPE_BINARY_SENSOR,
+    DEVICE_TYPE_DISHWASHER,
+    DEVICE_TYPE_DOORBELL,
     DEVICE_TYPE_DRYER,
+    DEVICE_TYPE_REFRIGERATOR,
     DEVICE_TYPE_WASHER,
     DOMAIN,
 )
+from .appliance import get_appliance_bundles
 from .laundry import get_laundry_bundles
 from .entity_category import parse_entity_category
 from .types import BinarySensorEntityConfig, BinarySensorState
@@ -53,7 +57,7 @@ async def async_setup_entry(
     """Set up virtual binary sensor entities."""
     device_type: str | None = config_entry.data.get("device_type")
 
-    if device_type not in (DEVICE_TYPE_BINARY_SENSOR, DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER):
+    if device_type not in (DEVICE_TYPE_BINARY_SENSOR, DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER, DEVICE_TYPE_DISHWASHER, DEVICE_TYPE_REFRIGERATOR, DEVICE_TYPE_DOORBELL):
         return
 
     device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
@@ -73,6 +77,52 @@ async def async_setup_entry(
                         sensor_kind,
                     )
                 )
+        async_add_entities(entities)
+        return
+
+    if device_type == DEVICE_TYPE_DISHWASHER:
+        for index, bundle in enumerate(get_appliance_bundles(hass, config_entry.entry_id)):
+            entities.append(
+                VirtualGroupedBinarySensor(
+                    config_entry.entry_id,
+                    bundle.base_name,
+                    index,
+                    device_info,
+                    bundle.manager,
+                    "door",
+                )
+            )
+        async_add_entities(entities)
+        return
+
+    if device_type == DEVICE_TYPE_REFRIGERATOR:
+        for index, bundle in enumerate(get_appliance_bundles(hass, config_entry.entry_id)):
+            for sensor_kind in ["fridge_door", "freezer_door"]:
+                entities.append(
+                    VirtualGroupedBinarySensor(
+                        config_entry.entry_id,
+                        bundle.base_name,
+                        index,
+                        device_info,
+                        bundle.manager,
+                        sensor_kind,
+                    )
+                )
+        async_add_entities(entities)
+        return
+
+    if device_type == DEVICE_TYPE_DOORBELL:
+        for index, bundle in enumerate(get_appliance_bundles(hass, config_entry.entry_id)):
+            entities.append(
+                VirtualGroupedBinarySensor(
+                    config_entry.entry_id,
+                    bundle.base_name,
+                    index,
+                    device_info,
+                    bundle.manager,
+                    "motion",
+                )
+            )
         async_add_entities(entities)
         return
 
@@ -177,4 +227,37 @@ class VirtualLaundryBinarySensor(BinarySensorEntity):
 
     async def async_update(self) -> None:
         """Refresh shared laundry state."""
+        await self._manager.async_refresh()
+
+
+class VirtualGroupedBinarySensor(BinarySensorEntity):
+    """Binary sensor for grouped appliances."""
+
+    _attr_should_poll = True
+
+    def __init__(self, config_entry_id: str, base_name: str, index: int, device_info: DeviceInfo, manager: Any, sensor_kind: str) -> None:
+        self._manager = manager
+        self._sensor_kind = sensor_kind
+        self._attr_name = f"{base_name} {sensor_kind.replace('_', ' ').title()}"
+        self._attr_unique_id = f"{config_entry_id}_{manager.device_type}_{index}_{sensor_kind}_binary"
+        self._attr_device_info = device_info
+        self._attr_device_class = {
+            "door": BinarySensorDeviceClass.DOOR,
+            "fridge_door": BinarySensorDeviceClass.DOOR,
+            "freezer_door": BinarySensorDeviceClass.DOOR,
+            "motion": BinarySensorDeviceClass.MOTION,
+        }.get(sensor_kind)
+
+    @property
+    def is_on(self) -> bool:
+        state = self._manager.state
+        if self._sensor_kind == "door":
+            return state.get("door_open", False)
+        if self._sensor_kind == "fridge_door":
+            return state.get("fridge_door_open", False)
+        if self._sensor_kind == "freezer_door":
+            return state.get("freezer_door_open", False)
+        return state.get("motion_detected", False)
+
+    async def async_update(self) -> None:
         await self._manager.async_refresh()

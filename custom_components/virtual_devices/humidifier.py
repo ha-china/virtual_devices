@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from homeassistant.components.humidifier import (
+    HumidifierDeviceClass,
     HumidifierEntity,
     HumidifierEntityFeature,
 )
@@ -20,6 +21,7 @@ from .base_entity import STORAGE_VERSION
 from .const import (
     CONF_ENTITIES,
     CONF_ENTITY_NAME,
+    DEVICE_TYPE_DEHUMIDIFIER,
     DEVICE_TYPE_HUMIDIFIER,
     DOMAIN,
     HUMIDIFIER_TYPES,
@@ -37,7 +39,7 @@ async def async_setup_entry(
     """Set up virtual humidifier entities."""
     device_type: str | None = config_entry.data.get("device_type")
 
-    if device_type != DEVICE_TYPE_HUMIDIFIER:
+    if device_type not in (DEVICE_TYPE_HUMIDIFIER, DEVICE_TYPE_DEHUMIDIFIER):
         return
 
     device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
@@ -51,6 +53,7 @@ async def async_setup_entry(
             entity_config,
             idx,
             device_info,
+            device_type,
         )
         entities.append(entity)
 
@@ -73,12 +76,14 @@ class VirtualHumidifier(HumidifierEntity):
         entity_config: HumidifierEntityConfig,
         index: int,
         device_info: DeviceInfo,
+        device_type: str = DEVICE_TYPE_HUMIDIFIER,
     ) -> None:
         """Initialize the virtual humidifier."""
         self._hass = hass
         self._config_entry_id = config_entry_id
         self._entity_config = entity_config
         self._index = index
+        self._device_type = device_type
 
         entity_name: str = entity_config.get(CONF_ENTITY_NAME, f"Humidifier_{index + 1}")
         self._attr_name = entity_name
@@ -87,6 +92,11 @@ class VirtualHumidifier(HumidifierEntity):
         # Humidifier type
         humidifier_type: str = entity_config.get("humidifier_type", "ultrasonic")
         self._humidifier_type = humidifier_type
+        self._attr_device_class = (
+            HumidifierDeviceClass.DEHUMIDIFIER
+            if device_type == DEVICE_TYPE_DEHUMIDIFIER
+            else HumidifierDeviceClass.HUMIDIFIER
+        )
 
         # Set icon based on type
         icon_map: dict[str, str] = {
@@ -95,6 +105,10 @@ class VirtualHumidifier(HumidifierEntity):
             "steam": "mdi:water",
             "impeller": "mdi:fan",
             "warm_mist": "mdi:water-thermometer",
+            "compressor": "mdi:air-humidifier-off",
+            "desiccant": "mdi:air-filter",
+            "whole_home": "mdi:home-thermometer-outline",
+            "portable": "mdi:water-off",
         }
         self._attr_icon = icon_map.get(humidifier_type, "mdi:air-humidifier")
 
@@ -219,6 +233,10 @@ class VirtualHumidifier(HumidifierEntity):
             "steam": ["Auto", "Low", "High"],
             "impeller": ["Auto", "Low", "Medium", "High"],
             "warm_mist": ["Auto", "Low", "High"],
+            "compressor": ["Auto", "Low", "Medium", "High", "Continuous"],
+            "desiccant": ["Auto", "Low", "High"],
+            "whole_home": ["Auto", "Eco", "Boost"],
+            "portable": ["Auto", "Low", "High"],
         }
         self._attr_available_modes = mode_map.get(self._humidifier_type, ["Auto"])
 
@@ -253,6 +271,7 @@ class VirtualHumidifier(HumidifierEntity):
         min_map: dict[str, int] = {
             "ultrasonic": 30, "impeller": 30, "warm_mist": 30,
             "evaporative": 20, "steam": 40,
+            "compressor": 30, "desiccant": 30, "whole_home": 35, "portable": 30,
         }
         return min_map.get(self._humidifier_type, 30)
 
@@ -262,6 +281,7 @@ class VirtualHumidifier(HumidifierEntity):
         max_map: dict[str, int] = {
             "ultrasonic": 80, "impeller": 80, "warm_mist": 80,
             "evaporative": 70, "steam": 90,
+            "compressor": 70, "desiccant": 70, "whole_home": 65, "portable": 70,
         }
         return max_map.get(self._humidifier_type, 80)
 
@@ -327,11 +347,21 @@ class VirtualHumidifier(HumidifierEntity):
 
                 temp_increase = (rate * time_diff / 60) * 0.9
                 if target_diff > 0:
-                    self._attr_current_humidity = min(
-                        self.max_humidity, self._attr_current_humidity + int(temp_increase))
+                    if self._device_type == DEVICE_TYPE_DEHUMIDIFIER:
+                        self._attr_current_humidity = max(
+                            self.min_humidity, self._attr_current_humidity - int(temp_increase)
+                        )
+                    else:
+                        self._attr_current_humidity = min(
+                            self.max_humidity, self._attr_current_humidity + int(temp_increase))
                 else:
-                    self._attr_current_humidity = max(self.min_humidity,
-                                                      self._attr_current_humidity - int(temp_increase * 0.5))
+                    if self._device_type == DEVICE_TYPE_DEHUMIDIFIER:
+                        self._attr_current_humidity = min(
+                            self.max_humidity, self._attr_current_humidity + int(temp_increase * 0.3)
+                        )
+                    else:
+                        self._attr_current_humidity = max(self.min_humidity,
+                                                          self._attr_current_humidity - int(temp_increase * 0.5))
 
             # Water consumption
             water_rate_map: dict[str, float] = {

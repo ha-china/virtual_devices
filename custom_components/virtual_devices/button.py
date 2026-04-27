@@ -14,10 +14,13 @@ from .base_entity import BaseVirtualEntity
 from .const import (
     CONF_ENTITIES,
     DEVICE_TYPE_BUTTON,
+    DEVICE_TYPE_DISHWASHER,
+    DEVICE_TYPE_DOORBELL,
     DEVICE_TYPE_DRYER,
     DEVICE_TYPE_WASHER,
     DOMAIN,
 )
+from .appliance import get_appliance_bundles
 from .laundry import get_laundry_bundles
 from .types import ButtonEntityConfig, EntityState
 
@@ -38,7 +41,7 @@ async def async_setup_entry(
     """Set up virtual button entities."""
     device_type: str | None = config_entry.data.get("device_type")
 
-    if device_type not in (DEVICE_TYPE_BUTTON, DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER):
+    if device_type not in (DEVICE_TYPE_BUTTON, DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER, DEVICE_TYPE_DISHWASHER, DEVICE_TYPE_DOORBELL):
         return
 
     device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
@@ -59,6 +62,38 @@ async def async_setup_entry(
                         action,
                     )
                 )
+        async_add_entities(entities)
+        return
+
+    if device_type == DEVICE_TYPE_DISHWASHER:
+        actions = ["start", "pause", "resume", "stop"]
+        for index, bundle in enumerate(get_appliance_bundles(hass, config_entry.entry_id)):
+            for action in actions:
+                entities.append(
+                    VirtualApplianceButton(
+                        config_entry.entry_id,
+                        bundle.base_name,
+                        index,
+                        device_info,
+                        bundle.manager,
+                        action,
+                    )
+                )
+        async_add_entities(entities)
+        return
+
+    if device_type == DEVICE_TYPE_DOORBELL:
+        for index, bundle in enumerate(get_appliance_bundles(hass, config_entry.entry_id)):
+            entities.append(
+                VirtualApplianceButton(
+                    config_entry.entry_id,
+                    bundle.base_name,
+                    index,
+                    device_info,
+                    bundle.manager,
+                    "ring",
+                )
+            )
         async_add_entities(entities)
         return
 
@@ -176,4 +211,40 @@ class VirtualLaundryButton(ButtonEntity):
 
     async def async_update(self) -> None:
         """Refresh shared laundry state."""
+        await self._manager.async_refresh()
+
+
+class VirtualApplianceButton(ButtonEntity):
+    """Control button for grouped appliances."""
+
+    _attr_should_poll = True
+
+    def __init__(self, config_entry_id: str, base_name: str, index: int, device_info: DeviceInfo, manager: Any, action: str) -> None:
+        self._manager = manager
+        self._action = action
+        self._attr_name = f"{base_name} {action.title()}"
+        self._attr_unique_id = f"{config_entry_id}_{manager.device_type}_{index}_{action}"
+        self._attr_device_info = device_info
+        self._attr_icon = {
+            "start": "mdi:play",
+            "pause": "mdi:pause",
+            "resume": "mdi:play-pause",
+            "stop": "mdi:stop",
+            "ring": "mdi:bell-ring",
+        }.get(action, "mdi:gesture-tap-button")
+
+    async def async_press(self) -> None:
+        if self._action == "start":
+            await self._manager.async_start()
+        elif self._action == "pause":
+            await self._manager.async_pause()
+        elif self._action == "resume":
+            await self._manager.async_resume()
+        elif self._action == "stop":
+            await self._manager.async_stop()
+        else:
+            await self._manager.async_ring()
+        self.async_write_ha_state()
+
+    async def async_update(self) -> None:
         await self._manager.async_refresh()
