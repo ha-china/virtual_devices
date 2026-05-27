@@ -127,12 +127,13 @@ class VirtualValve(ValveEntity):
         self._attr_reports_position: bool = entity_config.get(CONF_VALVE_REPORTS_POSITION, True)
 
         # Initial position
-        self._attr_current_position: int = entity_config.get(CONF_VALVE_POSITION, 0)
+        self._attr_current_valve_position: int = entity_config.get(CONF_VALVE_POSITION, 0)
+        self._attr_is_closed: bool | None = self._attr_current_valve_position == 0
 
         # Valve attributes
         self._is_opening: bool = False
         self._is_closing: bool = False
-        self._target_position: int = self._attr_current_position
+        self._target_position: int = self._attr_current_valve_position
 
         # Flow related (simulation)
         self._flow_rate: float = 0
@@ -153,8 +154,9 @@ class VirtualValve(ValveEntity):
 
     def apply_state(self, state: ValveState) -> None:
         """Apply loaded state to entity attributes."""
-        self._attr_current_position = state.get("position", 0)
-        self._target_position = self._attr_current_position
+        self._attr_current_valve_position = state.get("position", 0)
+        self._attr_is_closed = self._attr_current_valve_position == 0
+        self._target_position = self._attr_current_valve_position
         self._is_moving = False
         self._is_opening = False
         self._is_closing = False
@@ -164,8 +166,8 @@ class VirtualValve(ValveEntity):
     def get_current_state(self) -> ValveState:
         """Get current state for persistence."""
         return {
-            "is_open": self._attr_current_position > 0,
-            "position": self._attr_current_position,
+            "is_open": self._attr_current_valve_position > 0,
+            "position": self._attr_current_valve_position,
         }
 
     @property
@@ -216,12 +218,12 @@ class VirtualValve(ValveEntity):
     @property
     def current_position(self) -> int:
         """Return current position of valve."""
-        return self._attr_current_position
+        return self._attr_current_valve_position
 
     @property
     def is_closed(self) -> bool:
         """Return true if valve is closed."""
-        return self._attr_current_position == 0
+        return self._attr_current_valve_position == 0
 
     @property
     def is_opening(self) -> bool:
@@ -235,7 +237,7 @@ class VirtualValve(ValveEntity):
 
     async def async_open_valve(self) -> None:
         """Open the valve."""
-        if self._attr_current_position == 100:
+        if self._attr_current_valve_position == 100:
             return
 
         self._is_opening = True
@@ -255,7 +257,7 @@ class VirtualValve(ValveEntity):
 
     async def async_close_valve(self) -> None:
         """Close the valve."""
-        if self._attr_current_position == 0:
+        if self._attr_current_valve_position == 0:
             return
 
         self._is_closing = True
@@ -279,10 +281,10 @@ class VirtualValve(ValveEntity):
             _LOGGER.warning(f"Invalid valve position: {position}")
             return
 
-        if position == self._attr_current_position:
+        if position == self._attr_current_valve_position:
             return
 
-        if position > self._attr_current_position:
+        if position > self._attr_current_valve_position:
             self._is_opening = True
             self._is_closing = False
         else:
@@ -312,12 +314,12 @@ class VirtualValve(ValveEntity):
 
     async def _move_to_position(self, target_position: int) -> None:
         """Move valve to target position with travel time simulation."""
-        if target_position == self._attr_current_position:
+        if target_position == self._attr_current_valve_position:
             return
 
         self._is_moving = True
         self._target_position = target_position
-        self._start_position = self._attr_current_position
+        self._start_position = self._attr_current_valve_position
         self._start_time = self._hass.loop.time()
 
         await self._update_position_during_movement()
@@ -342,13 +344,14 @@ class VirtualValve(ValveEntity):
                 self._start_position - int(elapsed_time / travel_time_per_percent)
             )
 
-        self._attr_current_position = new_position
+        self._attr_current_valve_position = new_position
+        self._attr_is_closed = self._attr_current_valve_position == 0
         self._update_flow_and_pressure()
 
         await self.async_save_state()
         self.async_write_ha_state()
 
-        if self._attr_current_position == self._target_position:
+        if self._attr_current_valve_position == self._target_position:
             self._is_moving = False
             self._is_opening = False
             self._is_closing = False
@@ -360,12 +363,12 @@ class VirtualValve(ValveEntity):
 
     def _update_flow_and_pressure(self) -> None:
         """Update flow rate and pressure based on position."""
-        if self._attr_current_position > 0:
-            self._flow_rate = round(self._attr_current_position * 0.1 * (self._valve_size / 25), 2)
+        if self._attr_current_valve_position > 0:
+            self._flow_rate = round(self._attr_current_valve_position * 0.1 * (self._valve_size / 25), 2)
             if self._valve_type == "water_valve":
-                self._pressure = round(2 + (self._attr_current_position / 100) * 3, 1)
+                self._pressure = round(2 + (self._attr_current_valve_position / 100) * 3, 1)
             elif self._valve_type == "gas_valve":
-                self._pressure = round(0.5 + (self._attr_current_position / 100) * 2, 1)
+                self._pressure = round(0.5 + (self._attr_current_valve_position / 100) * 2, 1)
         else:
             self._flow_rate = 0
             self._pressure = 0
