@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Extract version from manifest
         id: extract_version
@@ -47,16 +49,20 @@ jobs:
           git tag -a "$version" -m "Release $version"
           git push origin "$version"
 
+      - name: Generate changelog
+        id: changelog
+        if: github.event_name == 'push' && steps.check_tag.outputs.exists == 'false'
+        uses: Desmond-Dong/actions/bilingual-changelog@v1
+        with:
+          llm-api-key: ${{ secrets.LLM_API_KEY }}
+
       - name: Create GitHub Release
         if: github.event_name == 'push' && steps.check_tag.outputs.exists == 'false'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.extract_version.outputs.version }}
           name: Release ${{ steps.extract_version.outputs.version }}
-          body: |
-            Auto-release for version ${{ steps.extract_version.outputs.version }}
-
-            Changes triggered by manifest.json update.
+          body: ${{ steps.changelog.outputs.changelog }}
           draft: false
           prerelease: false
 
