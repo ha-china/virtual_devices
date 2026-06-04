@@ -9,7 +9,11 @@
 
 **Language**: [中文](README_CN.md) | [English](README.md)
 
-An enterprise-grade virtual device integration for Home Assistant 2025.10.0+ with **multi-entity device support**. it provides a complete device simulation environment for testing, demonstrations, development, and educational purposes.
+An enterprise-grade virtual device integration for Home Assistant 2025.10.0+ with **multi-entity device support**.
+
+Built for testing, demos, development, and learning, it delivers a complete device simulation environment.
+
+**If this project helps you, please consider giving it a Star.**
 
 ## ✨ Core Features
 
