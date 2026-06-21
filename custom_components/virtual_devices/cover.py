@@ -214,7 +214,7 @@ class VirtualCover(BaseVirtualEntity[CoverEntityConfig, CoverState], CoverEntity
         position: int | None = kwargs.get(ATTR_POSITION)
         if position is not None:
             await self._move_to_position(position)
-            self.fire_template_event("set_cover_position", position=position, **kwargs)
+            self.fire_template_event("set_cover_position", **kwargs)
             _LOGGER.debug(
                 "Virtual cover '%s' moving to position %d%%",
                 self._attr_name,
