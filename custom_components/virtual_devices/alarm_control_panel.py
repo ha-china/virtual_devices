@@ -79,7 +79,7 @@ class VirtualAlarmControlPanel(
         self._trigger_time = int(entity_config.get(CONF_ALARM_TRIGGER_TIME, 180))
         self._supports_arm_night = bool(entity_config.get(CONF_SUPPORTS_ARM_NIGHT, True))
         self._supports_arm_vacation = bool(entity_config.get(CONF_SUPPORTS_ARM_VACATION, True))
-        self._state: AlarmControlPanelState = AlarmControlPanelState.DISARMED
+        self._alarm_state: AlarmControlPanelState = AlarmControlPanelState.DISARMED
         features = (
             AlarmControlPanelEntityFeature.ARM_HOME
             | AlarmControlPanelEntityFeature.ARM_AWAY
@@ -96,14 +96,14 @@ class VirtualAlarmControlPanel(
 
     def apply_state(self, state: AlarmControlPanelStateDict) -> None:
         state_key = state.get("state", "disarmed")
-        self._state = AlarmControlPanelState(state_key)
+        self._alarm_state = AlarmControlPanelState(state_key)
 
     def get_current_state(self) -> AlarmControlPanelStateDict:
-        return {"state": self._state.value}
+        return {"state": self._alarm_state.value}
 
     @property
     def alarm_state(self) -> AlarmControlPanelState | None:
-        return self._state
+        return self._alarm_state
 
     @property
     def code_arm_required(self) -> bool:
@@ -128,45 +128,45 @@ class VirtualAlarmControlPanel(
     async def async_alarm_disarm(self, code: str | None = None) -> None:
         if not self._validate_code(code):
             return
-        self._state = AlarmControlPanelState.DISARMED
+        self._alarm_state = AlarmControlPanelState.DISARMED
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("disarm", state=self._state.value)
+        self.fire_template_event("disarm", state=self._alarm_state.value)
 
     async def async_alarm_arm_home(self, code: str | None = None) -> None:
         if not self._validate_code(code):
             return
-        self._state = AlarmControlPanelState.ARMED_HOME
+        self._alarm_state = AlarmControlPanelState.ARMED_HOME
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("arm_home", state=self._state.value)
+        self.fire_template_event("arm_home", state=self._alarm_state.value)
 
     async def async_alarm_arm_away(self, code: str | None = None) -> None:
         if not self._validate_code(code):
             return
-        self._state = AlarmControlPanelState.ARMED_AWAY
+        self._alarm_state = AlarmControlPanelState.ARMED_AWAY
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("arm_away", state=self._state.value)
+        self.fire_template_event("arm_away", state=self._alarm_state.value)
 
     async def async_alarm_arm_night(self, code: str | None = None) -> None:
         if not self._supports_arm_night or not self._validate_code(code):
             return
-        self._state = AlarmControlPanelState.ARMED_NIGHT
+        self._alarm_state = AlarmControlPanelState.ARMED_NIGHT
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("arm_night", state=self._state.value)
+        self.fire_template_event("arm_night", state=self._alarm_state.value)
 
     async def async_alarm_arm_vacation(self, code: str | None = None) -> None:
         if not self._supports_arm_vacation or not self._validate_code(code):
             return
-        self._state = AlarmControlPanelState.ARMED_VACATION
+        self._alarm_state = AlarmControlPanelState.ARMED_VACATION
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("arm_vacation", state=self._state.value)
+        self.fire_template_event("arm_vacation", state=self._alarm_state.value)
 
     async def async_alarm_trigger(self, code: str | None = None) -> None:
-        self._state = AlarmControlPanelState.TRIGGERED
+        self._alarm_state = AlarmControlPanelState.TRIGGERED
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("trigger", state=self._state.value)
+        self.fire_template_event("trigger", state=self._alarm_state.value)
