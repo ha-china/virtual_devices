@@ -14,6 +14,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_call_later
 
 from .base_entity import BaseVirtualEntity
 from .const import (
@@ -193,9 +194,18 @@ class VirtualLock(BaseVirtualEntity[LockEntityConfig, LockStateType], LockEntity
             },
         )
 
-        # Auto-lock if enabled
+        # Auto-lock if enabled (uses an async_call_later timer that is
+        # automatically cancelled via async_on_remove when the entity is
+        # removed from hass).
         if self._auto_lock_enabled:
-            self._hass.loop.call_later(self._auto_lock_delay, self._auto_lock_callback)
+            async def _auto_lock(*args: Any) -> None:
+                if self._attr_is_locked is False and self._auto_lock_enabled:
+                    await self.async_lock()
+                    _LOGGER.debug("Virtual lock '%s' auto-locked", self._attr_name)
+            self._auto_lock_timer = async_call_later(
+                self._hass, self._auto_lock_delay, _auto_lock
+            )
+            self.async_on_remove(lambda: self._auto_lock_timer() if self._auto_lock_timer else None)
 
     async def async_open(self, **kwargs: Any) -> None:
         """Open the lock (unlocked)."""
@@ -222,12 +232,6 @@ class VirtualLock(BaseVirtualEntity[LockEntityConfig, LockStateType], LockEntity
             _LOGGER.info("Virtual lock '%s' is no longer jammed", self._attr_name)
 
         self.async_write_ha_state()
-
-    def _auto_lock_callback(self) -> None:
-        """Callback for auto-lock functionality."""
-        if self._attr_is_locked is False and self._auto_lock_enabled:
-            self._hass.create_task(self.async_lock())
-            _LOGGER.debug("Virtual lock '%s' auto-locked", self._attr_name)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

@@ -380,7 +380,7 @@ class VirtualWeather(WeatherEntity):
                 pressure = random.uniform(1000, 1020)
 
             forecast_data: dict[str, Any] = {
-                "datetime": forecast_date,
+                "datetime": forecast_date.isoformat(),
                 "condition": condition,
                 ATTR_FORECAST_NATIVE_TEMP: round(high_temp, 1),
                 ATTR_FORECAST_NATIVE_TEMP_LOW: round(low_temp, 1),

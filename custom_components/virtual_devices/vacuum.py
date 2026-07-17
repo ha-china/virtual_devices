@@ -18,6 +18,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_call_later
 
 from .base_entity import BaseVirtualEntity
 from .const import (
@@ -250,8 +251,11 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
 
             self.fire_template_event("return_to_base", status=self._attr_activity.value if self._attr_activity else None)
 
-            # Simulate return to dock time
-            self._hass.loop.call_later(30, self._dock_callback)
+            # Simulate return to dock time (async_call_later with
+            # async_on_remove cleanup so the timer is cancelled when the
+            # entity is removed from hass).
+            self._dock_timer = async_call_later(self._hass, 30, self._async_dock_callback)
+            self.async_on_remove(lambda: self._dock_timer() if self._dock_timer else None)
 
     async def async_clean_spot(self, **kwargs: Any) -> None:
         """Perform a spot clean-up."""
@@ -269,8 +273,9 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
             cleaned_area=self._cleaned_area,
         )
 
-        # Spot cleaning is usually shorter
-        self._hass.loop.call_later(60, self._spot_cleaning_complete_callback)
+        # Spot cleaning completion timer (cancelled via async_on_remove)
+        self._spot_clean_timer = async_call_later(self._hass, 60, self._async_spot_cleaning_complete)
+        self.async_on_remove(lambda: self._spot_clean_timer() if self._spot_clean_timer else None)
 
     async def async_locate(self, **kwargs: Any) -> None:
         """Locate the vacuum cleaner."""
@@ -372,7 +377,8 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
 
         self.async_write_ha_state()
 
-    def _dock_callback(self) -> None:
+    @callback
+    def _async_dock_callback(self, _now: Any) -> None:
         """Callback for when vacuum reaches dock."""
         if self._attr_activity == VacuumActivity.RETURNING:
             self._attr_activity = VacuumActivity.DOCKED
@@ -382,7 +388,8 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
 
             self.fire_template_event("docked", status=self._attr_activity.value if self._attr_activity else None)
 
-    def _spot_cleaning_complete_callback(self) -> None:
+    @callback
+    def _async_spot_cleaning_complete(self, _now: Any) -> None:
         """Callback for when spot cleaning is complete."""
         if self._attr_activity == VacuumActivity.CLEANING and self._current_room == "point_area":
             self._attr_activity = VacuumActivity.IDLE
