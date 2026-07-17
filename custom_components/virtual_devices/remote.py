@@ -46,11 +46,12 @@ async def async_setup_entry(
 class VirtualRemote(BaseVirtualEntity[RemoteEntityConfig, RemoteState], RemoteEntity):
     """Representation of a virtual remote."""
 
-    _attr_supported_features = (
-        RemoteEntityFeature.ACTIVITY
-        | RemoteEntityFeature.LEARN_COMMAND
-        | RemoteEntityFeature.DELETE_COMMAND
-    )
+    # NOTE: HA Core routes `remote.learn_command` / `remote.delete_command`
+    # services only when `LEARN_COMMAND` / `DELETE_COMMAND` features are
+    # declared, and they call `async_learn_command` / `async_delete_command`.
+    # We do not implement either (this is a virtual remote), so omit both
+    # features to avoid NotImplementedError when the services are invoked.
+    _attr_supported_features = RemoteEntityFeature.ACTIVITY
 
     def __init__(
         self,
@@ -62,8 +63,8 @@ class VirtualRemote(BaseVirtualEntity[RemoteEntityConfig, RemoteState], RemoteEn
     ) -> None:
         super().__init__(hass, config_entry_id, entity_config, index, device_info, "remote")
         self._attr_icon = "mdi:remote"
-        self._is_on = False
-        self._current_activity = entity_config.get(CONF_REMOTE_ACTIVITY, "tv")
+        self._attr_is_on: bool = False
+        self._attr_current_activity: str | None = entity_config.get(CONF_REMOTE_ACTIVITY, "tv")
         commands = entity_config.get(CONF_REMOTE_COMMANDS, ["power", "volume_up", "volume_down", "mute"])
         if isinstance(commands, str):
             commands = [item.strip() for item in commands.split(",") if item.strip()]
@@ -75,39 +76,31 @@ class VirtualRemote(BaseVirtualEntity[RemoteEntityConfig, RemoteState], RemoteEn
         return {"is_on": False, "current_activity": "tv", "last_command": None}
 
     def apply_state(self, state: RemoteState) -> None:
-        self._is_on = state.get("is_on", False)
-        self._current_activity = state.get("current_activity", "tv")
+        self._attr_is_on = state.get("is_on", False)
+        self._attr_current_activity = state.get("current_activity", "tv")
         self._last_command = state.get("last_command")
 
     def get_current_state(self) -> RemoteState:
         return {
-            "is_on": self._is_on,
-            "current_activity": self._current_activity,
+            "is_on": self._attr_is_on,
+            "current_activity": self._attr_current_activity,
             "last_command": self._last_command,
         }
-
-    @property
-    def is_on(self) -> bool:
-        return self._is_on
-
-    @property
-    def current_activity(self) -> str | None:
-        return self._current_activity
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         return {"available_commands": self._commands, "last_command": self._last_command}
 
     async def async_turn_on(self, activity: str | None = None, **kwargs: Any) -> None:
-        self._is_on = True
+        self._attr_is_on = True
         if activity is not None:
-            self._current_activity = activity
+            self._attr_current_activity = activity
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("turn_on", activity=self._current_activity)
+        self.fire_template_event("turn_on", activity=self._attr_current_activity)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        self._is_on = False
+        self._attr_is_on = False
         await self.async_save_state()
         self.async_write_ha_state()
         self.fire_template_event("turn_off")
@@ -117,7 +110,7 @@ class VirtualRemote(BaseVirtualEntity[RemoteEntityConfig, RemoteState], RemoteEn
             self._last_command = command[-1] if command else None
         else:
             self._last_command = command
-        self._is_on = True
+        self._attr_is_on = True
         await self.async_save_state()
         self.async_write_ha_state()
         self.fire_template_event("send_command", command=self._last_command)

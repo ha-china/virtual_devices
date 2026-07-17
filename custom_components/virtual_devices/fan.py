@@ -101,12 +101,15 @@ class VirtualFan(BaseVirtualEntity[FanEntityConfig, FanState], FanEntity):
         self._attr_preset_modes = PRESET_MODES
         self._attr_speed_count = int_states_in_range(SPEED_RANGE)
 
-        # State attributes - will be populated by async_load_state
-        self._is_on: bool = False
-        self._percentage: int = 50
-        self._preset_mode: str | None = None
-        self._oscillating: bool = False
-        self._direction: str = "forward"
+        # State attributes - will be populated by async_load_state.
+        # HA Core `FanEntity` exposes these via cached_properties that read the
+        # matching `_attr_*` fields, so we set those directly and do NOT
+        # redefine them as @property overrides.
+        self._attr_is_on: bool = False
+        self._attr_percentage: int | None = 50
+        self._attr_preset_mode: str | None = None
+        self._attr_oscillating: bool = False
+        self._attr_current_direction: str | None = "forward"
 
     def get_default_state(self) -> FanState:
         """Return the default state for this fan entity."""
@@ -120,52 +123,25 @@ class VirtualFan(BaseVirtualEntity[FanEntityConfig, FanState], FanEntity):
 
     def apply_state(self, state: FanState) -> None:
         """Apply loaded state to entity attributes."""
-        self._is_on = state.get("is_on", False)
-        self._percentage = state.get("percentage", 50)
-        self._preset_mode = state.get("preset_mode")
-        self._oscillating = state.get("oscillating", False)
-        self._direction = state.get("direction", "forward")
+        self._attr_is_on = state.get("is_on", False)
+        self._attr_percentage = state.get("percentage", 50)
+        self._attr_preset_mode = state.get("preset_mode")
+        self._attr_oscillating = state.get("oscillating", False)
+        self._attr_current_direction = state.get("direction", "forward")
         _LOGGER.debug(
-            "Applied state for fan '%s': is_on=%s, percentage=%d, preset_mode=%s",
-            self._attr_name, self._is_on, self._percentage, self._preset_mode,
+            "Applied state for fan '%s': is_on=%s, percentage=%s, preset_mode=%s",
+            self._attr_name, self._attr_is_on, self._attr_percentage, self._attr_preset_mode,
         )
 
     def get_current_state(self) -> FanState:
         """Get current state for persistence."""
         return {
-            "is_on": self._is_on,
-            "percentage": self._percentage,
-            "preset_mode": self._preset_mode,
-            "oscillating": self._oscillating,
-            "direction": self._direction,
+            "is_on": self._attr_is_on,
+            "percentage": self._attr_percentage,
+            "preset_mode": self._attr_preset_mode,
+            "oscillating": self._attr_oscillating,
+            "direction": self._attr_current_direction,
         }
-
-    @property
-    def is_on(self) -> bool:
-        """Return true if the fan is on."""
-        return self._is_on
-
-    @property
-    def percentage(self) -> int | None:
-        """Return the current speed percentage."""
-        if self._is_on:
-            return self._percentage
-        return 0
-
-    @property
-    def preset_mode(self) -> str | None:
-        """Return the current preset mode."""
-        return self._preset_mode
-
-    @property
-    def oscillating(self) -> bool:
-        """Return whether or not the fan is oscillating."""
-        return self._oscillating
-
-    @property
-    def current_direction(self) -> str:
-        """Return the current direction of the fan."""
-        return self._direction
 
     async def async_turn_on(
         self,
@@ -174,14 +150,14 @@ class VirtualFan(BaseVirtualEntity[FanEntityConfig, FanState], FanEntity):
         **kwargs: Any,
     ) -> None:
         """Turn on the fan."""
-        self._is_on = True
+        self._attr_is_on = True
 
         if percentage is not None:
-            self._percentage = percentage
-            self._preset_mode = None
+            self._attr_percentage = percentage
+            self._attr_preset_mode = None
         elif preset_mode is not None:
-            self._preset_mode = preset_mode
-            self._percentage = 50
+            self._attr_preset_mode = preset_mode
+            self._attr_percentage = 50
 
         await self.async_save_state()
         self.async_write_ha_state()
@@ -190,7 +166,7 @@ class VirtualFan(BaseVirtualEntity[FanEntityConfig, FanState], FanEntity):
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the fan off."""
-        self._is_on = False
+        self._attr_is_on = False
 
         await self.async_save_state()
         self.async_write_ha_state()
@@ -209,12 +185,12 @@ class VirtualFan(BaseVirtualEntity[FanEntityConfig, FanState], FanEntity):
                 original_percentage, percentage,
             )
 
-        self._percentage = percentage
-        self._preset_mode = None
+        self._attr_percentage = percentage
+        self._attr_preset_mode = None
         if percentage == 0:
-            self._is_on = False
+            self._attr_is_on = False
         else:
-            self._is_on = True
+            self._attr_is_on = True
 
         await self.async_save_state()
         self.async_write_ha_state()
@@ -223,8 +199,8 @@ class VirtualFan(BaseVirtualEntity[FanEntityConfig, FanState], FanEntity):
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set the preset mode of the fan."""
-        self._preset_mode = preset_mode
-        self._is_on = True
+        self._attr_preset_mode = preset_mode
+        self._attr_is_on = True
 
         await self.async_save_state()
         self.async_write_ha_state()
@@ -235,7 +211,7 @@ class VirtualFan(BaseVirtualEntity[FanEntityConfig, FanState], FanEntity):
 
     async def async_oscillate(self, oscillating: bool) -> None:
         """Set oscillation."""
-        self._oscillating = oscillating
+        self._attr_oscillating = oscillating
 
         await self.async_save_state()
         self.async_write_ha_state()
@@ -246,7 +222,7 @@ class VirtualFan(BaseVirtualEntity[FanEntityConfig, FanState], FanEntity):
 
     async def async_set_direction(self, direction: str) -> None:
         """Set the direction of the fan."""
-        self._direction = direction
+        self._attr_current_direction = direction
 
         await self.async_save_state()
         self.async_write_ha_state()

@@ -6,7 +6,7 @@ import random
 from datetime import datetime
 from typing import Any
 
-from homeassistant.components.lock import LockEntity, LockState
+from homeassistant.components.lock import LockEntity, LockEntityFeature
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE
@@ -94,15 +94,26 @@ class VirtualLock(BaseVirtualEntity[LockEntityConfig, LockStateType], LockEntity
         }
         self._attr_icon = icon_map.get(lock_type, "mdi:lock")
 
-        # Initialize state
+        # Initialize state.
+        # HA Core `LockEntity.state` is `@final` and derives from the
+        # `is_locked`/`is_jammed`/`is_opening`/`is_locking`/`is_open`/
+        # `is_unlocking` cached properties, each of which reads the matching
+        # `_attr_*` field. Setting `_attr_state` has NO effect (the base
+        # class keeps it as the `None` placeholder). Use `_attr_is_locked`
+        # to drive the reported state instead.
         initial_state: str = entity_config.get(CONF_LOCK_STATE, "locked")
-        self._attr_state = LockState.LOCKED if initial_state == "locked" else LockState.UNLOCKED
+        self._attr_is_locked: bool | None = initial_state == "locked"
 
-        # Battery level (internal tracking, exposed via battery sensor)
-        self._attr_battery_level: int = random.randint(20, 100)
+        # `lock.open` requires the OPEN feature flag (LockEntityFeature.OPEN)
+        self._attr_supported_features = LockEntityFeature.OPEN
+
+        # Battery level (internal tracking only; exposed via the companion
+        # `VirtualLockBatterySensor` — `LockEntity` has no `_attr_battery_level`
+        # field, so we keep this private).
+        self._battery_level: int = random.randint(20, 100)
 
         # Lock attributes
-        self._is_jammed: bool = False
+        self._attr_is_jammed: bool | None = False
         self._last_access: datetime | None = None
         self._access_code: str = entity_config.get("access_code", "1234")
         self._auto_lock_enabled: bool = entity_config.get("auto_lock", True)
@@ -118,37 +129,27 @@ class VirtualLock(BaseVirtualEntity[LockEntityConfig, LockStateType], LockEntity
     def apply_state(self, state: LockStateType) -> None:
         """Apply loaded state to entity attributes."""
         state_str: str = state.get("state", "locked")
-        self._attr_state = LockState.LOCKED if state_str == "locked" else LockState.UNLOCKED
+        self._attr_is_locked = state_str == "locked"
         _LOGGER.info("Lock '%s' state loaded from storage", self._attr_name)
 
     def get_current_state(self) -> LockStateType:
         """Get current state for persistence."""
         return LockStateType(
-            state="locked" if self._attr_state == LockState.LOCKED else "unlocked",
+            state="locked" if self._attr_is_locked else "unlocked",
         )
-
-    @property
-    def is_locked(self) -> bool:
-        """Return true if the lock is locked."""
-        return self._attr_state == LockState.LOCKED
-
-    @property
-    def is_jammed(self) -> bool:
-        """Return true if the lock is jammed."""
-        return self._is_jammed
 
     @property
     def battery_level_internal(self) -> int:
         """Return the battery level for internal use by battery sensor."""
-        return self._attr_battery_level
+        return self._battery_level
 
     async def async_lock(self, **kwargs: Any) -> None:
         """Lock the lock."""
-        if self._is_jammed:
+        if self._attr_is_jammed:
             _LOGGER.warning("Virtual lock '%s' is jammed, cannot lock", self._attr_name)
             return
 
-        self._attr_state = LockState.LOCKED
+        self._attr_is_locked = True
         self._last_access = datetime.now()
         await self.async_save_state()
         self.async_write_ha_state()
@@ -169,11 +170,11 @@ class VirtualLock(BaseVirtualEntity[LockEntityConfig, LockStateType], LockEntity
 
     async def async_unlock(self, **kwargs: Any) -> None:
         """Unlock the lock."""
-        if self._is_jammed:
+        if self._attr_is_jammed:
             _LOGGER.warning("Virtual lock '%s' is jammed, cannot unlock", self._attr_name)
             return
 
-        self._attr_state = LockState.UNLOCKED
+        self._attr_is_locked = False
         self._last_access = datetime.now()
         await self.async_save_state()
         self.async_write_ha_state()
@@ -203,20 +204,20 @@ class VirtualLock(BaseVirtualEntity[LockEntityConfig, LockStateType], LockEntity
     async def async_update(self) -> None:
         """Update lock state."""
         # Simulate battery consumption
-        if self._attr_state == LockState.UNLOCKED:
-            self._attr_battery_level = max(0, self._attr_battery_level - random.uniform(0.01, 0.05))
+        if self._attr_is_locked is False:
+            self._battery_level = max(0, self._battery_level - random.uniform(0.01, 0.05))
         else:
-            self._attr_battery_level = max(0, self._attr_battery_level - random.uniform(0.001, 0.01))
+            self._battery_level = max(0, self._battery_level - random.uniform(0.001, 0.01))
 
         await self.async_save_state()
 
         # Simulate random jamming (configurable)
         if self._jamming_enabled and random.random() < 0.01:
-            self._is_jammed = True
+            self._attr_is_jammed = True
             self.async_write_ha_state()
             _LOGGER.warning("Virtual lock '%s' is jammed", self._attr_name)
-        elif self._is_jammed and random.random() < 0.1:
-            self._is_jammed = False
+        elif self._attr_is_jammed and random.random() < 0.1:
+            self._attr_is_jammed = False
             self.async_write_ha_state()
             _LOGGER.info("Virtual lock '%s' is no longer jammed", self._attr_name)
 
@@ -224,7 +225,7 @@ class VirtualLock(BaseVirtualEntity[LockEntityConfig, LockStateType], LockEntity
 
     def _auto_lock_callback(self) -> None:
         """Callback for auto-lock functionality."""
-        if self._attr_state == LockState.UNLOCKED and self._auto_lock_enabled:
+        if self._attr_is_locked is False and self._auto_lock_enabled:
             self._hass.create_task(self.async_lock())
             _LOGGER.debug("Virtual lock '%s' auto-locked", self._attr_name)
 
@@ -235,7 +236,7 @@ class VirtualLock(BaseVirtualEntity[LockEntityConfig, LockStateType], LockEntity
             "lock_type": LOCK_TYPES.get(self._lock_type, self._lock_type),
             "auto_lock_enabled": self._auto_lock_enabled,
             "auto_lock_delay": self._auto_lock_delay,
-            "is_jammed": self._is_jammed,
+            "is_jammed": self._attr_is_jammed,
             "jamming_enabled": self._jamming_enabled,
         }
 

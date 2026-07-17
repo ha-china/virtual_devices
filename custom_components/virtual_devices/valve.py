@@ -7,6 +7,7 @@ import random
 from typing import Any
 
 from homeassistant.components.valve import (
+    ValveDeviceClass,
     ValveEntity,
     ValveEntityFeature,
 )
@@ -106,6 +107,17 @@ class VirtualValve(ValveEntity):
         valve_type: str = entity_config.get("valve_type", "water_valve")
         self._valve_type = valve_type
 
+        # Set device class based on valve type (required by HA Core ValveEntity)
+        valve_device_class_map: dict[str, ValveDeviceClass] = {
+            "water_valve": ValveDeviceClass.WATER,
+            "gas_valve": ValveDeviceClass.GAS,
+            "irrigation": ValveDeviceClass.WATER,
+            "zone_valve": ValveDeviceClass.WATER,
+        }
+        self._attr_device_class: ValveDeviceClass = valve_device_class_map.get(
+            valve_type, ValveDeviceClass.WATER
+        )
+
         # Set icon based on type
         icon_map: dict[str, str] = {
             "water_valve": "mdi:valve",
@@ -131,8 +143,8 @@ class VirtualValve(ValveEntity):
         self._attr_is_closed: bool | None = self._attr_current_valve_position == 0
 
         # Valve attributes
-        self._is_opening: bool = False
-        self._is_closing: bool = False
+        self._attr_is_opening: bool | None = False
+        self._attr_is_closing: bool | None = False
         self._target_position: int = self._attr_current_valve_position
 
         # Flow related (simulation)
@@ -158,8 +170,8 @@ class VirtualValve(ValveEntity):
         self._attr_is_closed = self._attr_current_valve_position == 0
         self._target_position = self._attr_current_valve_position
         self._is_moving = False
-        self._is_opening = False
-        self._is_closing = False
+        self._attr_is_opening = False
+        self._attr_is_closing = False
         self._start_position = None
         self._start_time = None
 
@@ -181,7 +193,7 @@ class VirtualValve(ValveEntity):
             data = await self._store.async_load()
             if data:
                 self.apply_state(data)
-                _LOGGER.debug(f"Valve '{self._attr_name}' state loaded - position: {self._attr_current_position}%")
+                _LOGGER.debug(f"Valve '{self._attr_name}' state loaded - position: {self._attr_current_valve_position}%")
         except Exception as ex:
             _LOGGER.error(f"Failed to load state for valve '{self._attr_name}': {ex}")
             self.apply_state(self.get_default_state())
@@ -215,40 +227,20 @@ class VirtualValve(ValveEntity):
                 },
             )
 
-    @property
-    def current_position(self) -> int:
-        """Return current position of valve."""
-        return self._attr_current_valve_position
-
-    @property
-    def is_closed(self) -> bool:
-        """Return true if valve is closed."""
-        return self._attr_current_valve_position == 0
-
-    @property
-    def is_opening(self) -> bool:
-        """Return true if valve is opening."""
-        return self._is_opening
-
-    @property
-    def is_closing(self) -> bool:
-        """Return true if valve is closing."""
-        return self._is_closing
-
     async def async_open_valve(self) -> None:
         """Open the valve."""
         if self._attr_current_valve_position == 100:
             return
 
-        self._is_opening = True
-        self._is_closing = False
+        self._attr_is_opening = True
+        self._attr_is_closing = False
 
         try:
             await self._move_to_position(100)
         except Exception as ex:
             _LOGGER.error(f"Failed to open valve: {ex}")
-            self._is_opening = False
-            self._is_closing = False
+            self._attr_is_opening = False
+            self._attr_is_closing = False
             self._is_moving = False
             self.async_write_ha_state()
 
@@ -260,15 +252,15 @@ class VirtualValve(ValveEntity):
         if self._attr_current_valve_position == 0:
             return
 
-        self._is_closing = True
-        self._is_opening = False
+        self._attr_is_closing = True
+        self._attr_is_opening = False
 
         try:
             await self._move_to_position(0)
         except Exception as ex:
             _LOGGER.error(f"Failed to close valve: {ex}")
-            self._is_opening = False
-            self._is_closing = False
+            self._attr_is_opening = False
+            self._attr_is_closing = False
             self._is_moving = False
             self.async_write_ha_state()
 
@@ -285,18 +277,18 @@ class VirtualValve(ValveEntity):
             return
 
         if position > self._attr_current_valve_position:
-            self._is_opening = True
-            self._is_closing = False
+            self._attr_is_opening = True
+            self._attr_is_closing = False
         else:
-            self._is_closing = True
-            self._is_opening = False
+            self._attr_is_closing = True
+            self._attr_is_opening = False
 
         try:
             await self._move_to_position(position)
         except Exception as ex:
             _LOGGER.error(f"Failed to move valve to position {position}: {ex}")
-            self._is_opening = False
-            self._is_closing = False
+            self._attr_is_opening = False
+            self._attr_is_closing = False
             self._is_moving = False
             self.async_write_ha_state()
 
@@ -305,8 +297,8 @@ class VirtualValve(ValveEntity):
 
     async def async_stop_valve(self) -> None:
         """Stop the valve."""
-        self._is_opening = False
-        self._is_closing = False
+        self._attr_is_opening = False
+        self._attr_is_closing = False
         self._is_moving = False
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual valve '{self._attr_name}' stopped")
@@ -353,8 +345,8 @@ class VirtualValve(ValveEntity):
 
         if self._attr_current_valve_position == self._target_position:
             self._is_moving = False
-            self._is_opening = False
-            self._is_closing = False
+            self._attr_is_opening = False
+            self._attr_is_closing = False
             await self.async_save_state()
             self.async_write_ha_state()
         else:

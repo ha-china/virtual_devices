@@ -116,9 +116,12 @@ class VirtualCover(BaseVirtualEntity[CoverEntityConfig, CoverState], CoverEntity
         self._start_position: int | None = None
         self._start_time: float | None = None
 
-        # Cover position state (persisted)
-        self._position: int = 0
-        self._is_closed: bool = True
+        # Cover position state (persisted). HA Core `CoverEntity` exposes
+        # these via cached_properties that read `_attr_current_cover_position`
+        # and `_attr_is_closed`, so we use the `_attr_*` fields directly and
+        # do NOT redefine them as @property overrides.
+        self._attr_current_cover_position: int = 0
+        self._attr_is_closed: bool = True
 
         # Entity category (None = primary entity)
         self._attr_entity_category = None
@@ -134,8 +137,8 @@ class VirtualCover(BaseVirtualEntity[CoverEntityConfig, CoverState], CoverEntity
 
     def apply_state(self, state: CoverState) -> None:
         """Apply loaded state to entity attributes."""
-        self._position = state.get("position", 0)
-        self._is_closed = state.get("is_closed", True)
+        self._attr_current_cover_position = state.get("position", 0)
+        self._attr_is_closed = state.get("is_closed", True)
         # Reset movement state on load to avoid stuck states after restart
         self._is_moving = False
         self._target_position = None
@@ -143,27 +146,17 @@ class VirtualCover(BaseVirtualEntity[CoverEntityConfig, CoverState], CoverEntity
         self._start_time = None
         _LOGGER.debug(
             "Applied state for cover '%s': position=%d, is_closed=%s",
-            self._attr_name, self._position, self._is_closed,
+            self._attr_name, self._attr_current_cover_position, self._attr_is_closed,
         )
 
     def get_current_state(self) -> CoverState:
         """Get current state for persistence."""
         return {
-            "position": self._position,
-            "is_closed": self._is_closed,
+            "position": self._attr_current_cover_position,
+            "is_closed": self._attr_is_closed,
             "is_moving": self._is_moving,
             "target_position": self._target_position,
         }
-
-    @property
-    def current_cover_position(self) -> int:
-        """Return current position of cover (0-100)."""
-        return self._position
-
-    @property
-    def is_closed(self) -> bool:
-        """Return if the cover is closed."""
-        return self._is_closed
 
     @property
     def is_opening(self) -> bool:
@@ -171,7 +164,7 @@ class VirtualCover(BaseVirtualEntity[CoverEntityConfig, CoverState], CoverEntity
         return (
             self._is_moving
             and self._target_position is not None
-            and self._target_position > self._position
+            and self._target_position > self._attr_current_cover_position
         )
 
     @property
@@ -180,7 +173,7 @@ class VirtualCover(BaseVirtualEntity[CoverEntityConfig, CoverState], CoverEntity
         return (
             self._is_moving
             and self._target_position is not None
-            and self._target_position < self._position
+            and self._target_position < self._attr_current_cover_position
         )
 
     async def async_open_cover(self, **kwargs: Any) -> None:
@@ -204,7 +197,7 @@ class VirtualCover(BaseVirtualEntity[CoverEntityConfig, CoverState], CoverEntity
             _LOGGER.debug(
                 "Virtual cover '%s' stopped at position %d%%",
                 self._attr_name,
-                self._position,
+                self._attr_current_cover_position,
             )
         self.fire_template_event("stop_cover", **kwargs)
         self.async_write_ha_state()
@@ -223,17 +216,17 @@ class VirtualCover(BaseVirtualEntity[CoverEntityConfig, CoverState], CoverEntity
 
     async def _move_to_position(self, target_position: int) -> None:
         """Move cover to target position with travel time simulation."""
-        if target_position == self._position:
+        if target_position == self._attr_current_cover_position:
             return
 
         self._is_moving = True
         self._target_position = target_position
-        self._start_position = self._position
+        self._start_position = self._attr_current_cover_position
         self._start_time = self._hass.loop.time()
 
         _LOGGER.debug(
             "Cover '%s' moving from %d%% to %d%% (travel time: %ds)",
-            self._attr_name, self._position, target_position, self._travel_time,
+            self._attr_name, self._attr_current_cover_position, target_position, self._travel_time,
         )
 
         await self._update_position_during_movement()
@@ -267,15 +260,15 @@ class VirtualCover(BaseVirtualEntity[CoverEntityConfig, CoverState], CoverEntity
                 self._start_position - int(elapsed_time / travel_time_per_percent),
             )
 
-        self._position = new_position
-        self._is_closed = self._position == 0
+        self._attr_current_cover_position = new_position
+        self._attr_is_closed = self._attr_current_cover_position == 0
 
         # Save state and update Home Assistant
         await self.async_save_state()
         self.async_write_ha_state()
 
         # Check if target reached
-        if self._position == self._target_position:
+        if self._attr_current_cover_position == self._target_position:
             self._is_moving = False
             self._target_position = None
             self._start_position = None
@@ -283,10 +276,10 @@ class VirtualCover(BaseVirtualEntity[CoverEntityConfig, CoverState], CoverEntity
 
             action = (
                 "opened"
-                if self._position == 100
+                if self._attr_current_cover_position == 100
                 else "closed"
-                if self._position == 0
-                else f"moved to {self._position}%"
+                if self._attr_current_cover_position == 0
+                else f"moved to {self._attr_current_cover_position}%"
             )
             _LOGGER.debug("Virtual cover '%s' %s", self._attr_name, action)
         else:

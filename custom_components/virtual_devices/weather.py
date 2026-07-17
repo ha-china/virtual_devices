@@ -123,15 +123,21 @@ class VirtualWeather(WeatherEntity):
         self._attr_native_precipitation_unit = UnitOfLength.MILLIMETERS
 
         # Initialize weather state
+        # NOTE: HA Core `WeatherEntity` uses `_attr_humidity` (NOT `_attr_native_humidity`)
+        # and exposes precipitation only via `extra_state_attributes` (there is no
+        # `_attr_native_precipitation`/`_attr_precipitation` field on WeatherEntity).
         self._attr_condition: str = self._get_random_condition()
         self._attr_native_temperature: float = self._generate_temperature()
-        self._attr_native_humidity: int = self._generate_humidity()
+        self._attr_humidity: int = self._generate_humidity()
         self._attr_native_pressure: float = self._generate_pressure()
         self._attr_native_wind_speed: float = self._generate_wind_speed()
         self._attr_wind_bearing: int = random.randint(0, 360)
         self._attr_native_visibility: float = self._generate_visibility()
         self._attr_uv_index: float = self._generate_uv_index()
-        self._attr_precipitation: float = self._generate_precipitation()
+        # HA Core WeatherEntity has no `_attr_native_precipitation` property
+        # (only `_attr_native_precipitation_unit`). Track current precipitation
+        # as an internal value and expose it via extra_state_attributes.
+        self._current_precipitation: float = self._generate_precipitation()
         self._attr_native_apparent_temperature: float = self._generate_apparent_temperature()
         self._attr_native_dew_point: float = self._generate_dew_point()
 
@@ -161,7 +167,7 @@ class VirtualWeather(WeatherEntity):
         """Apply loaded state to entity attributes."""
         self._attr_condition = state.get("condition", "sunny")
         self._attr_native_temperature = state.get("temperature", 20.0)
-        self._attr_native_humidity = int(state.get("humidity", 50.0))
+        self._attr_humidity = int(state.get("humidity", 50.0))
         self._attr_native_pressure = state.get("pressure", 1013.0)
         self._attr_native_wind_speed = state.get("wind_speed", 10.0)
 
@@ -170,7 +176,7 @@ class VirtualWeather(WeatherEntity):
         return {
             "condition": self._attr_condition,
             "temperature": self._attr_native_temperature,
-            "humidity": float(self._attr_native_humidity),
+            "humidity": float(self._attr_humidity),
             "pressure": self._attr_native_pressure,
             "wind_speed": self._attr_native_wind_speed,
         }
@@ -264,7 +270,7 @@ class VirtualWeather(WeatherEntity):
     def _generate_apparent_temperature(self) -> float:
         """Generate apparent temperature."""
         apparent_temp = self._attr_native_temperature
-        if self._attr_native_humidity > 70:
+        if self._attr_humidity > 70:
             apparent_temp += random.uniform(1, 3)
         if self._attr_native_wind_speed > 20:
             apparent_temp -= random.uniform(2, 5)
@@ -315,7 +321,7 @@ class VirtualWeather(WeatherEntity):
     def _generate_dew_point(self) -> float:
         """Generate dew point temperature."""
         temp = self._attr_native_temperature
-        humidity = self._attr_native_humidity
+        humidity = self._attr_humidity
         dew_point = temp - ((100 - humidity) / 5)
         return round(dew_point, 1)
 
@@ -402,8 +408,8 @@ class VirtualWeather(WeatherEntity):
         self._attr_native_pressure += random.uniform(-2, 2)
         self._attr_native_pressure = round(self._attr_native_pressure, 1)
 
-        self._attr_native_humidity += random.randint(-5, 5)
-        self._attr_native_humidity = max(20, min(100, self._attr_native_humidity))
+        self._attr_humidity += random.randint(-5, 5)
+        self._attr_humidity = max(20, min(100, self._attr_humidity))
 
         self._attr_native_wind_speed += random.uniform(-2, 2)
         self._attr_native_wind_speed = max(0, round(self._attr_native_wind_speed, 1))
@@ -411,7 +417,7 @@ class VirtualWeather(WeatherEntity):
         self._attr_wind_bearing = (self._attr_wind_bearing + random.randint(-30, 30)) % 360
         self._attr_native_visibility = self._generate_visibility()
         self._attr_uv_index = self._generate_uv_index()
-        self._attr_precipitation = self._generate_precipitation()
+        self._current_precipitation = self._generate_precipitation()
 
         if datetime.now().hour == 0 and datetime.now().minute < 10:
             self._attr_forecast = self._generate_forecast()
@@ -424,7 +430,7 @@ class VirtualWeather(WeatherEntity):
             "update",
             condition=self._attr_condition,
             temperature=self._attr_native_temperature,
-            humidity=self._attr_native_humidity,
+            humidity=self._attr_humidity,
             pressure=self._attr_native_pressure,
             wind_speed=self._attr_native_wind_speed,
         )
@@ -435,6 +441,7 @@ class VirtualWeather(WeatherEntity):
         attrs: dict[str, Any] = {
             "cloud_coverage": self._attr_cloud_coverage,
             "ozone": round(self._attr_ozone, 1),
+            "native_precipitation": round(self._current_precipitation, 1),
         }
 
         if self._attr_condition in ["sunny", "partlycloudy"]:

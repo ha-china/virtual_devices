@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import random
+from typing import Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -38,6 +39,7 @@ BINARY_SENSOR_TYPE_MAP: dict[str, BinarySensorDeviceClass] = {
     "window": BinarySensorDeviceClass.WINDOW,
     "smoke": BinarySensorDeviceClass.SMOKE,
     "gas": BinarySensorDeviceClass.GAS,
+    "water_leak": BinarySensorDeviceClass.MOISTURE,
     "moisture": BinarySensorDeviceClass.MOISTURE,
     "occupancy": BinarySensorDeviceClass.OCCUPANCY,
     "opening": BinarySensorDeviceClass.OPENING,

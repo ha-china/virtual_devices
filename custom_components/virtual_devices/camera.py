@@ -157,6 +157,18 @@ class VirtualCamera(Camera):
         self._motion_detected: bool = False
         self._last_motion_time: float | None = None
 
+        # Animation state for the simulated video feed.
+        # `_current_frame` is the latest rendered JPEG, refreshed by
+        # `async_update` at ~2 fps. `async_camera_image` returns it directly
+        # so the HA frontend sees an animated feed without external ffmpeg.
+        self._current_frame: bytes | None = None
+        self._last_frame_time: float = 0.0
+        self._frame_tick: int = 0
+        # Simulated actors (people / cars) wandering in the scene.
+        # Each entry: {x, y, vx, vy, kind, size}
+        self._actors: list[dict[str, Any]] = []
+        self._init_actors()
+
         # Night vision
         self._night_vision_enabled: bool = entity_config.get("night_vision", True)
         self._ir_illumination_enabled: bool = False
@@ -165,9 +177,10 @@ class VirtualCamera(Camera):
         self._audio_enabled: bool = entity_config.get("audio", False)
         self._two_way_audio: bool = entity_config.get("two_way_audio", False)
 
-        # Camera parameters
+        # Camera parameters. HA Core `Camera.model` cached_property reads
+        # `self._attr_model` (NOT `_attr_model_name`).
         self._attr_brand: str = "VirtualCam"
-        self._attr_model_name: str = f"VC-{camera_type.upper()}-{index + 1:03d}"
+        self._attr_model: str = f"VC-{camera_type.upper()}-{index + 1:03d}"
 
         # Set device info
         self._attr_device_info = device_info
@@ -252,31 +265,74 @@ class VirtualCamera(Camera):
 
         self._attr_supported_features = features
 
-    @property
-    def is_recording(self) -> bool:
-        """Return true if the camera is recording."""
-        return self._attr_is_recording
+    def _init_actors(self) -> None:
+        """Initialize simulated moving objects (people / cars) for the feed.
 
-    @property
-    def motion_detection_enabled(self) -> bool:
-        """Return the camera motion detection status."""
-        return self._attr_motion_detection_enabled
+        The scene is drawn on a 640x480 canvas regardless of the reported
+        `_resolution` (which only affects the advertised stream resolution);
+        the rendered JPEG is scaled up if the caller requests larger frames.
+        """
+        w, h = 640, 480
+        rng = random.Random(hash(self._attr_unique_id or "") & 0xFFFFFFFF)
+        # 1-2 walking people + occasionally 1 car for outdoor/doorbell/ptz
+        actor_count = 1 if self._camera_type == "baby_monitor" else 2
+        self._actors = []
+        for _ in range(actor_count):
+            self._actors.append({
+                "x": rng.uniform(60, w - 60),
+                "y": rng.uniform(h * 0.5, h - 80),
+                "vx": rng.choice([-1, 1]) * rng.uniform(0.5, 1.8),
+                "vy": rng.uniform(-0.3, 0.3),
+                "kind": "person",
+                "size": rng.randint(18, 26),
+                "color": (rng.randint(40, 200), rng.randint(40, 200), rng.randint(40, 200)),
+            })
+        if self._camera_type in ("outdoor", "doorbell", "ptz"):
+            self._actors.append({
+                "x": rng.choice([20, w - 20]),
+                "y": h - 50,
+                "vx": (1 if rng.random() > 0.5 else -1) * rng.uniform(2.0, 3.5),
+                "vy": 0.0,
+                "kind": "car",
+                "size": 40,
+                "color": (rng.randint(40, 200), rng.randint(40, 200), rng.randint(40, 200)),
+            })
 
-    @property
-    def brand(self) -> str | None:
-        """Return the camera brand."""
-        return self._attr_brand
-
-    @property
-    def model(self) -> str | None:
-        """Return the camera model."""
-        return self._attr_model_name
+    def _advance_actors(self) -> None:
+        """Advance the simulated actors by one frame (bounce off edges)."""
+        w, h = 640, 480
+        for actor in self._actors:
+            actor["x"] += actor["vx"]
+            actor["y"] += actor["vy"]
+            # Vertical jitter
+            actor["vy"] += random.uniform(-0.05, 0.05)
+            actor["vy"] = max(-0.6, min(0.6, actor["vy"]))
+            size = actor["size"]
+            # Bounce horizontally -> reverse direction so the actor stays on screen
+            if actor["x"] < size:
+                actor["x"] = size
+                actor["vx"] = abs(actor["vx"])
+            elif actor["x"] > w - size:
+                actor["x"] = w - size
+                actor["vx"] = -abs(actor["vx"])
+            if actor["y"] < h * 0.45:
+                actor["y"] = h * 0.45
+                actor["vy"] = abs(actor["vy"])
+            elif actor["y"] > h - size:
+                actor["y"] = h - size
+                actor["vy"] = -abs(actor["vy"])
 
     async def async_camera_image(
         self, width: int | None = None, height: int | None = None
     ) -> bytes | None:
-        """Return bytes of camera image."""
-        # Minimal valid JPEG fallback
+        """Return bytes of camera image.
+
+        Returns the latest cached animated frame if available; otherwise
+        renders a fresh frame on demand. The cache is refreshed by
+        `async_update` at ~2 fps so the HA frontend sees a moving feed.
+        """
+        # Minimal valid JPEG fallback (1x1 pixel) used if PIL is unavailable
+        # or rendering fails.
         minimal_jpeg: bytes = (
             b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00'
             b'\xff\xdb\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\t\t'
@@ -292,6 +348,11 @@ class VirtualCamera(Camera):
         if not PIL_AVAILABLE:
             return minimal_jpeg
 
+        # If a caller asks for a specific size, render on demand (snapshot path).
+        # Otherwise return the cached animated frame.
+        if width is None and height is None and self._current_frame:
+            return self._current_frame
+
         try:
             image_bytes = await self.hass.async_add_executor_job(
                 self._generate_image, width, height
@@ -304,75 +365,155 @@ class VirtualCamera(Camera):
             return minimal_jpeg
 
     def _generate_image(self, width: int | None = None, height: int | None = None) -> bytes:
-        """Generate a virtual camera image."""
+        """Generate a virtual camera image with animated moving actors.
+
+        The scene is always drawn on a 640x480 canvas (kept small for low CPU
+        overhead) and then resized to the caller-requested dimensions. Moving
+        actors (people / cars) are drawn at their current positions, which are
+        advanced by `_advance_actors` once per frame tick.
+        """
         import time
 
-        img_width, img_height = self._resolution
-        if width and height:
-            img_width, img_height = width, height
-
-        image = Image.new("RGB", (img_width, img_height), color=(0, 0, 0))
+        canvas_w, canvas_h = 640, 480
+        image = Image.new("RGB", (canvas_w, canvas_h), color=(0, 0, 0))
         draw = ImageDraw.Draw(image)
 
-        # Generate background color based on time and camera type
+        # Background: day/night + camera type
         current_hour = int(time.strftime("%H"))
-        if 6 <= current_hour <= 18:
-            bg_color = (135, 206, 235) if self._camera_type == "outdoor" else (240, 240, 240)
+        is_night = not (6 <= current_hour <= 18)
+        if is_night and self._night_vision_enabled:
+            sky_color = (0, 30, 0)
+            ground_color = (0, 50, 0)
+        elif self._camera_type == "outdoor":
+            sky_color = (135, 206, 235) if not is_night else (20, 30, 60)
+            ground_color = (60, 110, 60) if not is_night else (20, 35, 25)
         else:
-            bg_color = (0, 50, 0) if self._night_vision_enabled else (20, 20, 40)
+            sky_color = (240, 240, 240) if not is_night else (30, 30, 50)
+            ground_color = (180, 180, 170) if not is_night else (35, 35, 45)
 
-        draw.rectangle([0, 0, img_width, img_height], fill=bg_color)
+        # Sky / ceiling
+        draw.rectangle([0, 0, canvas_w, canvas_h * 2 // 3], fill=sky_color)
+        # Ground / floor
+        draw.rectangle([0, canvas_h * 2 // 3, canvas_w, canvas_h], fill=ground_color)
+        # Horizon line
+        draw.line([(0, canvas_h * 2 // 3), (canvas_w, canvas_h * 2 // 3)],
+                  fill=(80, 80, 80), width=1)
 
         try:
             font = ImageFont.load_default()
         except BaseException:
             font = None
 
-        # Draw title
-        title_text = f"Virtual Camera - {self._camera_type.upper()}"
-        if font:
-            draw.text((20, 20), title_text, fill=(255, 255, 255), font=font)
+        # Draw moving actors (people / cars)
+        for actor in self._actors:
+            x = int(actor["x"])
+            y = int(actor["y"])
+            size = int(actor["size"])
+            color = actor["color"]
+            # Motion blur trail
+            trail_dx = -int(actor["vx"] * 4)
+            draw.line([(x + trail_dx, y), (x, y)], fill=color, width=max(2, size // 6))
+            if actor["kind"] == "person":
+                # Head
+                draw.ellipse([x - size // 3, y - size, x + size // 3, y - size // 2],
+                             fill=color)
+                # Body (trapezoid via rectangle)
+                body_top_y = y - size // 2
+                draw.rectangle([x - size // 2, body_top_y, x + size // 2, y + size // 2],
+                               fill=color)
+                # Legs (walking alternation based on tick)
+                leg_swing = (self._frame_tick // 6) % 2 == 0
+                leg_off = size // 4 if leg_swing else -size // 4
+                draw.line([(x, y + size // 2), (x - size // 3 + leg_off, y + size)],
+                          fill=color, width=max(2, size // 5))
+                draw.line([(x, y + size // 2), (x + size // 3 - leg_off, y + size)],
+                          fill=color, width=max(2, size // 5))
+            else:  # car
+                # Body
+                draw.rectangle([x - size, y - size // 2, x + size, y + size // 4],
+                               fill=color)
+                # Wheels
+                wheel_color = (20, 20, 20)
+                wheel_r = size // 4
+                draw.ellipse([x - size + wheel_r, y + size // 4 - wheel_r,
+                              x - size + 3 * wheel_r, y + size // 4 + wheel_r],
+                             fill=wheel_color)
+                draw.ellipse([x + size - 3 * wheel_r, y + size // 4 - wheel_r,
+                              x + size - wheel_r, y + size // 4 + wheel_r],
+                             fill=wheel_color)
+                # Windows
+                win_color = (120, 180, 220) if not is_night else (40, 60, 80)
+                direction = 1 if actor["vx"] >= 0 else -1
+                draw.polygon([
+                    (x + direction * size // 4, y - size // 3),
+                    (x + direction * size, y - size // 3),
+                    (x + direction * size * 3 // 4, y - size // 2 + 2),
+                    (x + direction * size // 2, y - size // 2 + 2),
+                ], fill=win_color)
 
-        # Draw timestamp
+        # Center crosshair
+        center_x, center_y = canvas_w // 2, canvas_h // 2
+        cross_color = (255, 0, 0) if self._motion_detected else (0, 255, 0)
+        draw.line([(center_x - 20, center_y), (center_x + 20, center_y)],
+                  fill=cross_color, width=2)
+        draw.line([(center_x, center_y - 20), (center_x, center_y + 20)],
+                  fill=cross_color, width=2)
+
+        # Scanning line (animated, moves top to bottom)
+        scan_y = (self._frame_tick * 8) % canvas_h
+        scan_color = (0, 255, 255, 80) if not is_night else (180, 255, 180, 80)
+        try:
+            # `draw.line` ignores alpha; emulate via thin translucent overlay
+            draw.line([(0, scan_y), (canvas_w, scan_y)], fill=(0, 255, 255), width=2)
+        except Exception:
+            pass
+
+        # HUD: title + timestamp + status
+        title_text = f"Virtual Camera - {self._camera_type.upper()}"
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         if font:
-            draw.text((20, img_height - 60), timestamp, fill=(255, 255, 255), font=font)
-
-        # Draw status info
-        status_y = 60
+            draw.text((20, 20), title_text, fill=(255, 255, 255), font=font)
+            draw.text((20, canvas_h - 30), timestamp, fill=(255, 255, 255), font=font)
         status_lines = [
             f"Status: {'Recording' if self._attr_is_recording else 'Idle'}",
-            f"Motion Detection: {'ON' if self._attr_motion_detection_enabled else 'OFF'}",
-            f"Resolution: {img_width}x{img_height}",
+            f"Motion: {'ON' if self._attr_motion_detection_enabled else 'OFF'}"
+            + (f" [DETECTED]" if self._motion_detected else ""),
+            f"Night Vision: {'ON' if self._ir_illumination_enabled else 'OFF'}",
         ]
-
+        status_y = 50
         for line in status_lines:
             if font:
                 draw.text((20, status_y), line, fill=(255, 255, 255), font=font)
-            status_y += 25
+            status_y += 20
 
-        # Draw grid
-        grid_color = (100, 100, 100)
-        for x in range(0, img_width, 50):
-            draw.line([(x, 0), (x, img_height)], fill=grid_color, width=1)
-        for y in range(0, img_height, 50):
-            draw.line([(0, y), (img_width, y)], fill=grid_color, width=1)
+        # Recording indicator (blinking red dot, top-right)
+        if self._attr_is_recording and (self._frame_tick // 15) % 2 == 0:
+            draw.ellipse([canvas_w - 40, 20, canvas_w - 20, 40], fill=(255, 0, 0))
+            if font:
+                draw.text((canvas_w - 60, 45), "REC", fill=(255, 0, 0), font=font)
 
-        # Draw center crosshair
-        center_x, center_y = img_width // 2, img_height // 2
-        cross_color = (255, 0, 0) if self._motion_detected else (0, 255, 0)
-        draw.line([(center_x - 20, center_y), (center_x + 20, center_y)], fill=cross_color, width=2)
-        draw.line([(center_x, center_y - 20), (center_x, center_y + 20)], fill=cross_color, width=2)
-
-        # Add noise
-        for _ in range(100):
-            x = random.randint(0, img_width - 1)
-            y = random.randint(0, img_height - 1)
-            noise_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        # Sparse noise (camera sensor simulation)
+        noise_count = 60 if not is_night else 120
+        for _ in range(noise_count):
+            x = random.randint(0, canvas_w - 1)
+            y = random.randint(0, canvas_h - 1)
+            if is_night:
+                noise_color = (random.randint(0, 80), random.randint(80, 160), random.randint(0, 80))
+            else:
+                noise_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             draw.point((x, y), fill=noise_color)
 
+        # Scale to the caller-requested size, if any
+        out_w, out_h = canvas_w, canvas_h
+        if width and height and (width != canvas_w or height != canvas_h):
+            try:
+                image = image.resize((width, height))
+                out_w, out_h = width, height
+            except Exception as e:
+                _LOGGER.debug(f"Camera '{self._attr_name}' resize failed: {e}")
+
         img_bytes = io.BytesIO()
-        image.save(img_bytes, format="JPEG")
+        image.save(img_bytes, format="JPEG", quality=85)
         return img_bytes.getvalue()
 
     async def async_enable_motion_detection(self) -> None:
@@ -410,7 +551,13 @@ class VirtualCamera(Camera):
         self.fire_template_event("turn_off")
 
     async def async_update(self) -> None:
-        """Update camera state."""
+        """Update camera state and refresh the animated frame cache.
+
+        HA polls cameras every ~30s by default; the cached frame is also
+        refreshed on demand when the frontend requests a snapshot. To keep the
+        feed visibly animated we additionally schedule a ~2 fps self-refresh
+        via `hass.loop.call_later` once the entity is streaming.
+        """
         import time
 
         # Simulate motion detection
@@ -435,6 +582,22 @@ class VirtualCamera(Camera):
         night_vision_should_be_on = current_hour < 6 or current_hour > 18
         if self._night_vision_enabled and night_vision_should_be_on != self._ir_illumination_enabled:
             self._ir_illumination_enabled = night_vision_should_be_on
+
+        # Refresh animated frame (throttled to ~2 fps = every 0.5s)
+        now = time.time()
+        if PIL_AVAILABLE and now - self._last_frame_time >= 0.5:
+            self._last_frame_time = now
+            self._frame_tick += 1
+            self._advance_actors()
+            try:
+                frame = await self.hass.async_add_executor_job(self._generate_image)
+                if frame:
+                    self._current_frame = frame
+                    # Push the new frame to subscribers so the HA frontend
+                    # video element refreshes immediately.
+                    self.async_write_ha_state()
+            except Exception as e:
+                _LOGGER.error(f"Error generating animated frame for '{self._attr_name}': {e}")
 
         self.async_write_ha_state()
 

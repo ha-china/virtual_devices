@@ -9,6 +9,7 @@ from typing import Any
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.components.vacuum import (
     StateVacuumEntity,
+    VacuumActivity,
     VacuumEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -39,8 +40,15 @@ PRESET_ROOMS: list[str] = list(VACUUM_ROOMS.values())
 # Cleaning modes
 CLEANING_MODES: list[str] = list(VACUUM_CLEANING_MODES.values())
 
-# Valid vacuum states
-VALID_STATES: list[str] = ["docked", "cleaning", "paused", "returning", "idle", "error"]
+# Valid vacuum activities ( VacuumActivity enum members)
+VALID_ACTIVITIES: list[str] = [
+    VacuumActivity.DOCKED.value,
+    VacuumActivity.CLEANING.value,
+    VacuumActivity.PAUSED.value,
+    VacuumActivity.RETURNING.value,
+    VacuumActivity.IDLE.value,
+    VacuumActivity.ERROR.value,
+]
 
 
 async def async_setup_entry(
@@ -112,9 +120,9 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
 
         # Initialize state
         initial_status: str = entity_config.get(CONF_VACUUM_STATUS, "docked")
-        if initial_status not in VALID_STATES:
-            initial_status = "docked"
-        self._attr_state: str = initial_status
+        if initial_status not in VALID_ACTIVITIES:
+            initial_status = VacuumActivity.DOCKED.value
+        self._attr_activity: VacuumActivity | None = VacuumActivity(initial_status)
 
         # Battery level (internal tracking, exposed via battery sensor)
         self._battery_level: int = 100
@@ -135,12 +143,12 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
         # Error state
         self._error_message: str | None = None
 
-        _LOGGER.info("Virtual vacuum '%s' initialized with state: %s", self._attr_name, self._attr_state)
+        _LOGGER.info("Virtual vacuum '%s' initialized with activity: %s", self._attr_name, self._attr_activity)
 
     def get_default_state(self) -> VacuumState:
         """Return the default state for this vacuum entity."""
         return VacuumState(
-            state="docked",
+            state=VacuumActivity.DOCKED.value,
             fan_speed="medium",
             cleaned_area=0,
             cleaning_duration=0,
@@ -149,17 +157,21 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
 
     def apply_state(self, state: VacuumState) -> None:
         """Apply loaded state to entity attributes."""
-        self._attr_state = state.get("state", "docked")
+        loaded_state = state.get("state", VacuumActivity.DOCKED.value)
+        try:
+            self._attr_activity = VacuumActivity(loaded_state)
+        except ValueError:
+            self._attr_activity = VacuumActivity.DOCKED
         self._attr_fan_speed = state.get("fan_speed", "medium")
         self._cleaned_area = state.get("cleaned_area", 0)
         self._cleaning_duration = state.get("cleaning_duration", 0)
         self._current_room = state.get("current_room")
-        _LOGGER.info("Loaded state for vacuum '%s': state=%s", self._attr_name, self._attr_state)
+        _LOGGER.info("Loaded state for vacuum '%s': activity=%s", self._attr_name, self._attr_activity)
 
     def get_current_state(self) -> VacuumState:
         """Get current state for persistence."""
         return VacuumState(
-            state=self._attr_state,
+            state=self._attr_activity.value if self._attr_activity else VacuumActivity.DOCKED.value,
             fan_speed=self._attr_fan_speed,
             cleaned_area=self._cleaned_area,
             cleaning_duration=self._cleaning_duration,
@@ -170,32 +182,17 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
         """Run when entity is added to Home Assistant."""
         await super().async_added_to_hass()
         self.async_write_ha_state()
-        _LOGGER.info("Virtual vacuum '%s' added to Home Assistant with state: %s", self._attr_name, self._attr_state)
-
-    @property
-    def state(self) -> str:
-        """Return the state of the vacuum cleaner."""
-        return self._attr_state
+        _LOGGER.info("Virtual vacuum '%s' added to Home Assistant with activity: %s", self._attr_name, self._attr_activity)
 
     @property
     def battery_level_internal(self) -> int:
         """Return the battery level for internal use by battery sensor."""
         return self._battery_level
 
-    @property
-    def fan_speed(self) -> str | None:
-        """Return the fan speed of the vacuum cleaner."""
-        return self._attr_fan_speed
-
-    @property
-    def fan_speed_list(self) -> list[str] | None:
-        """Get the list of available fan speed steps of the vacuum cleaner."""
-        return self._attr_fan_speed_list
-
     async def async_start(self) -> None:
         """Start or resume the cleaning task."""
-        if self._attr_state in ["docked", "returning", "idle"]:
-            self._attr_state = "cleaning"
+        if self._attr_activity in (VacuumActivity.DOCKED, VacuumActivity.RETURNING, VacuumActivity.IDLE):
+            self._attr_activity = VacuumActivity.CLEANING
             self._cleaning_started_at = datetime.now()
             self._cleaned_area = 0
             self._current_room = random.choice(PRESET_ROOMS) if random.random() > 0.3 else None
@@ -205,14 +202,14 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
 
             self.fire_template_event(
                 "start",
-                status=self._attr_state,
+                status=self._attr_activity.value if self._attr_activity else None,
                 current_room=self._current_room,
             )
 
     async def async_pause(self) -> None:
         """Pause the cleaning task."""
-        if self._attr_state == "cleaning":
-            self._attr_state = "paused"
+        if self._attr_activity == VacuumActivity.CLEANING:
+            self._attr_activity = VacuumActivity.PAUSED
             if self._cleaning_started_at:
                 self._cleaning_duration += (datetime.now() - self._cleaning_started_at).total_seconds()
                 self._cleaning_started_at = None
@@ -220,12 +217,12 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
             self.async_write_ha_state()
             _LOGGER.debug("Virtual vacuum '%s' paused cleaning", self._attr_name)
 
-            self.fire_template_event("pause", status=self._attr_state)
+            self.fire_template_event("pause", status=self._attr_activity.value if self._attr_activity else None)
 
     async def async_stop(self, **kwargs: Any) -> None:
         """Stop the cleaning task."""
-        if self._attr_state in ["cleaning", "paused"]:
-            self._attr_state = "idle"
+        if self._attr_activity in (VacuumActivity.CLEANING, VacuumActivity.PAUSED):
+            self._attr_activity = VacuumActivity.IDLE
             if self._cleaning_started_at:
                 self._cleaning_duration += (datetime.now() - self._cleaning_started_at).total_seconds()
                 self._cleaning_started_at = None
@@ -235,15 +232,15 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
 
             self.fire_template_event(
                 "stop",
-                status=self._attr_state,
+                status=self._attr_activity.value if self._attr_activity else None,
                 cleaned_area=self._cleaned_area,
                 cleaning_duration=self._cleaning_duration,
             )
 
     async def async_return_to_base(self, **kwargs: Any) -> None:
         """Set the vacuum cleaner to return to the dock."""
-        if self._attr_state in ["cleaning", "paused"]:
-            self._attr_state = "returning"
+        if self._attr_activity in (VacuumActivity.CLEANING, VacuumActivity.PAUSED):
+            self._attr_activity = VacuumActivity.RETURNING
             if self._cleaning_started_at:
                 self._cleaning_duration += (datetime.now() - self._cleaning_started_at).total_seconds()
                 self._cleaning_started_at = None
@@ -251,14 +248,14 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
             self.async_write_ha_state()
             _LOGGER.debug("Virtual vacuum '%s' returning to base", self._attr_name)
 
-            self.fire_template_event("return_to_base", status=self._attr_state)
+            self.fire_template_event("return_to_base", status=self._attr_activity.value if self._attr_activity else None)
 
             # Simulate return to dock time
             self._hass.loop.call_later(30, self._dock_callback)
 
     async def async_clean_spot(self, **kwargs: Any) -> None:
         """Perform a spot clean-up."""
-        self._attr_state = "cleaning"
+        self._attr_activity = VacuumActivity.CLEANING
         self._cleaning_started_at = datetime.now()
         self._current_room = "point_area"
         self._cleaned_area = random.uniform(2, 5)
@@ -268,7 +265,7 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
 
         self.fire_template_event(
             "clean_spot",
-            status=self._attr_state,
+            status=self._attr_activity.value if self._attr_activity else None,
             cleaned_area=self._cleaned_area,
         )
 
@@ -300,7 +297,7 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
         _LOGGER.debug("Virtual vacuum '%s' received command: %s with params: %s", self._attr_name, command, params)
 
         if command == "clean_room" and params and "room" in params:
-            self._attr_state = "cleaning"
+            self._attr_activity = VacuumActivity.CLEANING
             self._cleaning_started_at = datetime.now()
             self._current_room = params["room"]
             self._cleaned_area = random.uniform(5, 15)
@@ -332,54 +329,22 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
                 result=history,
             )
 
-    async def async_turn_on(self) -> None:
-        """Turn on the vacuum cleaner."""
-        if self._attr_state in ["docked", "idle"]:
-            self._attr_state = "cleaning"
-            self._cleaning_started_at = datetime.now()
-            self._current_room = random.choice(PRESET_ROOMS) if random.random() > 0.3 else None
-            await self.async_save_state()
-            self.async_write_ha_state()
-            _LOGGER.debug("Virtual vacuum '%s' turned on", self._attr_name)
-
-            self.fire_template_event(
-                "turn_on",
-                status=self._attr_state,
-                current_room=self._current_room,
-            )
-
-    async def async_turn_off(self) -> None:
-        """Turn off the vacuum cleaner."""
-        if self._attr_state != "docked":
-            self._attr_state = "returning"
-            if self._cleaning_started_at:
-                self._cleaning_duration += (datetime.now() - self._cleaning_started_at).total_seconds()
-                self._cleaning_started_at = None
-            await self.async_save_state()
-            self.async_write_ha_state()
-            _LOGGER.debug("Virtual vacuum '%s' turning off", self._attr_name)
-
-            self.fire_template_event("turn_off", status=self._attr_state)
-
-            # Simulate return to dock time
-            self._hass.loop.call_later(30, self._dock_callback)
-
     async def async_update(self) -> None:
         """Update vacuum state and battery."""
         # Update battery level
-        if self._attr_state == "cleaning":
+        if self._attr_activity == VacuumActivity.CLEANING:
             self._battery_level = max(0, self._battery_level - random.uniform(0.1, 0.3))
-        elif self._attr_state == "returning":
+        elif self._attr_activity == VacuumActivity.RETURNING:
             self._battery_level = max(0, self._battery_level - random.uniform(0.2, 0.4))
-        elif self._attr_state == "docked":
+        elif self._attr_activity == VacuumActivity.DOCKED:
             self._battery_level = min(100, self._battery_level + random.uniform(0.5, 1.0))
 
         # Check low battery auto return
-        if self._attr_state == "cleaning" and self._battery_level < 20:
+        if self._attr_activity == VacuumActivity.CLEANING and self._battery_level < 20:
             await self.async_return_to_base()
 
         # Update cleaning progress
-        if self._attr_state == "cleaning" and self._cleaning_started_at:
+        if self._attr_activity == VacuumActivity.CLEANING and self._cleaning_started_at:
             elapsed_time = (datetime.now() - self._cleaning_started_at).total_seconds()
 
             speed_multiplier = {
@@ -394,14 +359,14 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
 
             # Simulate random error (small probability)
             if random.random() < 0.01:
-                self._attr_state = "error"
+                self._attr_activity = VacuumActivity.ERROR
                 self._error_message = "virtual_sensor_error"
                 self.async_write_ha_state()
 
         # Return to dock completion
-        if self._attr_state == "returning" and self._battery_level < 30:
+        if self._attr_activity == VacuumActivity.RETURNING and self._battery_level < 30:
             if random.random() < 0.1:
-                self._attr_state = "docked"
+                self._attr_activity = VacuumActivity.DOCKED
                 self._current_room = None
                 self.async_write_ha_state()
 
@@ -409,24 +374,27 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
 
     def _dock_callback(self) -> None:
         """Callback for when vacuum reaches dock."""
-        if self._attr_state == "returning":
-            self._attr_state = "docked"
+        if self._attr_activity == VacuumActivity.RETURNING:
+            self._attr_activity = VacuumActivity.DOCKED
             self._current_room = None
             self.async_write_ha_state()
             _LOGGER.debug("Virtual vacuum '%s' reached dock", self._attr_name)
 
-            self.fire_template_event("docked", status=self._attr_state)
+            self.fire_template_event("docked", status=self._attr_activity.value if self._attr_activity else None)
 
     def _spot_cleaning_complete_callback(self) -> None:
         """Callback for when spot cleaning is complete."""
-        if self._attr_state == "cleaning" and self._current_room == "point_area":
-            self._attr_state = "idle"
+        if self._attr_activity == VacuumActivity.CLEANING and self._current_room == "point_area":
+            self._attr_activity = VacuumActivity.IDLE
             self._cleaning_started_at = None
             self._current_room = None
             self.async_write_ha_state()
             _LOGGER.debug("Virtual vacuum '%s' completed spot cleaning", self._attr_name)
 
-            self.fire_template_event("spot_cleaning_complete", status=self._attr_state)
+            self.fire_template_event(
+                "spot_cleaning_complete",
+                status=self._attr_activity.value if self._attr_activity else None,
+            )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

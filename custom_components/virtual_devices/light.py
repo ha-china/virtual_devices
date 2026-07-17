@@ -236,11 +236,6 @@ class VirtualLight(BaseVirtualEntity[LightEntityConfig, LightState], LightEntity
         return _rgb_to_color_temp_kelvin(rgb)
 
     @property
-    def is_on(self) -> bool:
-        """Return true if light is on."""
-        return self._attr_is_on
-
-    @property
     def brightness(self) -> int | None:
         """Return the brightness of the light."""
         if self._attr_color_mode == ColorMode.RGB and self._attr_rgb_color:

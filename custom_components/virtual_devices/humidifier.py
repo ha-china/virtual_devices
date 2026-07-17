@@ -240,50 +240,20 @@ class VirtualHumidifier(HumidifierEntity):
         }
         self._attr_available_modes = mode_map.get(self._humidifier_type, ["Auto"])
 
-    @property
-    def is_on(self) -> bool:
-        """Return true if the humidifier is on."""
-        return self._attr_is_on
-
-    @property
-    def current_humidity(self) -> int | None:
-        """Return the current humidity."""
-        return self._attr_current_humidity
-
-    @property
-    def target_humidity(self) -> int | None:
-        """Return the humidity we try to reach."""
-        return self._attr_target_humidity
-
-    @property
-    def mode(self) -> str | None:
-        """Return the current mode."""
-        return self._attr_mode
-
-    @property
-    def available_modes(self) -> list[str] | None:
-        """Return the available modes."""
-        return self._attr_available_modes
-
-    @property
-    def min_humidity(self) -> int:
-        """Return the minimum humidity."""
+        # Set the min/max humidity limits once based on the humidifier type so
+        # the base class cached_properties pick them up via the `_attr_*` fields.
         min_map: dict[str, int] = {
             "ultrasonic": 30, "impeller": 30, "warm_mist": 30,
             "evaporative": 20, "steam": 40,
             "compressor": 30, "desiccant": 30, "whole_home": 35, "portable": 30,
         }
-        return min_map.get(self._humidifier_type, 30)
-
-    @property
-    def max_humidity(self) -> int:
-        """Return the maximum humidity."""
         max_map: dict[str, int] = {
             "ultrasonic": 80, "impeller": 80, "warm_mist": 80,
             "evaporative": 70, "steam": 90,
             "compressor": 70, "desiccant": 70, "whole_home": 65, "portable": 70,
         }
-        return max_map.get(self._humidifier_type, 80)
+        self._attr_min_humidity: int = min_map.get(self._humidifier_type, 30)
+        self._attr_max_humidity: int = max_map.get(self._humidifier_type, 80)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the humidifier on."""

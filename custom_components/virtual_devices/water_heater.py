@@ -223,26 +223,6 @@ class VirtualWaterHeater(WaterHeaterEntity):
                 },
             )
 
-    @property
-    def current_temperature(self) -> float | None:
-        """Return the current temperature."""
-        return self._attr_current_temperature
-
-    @property
-    def target_temperature(self) -> float | None:
-        """Return the target temperature."""
-        return self._attr_target_temperature
-
-    @property
-    def current_operation(self) -> str | None:
-        """Return the current operation mode."""
-        return self._attr_current_operation
-
-    @property
-    def is_away_mode_on(self) -> bool:
-        """Return the away mode."""
-        return self._attr_is_away_mode_on
-
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set new target temperature."""
         temperature = kwargs.get("temperature")

@@ -13,6 +13,12 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
+    SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+    UnitOfDensity,
+    UnitOfPrecipitationDepth,
+    UnitOfRatio,
+    UnitOfSoundPressure,
+    UnitOfSpeed,
     UnitOfTime,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
@@ -66,7 +72,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "icon": "mdi:gauge",
     },
     "illuminance": {
-        "device_class": None,
+        "device_class": SensorDeviceClass.ILLUMINANCE,
         "unit": "lx",
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 100000),
@@ -106,6 +112,94 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 100),
         "icon": "mdi:battery",
+    },
+    "signal_strength": {
+        "device_class": SensorDeviceClass.SIGNAL_STRENGTH,
+        "unit": SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "range": (-100, 0),
+        "icon": "mdi:wifi",
+    },
+    "pm25": {
+        "device_class": SensorDeviceClass.PM25,
+        "unit": UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "range": (0, 500),
+        "icon": "mdi:blur",
+    },
+    "pm10": {
+        "device_class": SensorDeviceClass.PM10,
+        "unit": UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "range": (0, 600),
+        "icon": "mdi:blur",
+    },
+    "co2": {
+        "device_class": SensorDeviceClass.CO2,
+        "unit": UnitOfRatio.PARTS_PER_MILLION,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "range": (300, 5000),
+        "icon": "mdi:molecule-co2",
+    },
+    "voc": {
+        "device_class": SensorDeviceClass.VOLATILE_ORGANIC_COMPOUNDS,
+        "unit": UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "range": (0, 1000),
+        "icon": "mdi:cloud",
+    },
+    "formaldehyde": {
+        # No standard SensorDeviceClass for formaldehyde in HA Core
+        "device_class": None,
+        "unit": UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "range": (0, 100),
+        "icon": "mdi:flask",
+    },
+    "noise": {
+        "device_class": SensorDeviceClass.SOUND_PRESSURE,
+        "unit": UnitOfSoundPressure.DECIBEL,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "range": (20, 120),
+        "icon": "mdi:volume-high",
+    },
+    "uv_index": {
+        # No SensorDeviceClass.EMISSIVITY/UV_INDEX in HA Core; uv_index is a
+        # dimensionless measurement (weather entities expose it as a state attr).
+        "device_class": None,
+        "unit": None,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "range": (0, 12),
+        "icon": "mdi:weather-sunny",
+    },
+    "rainfall": {
+        "device_class": SensorDeviceClass.PRECIPITATION,
+        "unit": UnitOfPrecipitationDepth.MILLIMETERS,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "range": (0, 200),
+        "icon": "mdi:weather-pouring",
+    },
+    "wind_speed": {
+        "device_class": SensorDeviceClass.WIND_SPEED,
+        "unit": UnitOfSpeed.KILOMETERS_PER_HOUR,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "range": (0, 200),
+        "icon": "mdi:weather-windy",
+    },
+    "water_quality": {
+        # No standard SensorDeviceClass for generic water quality index
+        "device_class": None,
+        "unit": None,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "range": (0, 100),
+        "icon": "mdi:water-check",
+    },
+    "ph": {
+        "device_class": SensorDeviceClass.PH,
+        "unit": None,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "range": (0, 14),
+        "icon": "mdi:water",
     },
 }
 
@@ -276,47 +370,45 @@ class VirtualSensor(BaseVirtualEntity[SensorEntityConfig, SensorState], SensorEn
 
     def _generate_initial_value(self, type_config: dict[str, Any]) -> float | int:
         """Generate initial value based on sensor type."""
-        if self._sensor_type == "temperature":
-            return round(random.uniform(18, 25), 1)
-        elif self._sensor_type == "humidity":
-            return round(random.uniform(30, 70), 1)
-        elif self._sensor_type == "pressure":
-            return round(random.uniform(980, 1020), 1)
-        elif self._sensor_type == "illuminance":
-            return round(random.uniform(100, 1000), 1)
-        elif self._sensor_type in ("power", "voltage", "current"):
-            range_vals: tuple[int, int] = type_config.get("range", (0, 100))
-            return round(random.uniform(range_vals[0], range_vals[1]), 1)
-        elif self._sensor_type == "battery":
+        if self._sensor_type == "battery":
             return random.randint(20, 100)
-        else:
-            return 0
+        if self._sensor_type == "energy":
+            # TOTAL_INCREASING: start low so subsequent updates can accumulate.
+            return round(random.uniform(0, 10), 2)
+        range_vals: tuple[int, int] = type_config.get("range", (0, 100))
+        return round(random.uniform(range_vals[0], range_vals[1]), 1)
 
     async def async_update(self) -> None:
         """Update sensor value if simulation is enabled."""
         if not self._simulation_enabled:
             return
 
-        # Simulate sensor value changes based on sensor type
-        if self._sensor_type == "temperature":
-            self._native_value = round(random.uniform(18, 28), 1)
-        elif self._sensor_type == "humidity":
-            self._native_value = round(random.uniform(30, 80), 1)
-        elif self._sensor_type == "pressure":
-            self._native_value = round(random.uniform(980, 1030), 1)
-        elif self._sensor_type == "battery":
-            # Battery level changes slowly
-            current: float | int = self._native_value if isinstance(self._native_value, (int, float)) else 50
+        type_config: dict[str, Any] = SENSOR_TYPE_CONFIG.get(self._sensor_type, {})
+        range_vals: tuple[int, int] = type_config.get("range", (0, 100))
+
+        if self._sensor_type == "battery":
+            # Battery level drifts slowly within its configured range.
+            current: float | int = self._native_value if isinstance(
+                self._native_value, (int, float)) else range_vals[1]
             change: float = random.uniform(-5, 5)
-            new_value: float = max(0, min(100, current + change))
-            self._native_value = round(new_value)
-        elif self._sensor_type == "illuminance":
-            self._native_value = round(random.uniform(0, 5000), 1)
+            self._native_value = round(
+                max(range_vals[0], min(range_vals[1], current + change)))
+        elif self._sensor_type == "energy":
+            # TOTAL_INCREASING semantics: value only increases, with a tiny
+            # chance of a meter reset back near 0 to simulate rollover.
+            current = self._native_value if isinstance(
+                self._native_value, (int, float)) else 0.0
+            if random.random() < 0.001:
+                self._native_value = round(random.uniform(0, 1), 2)
+            else:
+                increment = random.uniform(0.05, 0.5)
+                self._native_value = round(
+                    min(range_vals[1], current + increment), 2)
         else:
-            # Other sensor types
-            type_config: dict[str, Any] = SENSOR_TYPE_CONFIG.get(self._sensor_type, {})
-            range_vals: tuple[int, int] = type_config.get("range", (0, 100))
-            self._native_value = round(random.uniform(range_vals[0], range_vals[1]), 1)
+            # MEASUREMENT-class sensors (and any dimensionless ones) fluctuate
+            # within their configured range.
+            self._native_value = round(
+                random.uniform(range_vals[0], range_vals[1]), 1)
 
         # Save state to storage
         await self.async_save_state()
@@ -346,8 +438,18 @@ class VirtualLaundrySensor(SensorEntity):
 
         if sensor_kind == "program_progress":
             self._attr_native_unit_of_measurement = PERCENTAGE
+            self._attr_state_class = SensorStateClass.MEASUREMENT
         elif sensor_kind in ("remaining_time", "total_time"):
+            self._attr_device_class = SensorDeviceClass.DURATION
             self._attr_native_unit_of_measurement = UnitOfTime.MINUTES
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+        elif sensor_kind == "finish_time":
+            self._attr_device_class = SensorDeviceClass.TIMESTAMP
+        elif sensor_kind == "operation_state":
+            self._attr_device_class = SensorDeviceClass.ENUM
+            self._attr_options = [
+                "ready", "delayedstart", "run", "pause", "finished", "inactive",
+            ]
 
     @property
     def native_value(self) -> Any:
@@ -399,7 +501,25 @@ class VirtualApplianceSensor(SensorEntity):
         self._attr_unique_id = f"{config_entry_id}_{manager.device_type}_{index}_{sensor_kind}"
         self._attr_device_info = device_info
         if sensor_kind in ("remaining_time", "total_time"):
+            self._attr_device_class = SensorDeviceClass.DURATION
             self._attr_native_unit_of_measurement = UnitOfTime.MINUTES
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+        elif sensor_kind in ("fridge_temperature", "freezer_temperature"):
+            self._attr_device_class = SensorDeviceClass.TEMPERATURE
+            self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+        elif sensor_kind == "finish_time":
+            self._attr_device_class = SensorDeviceClass.TIMESTAMP
+        elif sensor_kind == "mode":
+            self._attr_device_class = SensorDeviceClass.ENUM
+            self._attr_options = ["normal", "eco", "quick_cool", "vacation"]
+        elif sensor_kind == "last_ring":
+            self._attr_device_class = SensorDeviceClass.TIMESTAMP
+        elif sensor_kind == "operation_state":
+            self._attr_device_class = SensorDeviceClass.ENUM
+            self._attr_options = [
+                "ready", "delayedstart", "run", "pause", "finished", "inactive",
+            ]
 
     @property
     def native_value(self) -> Any:

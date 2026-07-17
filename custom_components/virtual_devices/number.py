@@ -5,7 +5,7 @@ from typing import Any
 
 from homeassistant.components.number import NumberEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfTime
+from homeassistant.const import UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -104,7 +104,10 @@ class VirtualApplianceNumber(NumberEntity):
         self._attr_native_min_value = min_value
         self._attr_native_max_value = max_value
         self._attr_native_step = step
-        self._attr_native_unit_of_measurement = UnitOfTime.MINUTES if number_kind == "delay_start" else None
+        self._attr_native_unit_of_measurement = (
+            UnitOfTime.MINUTES if number_kind == "delay_start"
+            else UnitOfTemperature.CELSIUS
+        )
 
     @property
     def native_value(self) -> float:

@@ -13,6 +13,7 @@ from homeassistant.components.media_player import (
     MediaPlayerState,
     MediaType,
 )
+from homeassistant.components.media_player.const import RepeatMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -152,9 +153,9 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self._attr_media_position: int = entity_config.get(CONF_MEDIA_POSITION, 0)
         self._attr_media_position_updated_at: datetime | None = datetime.now()
         self._attr_volume_level: float = entity_config.get(CONF_MEDIA_VOLUME_LEVEL, 0.5)
-        self._attr_volume_muted: bool = entity_config.get(CONF_MEDIA_VOLUME_MUTED, False)
-        self._attr_media_repeat: str = "off"
-        self._attr_media_shuffle: bool = False
+        self._attr_is_volume_muted: bool = entity_config.get(CONF_MEDIA_VOLUME_MUTED, False)
+        self._attr_repeat: str = "off"
+        self._attr_shuffle: bool = False
 
         # Media source list
         media_sources: list[str] = entity_config.get(CONF_MEDIA_SOURCE_LIST, DEFAULT_MEDIA_SOURCES)
@@ -189,20 +190,20 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         except ValueError:
             self._attr_state = MediaPlayerState.IDLE
         self._attr_volume_level = state.get("volume_level", 0.5)
-        self._attr_volume_muted = state.get("is_volume_muted", False)
+        self._attr_is_volume_muted = state.get("is_volume_muted", False)
         self._attr_source = state.get("source", self._attr_source_list[0] if self._attr_source_list else None)
-        self._attr_media_repeat = state.get("media_repeat", "off")
-        self._attr_media_shuffle = state.get("media_shuffle", False)
+        self._attr_repeat = state.get("media_repeat", "off")
+        self._attr_shuffle = state.get("media_shuffle", False)
 
     def get_current_state(self) -> MediaPlayerStateType:
         """Get current state for persistence."""
         return {
             "state": self._attr_state.value if hasattr(self._attr_state, 'value') else str(self._attr_state),
             "volume_level": self._attr_volume_level,
-            "is_volume_muted": self._attr_volume_muted,
+            "is_volume_muted": self._attr_is_volume_muted,
             "source": self._attr_source,
-            "media_repeat": self._attr_media_repeat,
-            "media_shuffle": self._attr_media_shuffle,
+            "media_repeat": self._attr_repeat,
+            "media_shuffle": self._attr_shuffle,
         }
 
     @property
@@ -276,76 +277,6 @@ class VirtualMediaPlayer(MediaPlayerEntity):
                     **kwargs,
                 },
             )
-
-    @property
-    def state(self) -> MediaPlayerState:
-        """Return the state of the media player."""
-        return self._attr_state
-
-    @property
-    def volume_level(self) -> float | None:
-        """Return the volume level of the media player (0..1)."""
-        return self._attr_volume_level
-
-    @property
-    def source(self) -> str | None:
-        """Return the current input source."""
-        return self._attr_source
-
-    @property
-    def source_list(self) -> list[str] | None:
-        """List of available input sources."""
-        return self._attr_source_list
-
-    @property
-    def is_volume_muted(self) -> bool:
-        """Return true if the media player is muted."""
-        return self._attr_volume_muted
-
-    @property
-    def media_content_type(self) -> str | None:
-        """Return the content type of current playing media."""
-        return self._attr_media_content_type
-
-    @property
-    def media_title(self) -> str | None:
-        """Return the title of current playing media."""
-        return self._attr_media_title
-
-    @property
-    def media_artist(self) -> str | None:
-        """Return the artist of current playing media."""
-        return self._attr_media_artist
-
-    @property
-    def media_album_name(self) -> str | None:
-        """Return the album name of current playing media."""
-        return self._attr_media_album_name
-
-    @property
-    def media_duration(self) -> int | None:
-        """Return the duration of current playing media in seconds."""
-        return self._attr_media_duration
-
-    @property
-    def media_position(self) -> int | None:
-        """Return the position of current playing media in seconds."""
-        return self._attr_media_position
-
-    @property
-    def media_position_updated_at(self) -> datetime | None:
-        """Return when the position was last updated."""
-        return self._attr_media_position_updated_at
-
-    @property
-    def media_repeat(self) -> str | None:
-        """Return current repeat mode."""
-        return self._attr_media_repeat
-
-    @property
-    def media_shuffle(self) -> bool:
-        """Return if shuffle is enabled."""
-        return self._attr_media_shuffle
 
     @property
     def media_image_url(self) -> str | None:
@@ -438,7 +369,12 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' seek to {position}s")
         self.fire_template_event("seek", position=position)
 
-    async def async_play_media(self, media_type: str, media_id: str, **kwargs: Any) -> None:
+    async def async_play_media(
+        self,
+        media_type: MediaType | str,
+        media_id: str,
+        **kwargs: Any,
+    ) -> None:
         """Play a piece of media."""
         self._attr_media_content_type = media_type
         self._attr_media_title = media_id
@@ -479,8 +415,8 @@ class VirtualMediaPlayer(MediaPlayerEntity):
 
         self._attr_volume_level = volume
 
-        if volume > 0 and self._attr_volume_muted:
-            self._attr_volume_muted = False
+        if volume > 0 and self._attr_is_volume_muted:
+            self._attr_is_volume_muted = False
 
         await self.async_save_state()
         self.async_write_ha_state()
@@ -489,20 +425,21 @@ class VirtualMediaPlayer(MediaPlayerEntity):
 
     async def async_mute_volume(self, mute: bool) -> None:
         """Mute (true) or unmute (false) media player."""
-        self._attr_volume_muted = mute
+        self._attr_is_volume_muted = mute
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' muted: {mute}")
         self.fire_template_event("mute_volume", mute=mute)
 
-    async def async_set_repeat(self, repeat: str) -> None:
+    async def async_set_repeat(self, repeat: RepeatMode) -> None:
         """Set repeat mode."""
         valid_repeat_modes: list[str] = ["off", "one", "all"]
-        if repeat not in valid_repeat_modes:
-            _LOGGER.warning(f"Invalid repeat mode: {repeat}. Valid modes: {valid_repeat_modes}")
+        repeat_val: str = repeat if isinstance(repeat, str) else repeat.value
+        if repeat_val not in valid_repeat_modes:
+            _LOGGER.warning(f"Invalid repeat mode: {repeat_val}. Valid modes: {valid_repeat_modes}")
             return
 
-        self._attr_media_repeat = repeat
+        self._attr_repeat = repeat_val
 
         if self._attr_state == MediaPlayerState.PLAYING and self._playlist:
             self._select_current_track()
@@ -513,13 +450,13 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         await asyncio.sleep(0.1)
         self.async_write_ha_state()
 
-        _LOGGER.info(f"Virtual media player '{self._attr_name}' repeat set to {self._attr_media_repeat}")
-        self.fire_template_event("set_repeat", repeat=self._attr_media_repeat)
+        _LOGGER.info(f"Virtual media player '{self._attr_name}' repeat set to {self._attr_repeat}")
+        self.fire_template_event("set_repeat", repeat=self._attr_repeat)
 
     async def async_set_shuffle(self, shuffle: bool) -> None:
         """Enable/disable shuffle mode."""
-        old_shuffle = self._attr_media_shuffle
-        self._attr_media_shuffle = shuffle
+        old_shuffle = self._attr_shuffle
+        self._attr_shuffle = shuffle
 
         if shuffle and not old_shuffle and self._playlist:
             random.shuffle(self._playlist)
@@ -571,9 +508,9 @@ class VirtualMediaPlayer(MediaPlayerEntity):
             new_position = self._attr_media_position + time_diff
 
             if new_position >= self._attr_media_duration:
-                if self._attr_media_repeat == "one":
+                if self._attr_repeat == "one":
                     self._attr_media_position = 0
-                elif self._attr_media_repeat == "all" or not self._attr_media_repeat:
+                elif self._attr_repeat == "all" or not self._attr_repeat:
                     self._select_next_track()
                     if self._attr_state == MediaPlayerState.PLAYING:
                         self._attr_media_position = 0

@@ -86,8 +86,12 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
         self._attr_swing_mode: str = "off"
         self._attr_preset_mode: str | None = None
         self._attr_hvac_action: HVACAction = HVACAction.OFF
-        # Humidity and temperature simulation
-        self._current_humidity: float = 55.0
+        # Humidity and temperature simulation.
+        # HA Core `ClimateEntity.state_attributes` auto-emits `current_humidity`
+        # when `self._attr_current_humidity` is not None. We do NOT declare
+        # TARGET_HUMIDITY feature (no `async_set_humidity` implementation), so
+        # `target_humidity` is emitted via `extra_state_attributes` instead.
+        self._attr_current_humidity: float = 55.0
         self._target_humidity: float = 50.0
         self._target_reached_threshold: float = 1.0
         self._temperature_change_rate: float = 0.5
@@ -115,7 +119,7 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
         self._attr_hvac_action = HVACAction(hvac_action_value) if isinstance(
             hvac_action_value, str) else hvac_action_value
         if self._humidity_enabled:
-            self._current_humidity = float(state.get("current_humidity", 55.0))
+            self._attr_current_humidity = float(state.get("current_humidity", 55.0))
             self._target_humidity = float(state.get("target_humidity", 50.0))
 
     def get_current_state(self) -> ClimateState:
@@ -127,11 +131,11 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
             "hvac_action": self._attr_hvac_action,
         }
         if self._humidity_enabled:
-            state["current_humidity"] = self._current_humidity
+            state["current_humidity"] = self._attr_current_humidity
             state["target_humidity"] = self._target_humidity
         return state
 
-    async def async_turn_on(self, **kwargs: Any) -> None:
+    async def async_turn_on(self) -> None:
         """Turn on the climate device."""
         if self._attr_hvac_mode == HVACMode.OFF:
             self._attr_hvac_mode = HVACMode.COOL
@@ -141,7 +145,7 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
             await self.async_save_state()
             self.async_write_ha_state()
 
-    async def async_turn_off(self, **kwargs: Any) -> None:
+    async def async_turn_off(self) -> None:
         """Turn off the climate device."""
         if self._attr_hvac_mode != HVACMode.OFF:
             self._attr_hvac_mode = HVACMode.OFF
@@ -244,11 +248,13 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
         elif self._attr_hvac_mode == HVACMode.FAN_ONLY:
             humidity_change += random.uniform(-0.5, 0.5)
         humidity_change -= (self._attr_current_temperature - 20) * 0.1
-        self._current_humidity = max(20.0, min(90.0, self._current_humidity + humidity_change))
+        self._attr_current_humidity = max(20.0, min(90.0, self._attr_current_humidity + humidity_change))
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         if self._humidity_enabled:
-            return {"humidity": round(self._current_humidity, 1), "target_humidity": self._target_humidity}
+            # `current_humidity` is auto-emitted by the base class from
+            # `_attr_current_humidity`; expose `target_humidity` here only.
+            return {"target_humidity": self._target_humidity}
         return {}

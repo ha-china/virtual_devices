@@ -8,6 +8,7 @@ from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntity,
     AlarmControlPanelEntityFeature,
     AlarmControlPanelState,
+    CodeFormat,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -79,7 +80,12 @@ class VirtualAlarmControlPanel(
         self._trigger_time = int(entity_config.get(CONF_ALARM_TRIGGER_TIME, 180))
         self._supports_arm_night = bool(entity_config.get(CONF_SUPPORTS_ARM_NIGHT, True))
         self._supports_arm_vacation = bool(entity_config.get(CONF_SUPPORTS_ARM_VACATION, True))
-        self._alarm_state: AlarmControlPanelState = AlarmControlPanelState.DISARMED
+        self._attr_alarm_state: AlarmControlPanelState = AlarmControlPanelState.DISARMED
+        # Alarm code & arming options
+        # `_attr_code_arm_required` defaults to True on the base class.
+        # `_attr_code_format` uses the `CodeFormat.NUMBER` enum; the base class
+        # `code_format` cached_property reads `self._attr_code_format`.
+        self._attr_code_format: CodeFormat | None = CodeFormat.NUMBER
         features = (
             AlarmControlPanelEntityFeature.ARM_HOME
             | AlarmControlPanelEntityFeature.ARM_AWAY
@@ -96,22 +102,10 @@ class VirtualAlarmControlPanel(
 
     def apply_state(self, state: AlarmControlPanelStateDict) -> None:
         state_key = state.get("state", "disarmed")
-        self._alarm_state = AlarmControlPanelState(state_key)
+        self._attr_alarm_state = AlarmControlPanelState(state_key)
 
     def get_current_state(self) -> AlarmControlPanelStateDict:
-        return {"state": self._alarm_state.value}
-
-    @property
-    def alarm_state(self) -> AlarmControlPanelState | None:
-        return self._alarm_state
-
-    @property
-    def code_arm_required(self) -> bool:
-        return True
-
-    @property
-    def code_format(self) -> str | None:
-        return "number"
+        return {"state": self._attr_alarm_state.value}
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -128,45 +122,45 @@ class VirtualAlarmControlPanel(
     async def async_alarm_disarm(self, code: str | None = None) -> None:
         if not self._validate_code(code):
             return
-        self._alarm_state = AlarmControlPanelState.DISARMED
+        self._attr_alarm_state = AlarmControlPanelState.DISARMED
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("disarm", state=self._alarm_state.value)
+        self.fire_template_event("disarm", state=self._attr_alarm_state.value)
 
     async def async_alarm_arm_home(self, code: str | None = None) -> None:
         if not self._validate_code(code):
             return
-        self._alarm_state = AlarmControlPanelState.ARMED_HOME
+        self._attr_alarm_state = AlarmControlPanelState.ARMED_HOME
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("arm_home", state=self._alarm_state.value)
+        self.fire_template_event("arm_home", state=self._attr_alarm_state.value)
 
     async def async_alarm_arm_away(self, code: str | None = None) -> None:
         if not self._validate_code(code):
             return
-        self._alarm_state = AlarmControlPanelState.ARMED_AWAY
+        self._attr_alarm_state = AlarmControlPanelState.ARMED_AWAY
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("arm_away", state=self._alarm_state.value)
+        self.fire_template_event("arm_away", state=self._attr_alarm_state.value)
 
     async def async_alarm_arm_night(self, code: str | None = None) -> None:
         if not self._supports_arm_night or not self._validate_code(code):
             return
-        self._alarm_state = AlarmControlPanelState.ARMED_NIGHT
+        self._attr_alarm_state = AlarmControlPanelState.ARMED_NIGHT
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("arm_night", state=self._alarm_state.value)
+        self.fire_template_event("arm_night", state=self._attr_alarm_state.value)
 
     async def async_alarm_arm_vacation(self, code: str | None = None) -> None:
         if not self._supports_arm_vacation or not self._validate_code(code):
             return
-        self._alarm_state = AlarmControlPanelState.ARMED_VACATION
+        self._attr_alarm_state = AlarmControlPanelState.ARMED_VACATION
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("arm_vacation", state=self._alarm_state.value)
+        self.fire_template_event("arm_vacation", state=self._attr_alarm_state.value)
 
     async def async_alarm_trigger(self, code: str | None = None) -> None:
-        self._alarm_state = AlarmControlPanelState.TRIGGERED
+        self._attr_alarm_state = AlarmControlPanelState.TRIGGERED
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("trigger", state=self._alarm_state.value)
+        self.fire_template_event("trigger", state=self._attr_alarm_state.value)

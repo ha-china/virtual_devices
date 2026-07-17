@@ -236,6 +236,8 @@ class VirtualAirPurifier(FanEntity):
             "hybrid": [0, 20, 40, 60, 80, 100],
         }
         self._speed_list: list[int] = speed_map.get(self._purifier_type, [0, 50, 100])
+        # HA Core `FanEntity.speed_count` cached_property reads `_attr_speed_count`.
+        self._attr_speed_count: int = len(self._speed_list)
 
     def _get_cleaning_rate(self) -> float:
         """Get cleaning rate based on purifier type and fan speed."""
@@ -250,24 +252,14 @@ class VirtualAirPurifier(FanEntity):
         return 0
 
     @property
-    def is_on(self) -> bool:
-        """Return true if the air purifier is on."""
-        return self._attr_is_on
-
-    @property
     def percentage(self) -> int | None:
-        """Return the current speed percentage."""
+        """Return the current speed percentage.
+
+        HA Core exposes this as a cached_property reading `_attr_percentage`
+        directly; we override only to surface `0` when the purifier is off
+        (mirrors the legacy behaviour of this entity).
+        """
         return self._attr_percentage if self._attr_is_on else 0
-
-    @property
-    def speed_count(self) -> int:
-        """Return the number of speeds the fan supports."""
-        return len(self._speed_list)
-
-    @property
-    def oscillating(self) -> bool:
-        """Return true if the purifier is oscillating."""
-        return self._attr_oscillating
 
     async def async_turn_on(
         self,

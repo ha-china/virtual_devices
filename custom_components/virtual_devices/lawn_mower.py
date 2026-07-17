@@ -4,7 +4,11 @@ from __future__ import annotations
 import logging
 import random
 
-from homeassistant.components.lawn_mower import LawnMowerActivity, LawnMowerEntity
+from homeassistant.components.lawn_mower import (
+    LawnMowerActivity,
+    LawnMowerEntity,
+    LawnMowerEntityFeature,
+)
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE
@@ -61,7 +65,18 @@ class VirtualLawnMower(BaseVirtualEntity[LawnMowerEntityConfig, LawnMowerState],
     ) -> None:
         super().__init__(hass, config_entry_id, entity_config, index, device_info, "lawn_mower")
         self._attr_icon = "mdi:robot-mower"
-        self._activity = LawnMowerActivity.DOCKED
+        # HA Core `LawnMowerEntity.state` (@final) reads `self.activity`,
+        # which derives from `self._attr_activity` (cached_property). The legacy
+        # `self._activity` private field would never be picked up by the base
+        # class, leaving `state` as None.
+        self._attr_activity: LawnMowerActivity = LawnMowerActivity.DOCKED
+        # Register the features implemented below so the corresponding services
+        # (`lawn_mower.start_mowing`, `.pause`, `.dock`) route to this entity.
+        self._attr_supported_features: LawnMowerEntityFeature = (
+            LawnMowerEntityFeature.START_MOWING
+            | LawnMowerEntityFeature.PAUSE
+            | LawnMowerEntityFeature.DOCK
+        )
         self._battery_level = 100
         self._current_zone = entity_config.get(CONF_MOWER_ZONE, "full_lawn")
         self._cutting_height = int(entity_config.get(CONF_MOWER_CUTTING_HEIGHT, 45))
@@ -75,22 +90,18 @@ class VirtualLawnMower(BaseVirtualEntity[LawnMowerEntityConfig, LawnMowerState],
         }
 
     def apply_state(self, state: LawnMowerState) -> None:
-        self._activity = LawnMowerActivity(state.get("state", "docked"))
+        self._attr_activity = LawnMowerActivity(state.get("state", "docked"))
         self._battery_level = state.get("battery_level", 100)
         self._current_zone = state.get("current_zone", "full_lawn")
         self._cutting_height = state.get("cutting_height", 45)
 
     def get_current_state(self) -> LawnMowerState:
         return {
-            "state": self._activity.value,
+            "state": self._attr_activity.value,
             "battery_level": self._battery_level,
             "current_zone": self._current_zone,
             "cutting_height": self._cutting_height,
         }
-
-    @property
-    def activity(self) -> LawnMowerActivity | None:
-        return self._activity
 
     @property
     def battery_level_internal(self) -> int:
@@ -101,27 +112,27 @@ class VirtualLawnMower(BaseVirtualEntity[LawnMowerEntityConfig, LawnMowerState],
         return {"current_zone": self._current_zone, "cutting_height": self._cutting_height}
 
     async def async_start_mowing(self) -> None:
-        self._activity = LawnMowerActivity.MOWING
+        self._attr_activity = LawnMowerActivity.MOWING
         await self.async_save_state()
         self.async_write_ha_state()
 
     async def async_pause(self) -> None:
-        self._activity = LawnMowerActivity.PAUSED
+        self._attr_activity = LawnMowerActivity.PAUSED
         await self.async_save_state()
         self.async_write_ha_state()
 
     async def async_dock(self) -> None:
-        self._activity = LawnMowerActivity.RETURNING
+        self._attr_activity = LawnMowerActivity.RETURNING
         await self.async_save_state()
         self.async_write_ha_state()
 
     async def async_update(self) -> None:
-        if self._activity == LawnMowerActivity.MOWING:
+        if self._attr_activity == LawnMowerActivity.MOWING:
             self._battery_level = max(0, self._battery_level - random.randint(1, 3))
-        elif self._activity in (LawnMowerActivity.DOCKED, LawnMowerActivity.RETURNING):
+        elif self._attr_activity in (LawnMowerActivity.DOCKED, LawnMowerActivity.RETURNING):
             self._battery_level = min(100, self._battery_level + 1)
-        if self._activity == LawnMowerActivity.RETURNING and self._battery_level > 10:
-            self._activity = LawnMowerActivity.DOCKED
+        if self._attr_activity == LawnMowerActivity.RETURNING and self._battery_level > 10:
+            self._attr_activity = LawnMowerActivity.DOCKED
         await self.async_save_state()
         self.async_write_ha_state()
 
