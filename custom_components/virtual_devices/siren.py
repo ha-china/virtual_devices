@@ -122,7 +122,7 @@ class VirtualSiren(BaseVirtualEntity[SirenEntityConfig, SirenState], SirenEntity
         await self.async_save_state()
         self.async_write_ha_state()
         self.fire_template_event(
-            "turn_on",
+            "siren.turn_on",
             tone=self._tone,
             duration=self._duration,
             volume_level=self._volume_level,
@@ -132,5 +132,5 @@ class VirtualSiren(BaseVirtualEntity[SirenEntityConfig, SirenState], SirenEntity
         self._attr_is_on = False
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("turn_off")
+        self.fire_template_event("siren.turn_off")
 

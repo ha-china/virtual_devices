@@ -199,7 +199,7 @@ class VirtualCover(BaseVirtualEntity[CoverEntityConfig, CoverState], CoverEntity
                 self._attr_name,
                 self._attr_current_cover_position,
             )
-        self.fire_template_event("stop_cover", **kwargs)
+        self.fire_template_event("cover.stop_cover", **kwargs)
         self.async_write_ha_state()
 
     async def async_set_cover_position(self, **kwargs: Any) -> None:
@@ -207,7 +207,7 @@ class VirtualCover(BaseVirtualEntity[CoverEntityConfig, CoverState], CoverEntity
         position: int | None = kwargs.get(ATTR_POSITION)
         if position is not None:
             await self._move_to_position(position)
-            self.fire_template_event("set_cover_position", **kwargs)
+            self.fire_template_event("cover.set_cover_position", **kwargs)
             _LOGGER.debug(
                 "Virtual cover '%s' moving to position %d%%",
                 self._attr_name,

@@ -165,7 +165,7 @@ class VirtualButton(BaseVirtualEntity[ButtonEntityConfig, ButtonState], ButtonEn
             },
         )
 
-        self.fire_template_event("press")
+        self.fire_template_event("button.press")
 
 
 class VirtualLaundryButton(ButtonEntity):

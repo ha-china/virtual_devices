@@ -97,13 +97,13 @@ class VirtualRemote(BaseVirtualEntity[RemoteEntityConfig, RemoteState], RemoteEn
             self._attr_current_activity = activity
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("turn_on", activity=self._attr_current_activity)
+        self.fire_template_event("remote.turn_on", activity=self._attr_current_activity)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         self._attr_is_on = False
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("turn_off")
+        self.fire_template_event("remote.turn_off")
 
     async def async_send_command(self, command: list[str] | str, **kwargs: Any) -> None:
         if isinstance(command, list):
@@ -113,4 +113,4 @@ class VirtualRemote(BaseVirtualEntity[RemoteEntityConfig, RemoteState], RemoteEn
         self._attr_is_on = True
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("send_command", command=self._last_command)
+        self.fire_template_event("remote.send_command", command=self._last_command)

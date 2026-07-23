@@ -267,7 +267,7 @@ class VirtualHumidifier(HumidifierEntity):
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual humidifier '{self._attr_name}' turned on")
-        self.fire_template_event("turn_on", target_humidity=self._attr_target_humidity, mode=self._attr_mode)
+        self.fire_template_event("humidifier.turn_on", target_humidity=self._attr_target_humidity, mode=self._attr_mode)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the humidifier off."""
@@ -275,7 +275,7 @@ class VirtualHumidifier(HumidifierEntity):
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual humidifier '{self._attr_name}' turned off")
-        self.fire_template_event("turn_off")
+        self.fire_template_event("humidifier.turn_off")
 
     async def async_set_humidity(self, humidity: int) -> None:
         """Set the target humidity."""
@@ -284,7 +284,7 @@ class VirtualHumidifier(HumidifierEntity):
             await self.async_save_state()
             self.async_write_ha_state()
             _LOGGER.debug(f"Humidifier '{self._attr_name}' target humidity set to {humidity}%")
-            self.fire_template_event("set_humidity", target_humidity=humidity)
+            self.fire_template_event("humidifier.set_humidity", target_humidity=humidity)
 
     async def async_set_mode(self, mode: str) -> None:
         """Set the mode of the humidifier."""
@@ -293,7 +293,7 @@ class VirtualHumidifier(HumidifierEntity):
             await self.async_save_state()
             self.async_write_ha_state()
             _LOGGER.debug(f"Humidifier '{self._attr_name}' mode set to {mode}")
-            self.fire_template_event("set_mode", mode=mode)
+            self.fire_template_event("humidifier.set_mode", mode=mode)
 
     async def async_update(self) -> None:
         """Update humidifier state."""

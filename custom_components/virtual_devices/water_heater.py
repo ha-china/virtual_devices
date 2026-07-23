@@ -234,7 +234,7 @@ class VirtualWaterHeater(WaterHeaterEntity):
             await self.async_save_state()
             self.async_write_ha_state()
             _LOGGER.debug(f"Water heater '{self._attr_name}' target temperature set to {temperature}°C")
-            self.fire_template_event("set_temperature", temperature=temperature)
+            self.fire_template_event("water_heater.set_temperature", temperature=temperature)
 
     async def async_set_operation_mode(self, operation_mode: str) -> None:
         """Set new operation mode."""
@@ -243,21 +243,21 @@ class VirtualWaterHeater(WaterHeaterEntity):
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Water heater '{self._attr_name}' operation mode set to {operation_mode}")
-        self.fire_template_event("set_operation_mode", operation_mode=operation_mode)
+        self.fire_template_event("water_heater.set_operation_mode", operation_mode=operation_mode)
 
     async def async_turn_away_mode_on(self) -> None:
         """Turn away mode on."""
         self._attr_is_away_mode_on = True
         self.async_write_ha_state()
         _LOGGER.debug(f"Water heater '{self._attr_name}' away mode turned on")
-        self.fire_template_event("turn_away_mode_on")
+        self.fire_template_event("water_heater.turn_away_mode_on")
 
     async def async_turn_away_mode_off(self) -> None:
         """Turn away mode off."""
         self._attr_is_away_mode_on = False
         self.async_write_ha_state()
         _LOGGER.debug(f"Water heater '{self._attr_name}' away mode turned off")
-        self.fire_template_event("turn_away_mode_off")
+        self.fire_template_event("water_heater.turn_away_mode_off")
 
     def _update_heating_state(self) -> None:
         """Update heating state based on operation mode."""

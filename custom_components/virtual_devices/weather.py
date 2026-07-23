@@ -427,7 +427,7 @@ class VirtualWeather(WeatherEntity):
         self.async_write_ha_state()
 
         self.fire_template_event(
-            "update",
+            "weather.update",
             condition=self._attr_condition,
             temperature=self._attr_native_temperature,
             humidity=self._attr_humidity,

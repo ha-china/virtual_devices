@@ -161,7 +161,7 @@ class VirtualFan(BaseVirtualEntity[FanEntityConfig, FanState], FanEntity):
 
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("turn_on", percentage=percentage, preset_mode=preset_mode)
+        self.fire_template_event("fan.turn_on", percentage=percentage, preset_mode=preset_mode)
         _LOGGER.debug("Virtual fan '%s' turned on", self._attr_name)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
@@ -170,7 +170,7 @@ class VirtualFan(BaseVirtualEntity[FanEntityConfig, FanState], FanEntity):
 
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("turn_off")
+        self.fire_template_event("fan.turn_off")
         _LOGGER.debug("Virtual fan '%s' turned off", self._attr_name)
 
     async def async_set_percentage(self, percentage: int) -> None:
@@ -194,7 +194,7 @@ class VirtualFan(BaseVirtualEntity[FanEntityConfig, FanState], FanEntity):
 
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("set_percentage", percentage=percentage)
+        self.fire_template_event("fan.set_percentage", percentage=percentage)
         _LOGGER.debug("Virtual fan '%s' speed set to %d%%", self._attr_name, percentage)
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
@@ -204,7 +204,7 @@ class VirtualFan(BaseVirtualEntity[FanEntityConfig, FanState], FanEntity):
 
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("set_preset_mode", preset_mode=preset_mode)
+        self.fire_template_event("fan.set_preset_mode", preset_mode=preset_mode)
         _LOGGER.debug(
             "Virtual fan '%s' preset mode set to %s", self._attr_name, preset_mode
         )
@@ -215,7 +215,7 @@ class VirtualFan(BaseVirtualEntity[FanEntityConfig, FanState], FanEntity):
 
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("oscillate", oscillating=oscillating)
+        self.fire_template_event("fan.oscillate", oscillating=oscillating)
         _LOGGER.debug(
             "Virtual fan '%s' oscillation set to %s", self._attr_name, oscillating
         )
@@ -226,5 +226,5 @@ class VirtualFan(BaseVirtualEntity[FanEntityConfig, FanState], FanEntity):
 
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("set_direction", direction=direction)
+        self.fire_template_event("fan.set_direction", direction=direction)
         _LOGGER.debug("Virtual fan '%s' direction set to %s", self._attr_name, direction)

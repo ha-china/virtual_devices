@@ -98,4 +98,4 @@ class VirtualScene(BaseVirtualEntity[SceneEntityConfig, SceneState], Scene):
             },
         )
 
-        self.fire_template_event("activate")
+        self.fire_template_event("scene.activate")

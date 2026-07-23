@@ -156,7 +156,7 @@ class VirtualLock(BaseVirtualEntity[LockEntityConfig, LockStateType], LockEntity
         self.async_write_ha_state()
         _LOGGER.debug("Virtual lock '%s' locked", self._attr_name)
 
-        self.fire_template_event("lock", state="locked")
+        self.fire_template_event("lock.lock", state="locked")
 
         # Fire lock state changed event
         self._hass.bus.async_fire(
@@ -181,7 +181,7 @@ class VirtualLock(BaseVirtualEntity[LockEntityConfig, LockStateType], LockEntity
         self.async_write_ha_state()
         _LOGGER.debug("Virtual lock '%s' unlocked", self._attr_name)
 
-        self.fire_template_event("unlock", state="unlocked")
+        self.fire_template_event("lock.unlock", state="unlocked")
 
         # Fire lock state changed event
         self._hass.bus.async_fire(

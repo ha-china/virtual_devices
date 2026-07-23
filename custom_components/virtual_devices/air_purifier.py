@@ -279,7 +279,7 @@ class VirtualAirPurifier(FanEntity):
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual air purifier '{self._attr_name}' turned on")
-        self.fire_template_event("turn_on", percentage=self._attr_percentage)
+        self.fire_template_event("air_purifier.turn_on", percentage=self._attr_percentage)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the air purifier off."""
@@ -288,7 +288,7 @@ class VirtualAirPurifier(FanEntity):
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual air purifier '{self._attr_name}' turned off")
-        self.fire_template_event("turn_off")
+        self.fire_template_event("air_purifier.turn_off")
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the speed percentage of the fan."""
@@ -299,7 +299,7 @@ class VirtualAirPurifier(FanEntity):
             await self.async_save_state()
             self.async_write_ha_state()
             _LOGGER.debug(f"Air purifier '{self._attr_name}' speed set to {closest_speed}%")
-            self.fire_template_event("set_speed", percentage=closest_speed)
+            self.fire_template_event("air_purifier.set_speed", percentage=closest_speed)
 
     async def async_oscillate(self, oscillating: bool) -> None:
         """Set oscillation."""
@@ -307,7 +307,7 @@ class VirtualAirPurifier(FanEntity):
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Air purifier '{self._attr_name}' oscillation set to {oscillating}")
-        self.fire_template_event("set_oscillate", oscillating=oscillating)
+        self.fire_template_event("air_purifier.set_oscillate", oscillating=oscillating)
 
     def calculate_aqi(self) -> dict[str, Any]:
         """Calculate AQI based on current air quality."""

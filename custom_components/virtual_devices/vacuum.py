@@ -202,7 +202,7 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
             _LOGGER.debug("Virtual vacuum '%s' started cleaning", self._attr_name)
 
             self.fire_template_event(
-                "start",
+                "vacuum.start",
                 status=self._attr_activity.value if self._attr_activity else None,
                 current_room=self._current_room,
             )
@@ -218,7 +218,7 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
             self.async_write_ha_state()
             _LOGGER.debug("Virtual vacuum '%s' paused cleaning", self._attr_name)
 
-            self.fire_template_event("pause", status=self._attr_activity.value if self._attr_activity else None)
+            self.fire_template_event("vacuum.pause", status=self._attr_activity.value if self._attr_activity else None)
 
     async def async_stop(self, **kwargs: Any) -> None:
         """Stop the cleaning task."""
@@ -232,7 +232,7 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
             _LOGGER.debug("Virtual vacuum '%s' stopped cleaning", self._attr_name)
 
             self.fire_template_event(
-                "stop",
+                "vacuum.stop",
                 status=self._attr_activity.value if self._attr_activity else None,
                 cleaned_area=self._cleaned_area,
                 cleaning_duration=self._cleaning_duration,
@@ -249,7 +249,7 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
             self.async_write_ha_state()
             _LOGGER.debug("Virtual vacuum '%s' returning to base", self._attr_name)
 
-            self.fire_template_event("return_to_base", status=self._attr_activity.value if self._attr_activity else None)
+            self.fire_template_event("vacuum.return_to_base", status=self._attr_activity.value if self._attr_activity else None)
 
             # Simulate return to dock time (async_call_later with
             # async_on_remove cleanup so the timer is cancelled when the
@@ -268,7 +268,7 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
         _LOGGER.debug("Virtual vacuum '%s' started spot cleaning", self._attr_name)
 
         self.fire_template_event(
-            "clean_spot",
+            "vacuum.clean_spot",
             status=self._attr_activity.value if self._attr_activity else None,
             cleaned_area=self._cleaned_area,
         )
@@ -280,7 +280,7 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
     async def async_locate(self, **kwargs: Any) -> None:
         """Locate the vacuum cleaner."""
         _LOGGER.info("Virtual vacuum '%s' location beep", self._attr_name)
-        self.fire_template_event("locate")
+        self.fire_template_event("vacuum.locate")
 
     async def async_set_fan_speed(self, fan_speed: str, **kwargs: Any) -> None:
         """Set fan speed of the vacuum."""
@@ -290,7 +290,7 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
             self.async_write_ha_state()
             _LOGGER.debug("Virtual vacuum '%s' fan speed set to %s", self._attr_name, fan_speed)
 
-            self.fire_template_event("set_fan_speed", fan_speed=fan_speed)
+            self.fire_template_event("vacuum.set_fan_speed", fan_speed=fan_speed)
 
     async def async_send_command(
         self,
@@ -310,7 +310,7 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
             self.async_write_ha_state()
 
             self.fire_template_event(
-                "clean_room",
+                "vacuum.clean_room",
                 command=command,
                 params=params,
                 current_room=self._current_room,
@@ -328,7 +328,7 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
             }
 
             self.fire_template_event(
-                "send_command",
+                "vacuum.send_command",
                 command=command,
                 params=params,
                 result=history,
@@ -386,7 +386,7 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
             self.async_write_ha_state()
             _LOGGER.debug("Virtual vacuum '%s' reached dock", self._attr_name)
 
-            self.fire_template_event("docked", status=self._attr_activity.value if self._attr_activity else None)
+            self.fire_template_event("vacuum.docked", status=self._attr_activity.value if self._attr_activity else None)
 
     @callback
     def _async_spot_cleaning_complete(self, _now: Any) -> None:
@@ -399,7 +399,7 @@ class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVac
             _LOGGER.debug("Virtual vacuum '%s' completed spot cleaning", self._attr_name)
 
             self.fire_template_event(
-                "spot_cleaning_complete",
+                "vacuum.spot_cleaning_complete",
                 status=self._attr_activity.value if self._attr_activity else None,
             )
 

@@ -296,7 +296,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' turned on")
-        self.fire_template_event("turn_on", state="on")
+        self.fire_template_event("media_player.turn_on", state="on")
 
     async def async_turn_off(self) -> None:
         """Turn off the media player."""
@@ -309,7 +309,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' turned off")
-        self.fire_template_event("turn_off", state="off")
+        self.fire_template_event("media_player.turn_off", state="off")
 
     async def async_media_play(self) -> None:
         """Play media."""
@@ -321,7 +321,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' playing")
-        self.fire_template_event("play", state="playing", media_title=self._attr_media_title)
+        self.fire_template_event("media_player.play", state="playing", media_title=self._attr_media_title)
 
     async def async_media_pause(self) -> None:
         """Pause media."""
@@ -329,7 +329,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' paused")
-        self.fire_template_event("pause", state="paused")
+        self.fire_template_event("media_player.pause", state="paused")
 
     async def async_media_stop(self) -> None:
         """Stop media."""
@@ -339,7 +339,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' stopped")
-        self.fire_template_event("stop", state="idle")
+        self.fire_template_event("media_player.stop", state="idle")
 
     async def async_media_next_track(self) -> None:
         """Send next track command."""
@@ -349,7 +349,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
             self._attr_media_position_updated_at = datetime.now()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' next track")
-        self.fire_template_event("next_track", media_title=self._attr_media_title)
+        self.fire_template_event("media_player.next_track", media_title=self._attr_media_title)
 
     async def async_media_previous_track(self) -> None:
         """Send previous track command."""
@@ -359,7 +359,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
             self._attr_media_position_updated_at = datetime.now()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' previous track")
-        self.fire_template_event("previous_track", media_title=self._attr_media_title)
+        self.fire_template_event("media_player.previous_track", media_title=self._attr_media_title)
 
     async def async_media_seek(self, position: float) -> None:
         """Send seek command."""
@@ -367,7 +367,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self._attr_media_position_updated_at = datetime.now()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' seek to {position}s")
-        self.fire_template_event("seek", position=position)
+        self.fire_template_event("media_player.seek", position=position)
 
     async def async_play_media(
         self,
@@ -388,7 +388,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' playing media: {media_id}")
         self.fire_template_event(
-            "play_media",
+            "media_player.play_media",
             media_type=media_type,
             media_id=media_id,
             media_title=self._attr_media_title,
@@ -401,7 +401,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
             await self.async_save_state()
             self.async_write_ha_state()
             _LOGGER.debug(f"Virtual media player '{self._attr_name}' source changed to {source}")
-            self.fire_template_event("select_source", source=source)
+            self.fire_template_event("media_player.select_source", source=source)
 
     async def async_set_volume_level(self, volume: float) -> None:
         """Set volume level, range 0..1."""
@@ -421,7 +421,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' volume set to {volume}")
-        self.fire_template_event("set_volume_level", volume=volume)
+        self.fire_template_event("media_player.set_volume_level", volume=volume)
 
     async def async_mute_volume(self, mute: bool) -> None:
         """Mute (true) or unmute (false) media player."""
@@ -429,7 +429,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual media player '{self._attr_name}' muted: {mute}")
-        self.fire_template_event("mute_volume", mute=mute)
+        self.fire_template_event("media_player.mute_volume", mute=mute)
 
     async def async_set_repeat(self, repeat: RepeatMode) -> None:
         """Set repeat mode."""
@@ -451,7 +451,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self.async_write_ha_state()
 
         _LOGGER.info(f"Virtual media player '{self._attr_name}' repeat set to {self._attr_repeat}")
-        self.fire_template_event("set_repeat", repeat=self._attr_repeat)
+        self.fire_template_event("media_player.set_repeat", repeat=self._attr_repeat)
 
     async def async_set_shuffle(self, shuffle: bool) -> None:
         """Enable/disable shuffle mode."""
@@ -475,7 +475,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self.async_write_ha_state()
 
         _LOGGER.info(f"Virtual media player '{self._attr_name}' shuffle set to {shuffle}")
-        self.fire_template_event("set_shuffle", shuffle=shuffle)
+        self.fire_template_event("media_player.set_shuffle", shuffle=shuffle)
 
     def _select_next_track(self) -> None:
         """Select the next track."""

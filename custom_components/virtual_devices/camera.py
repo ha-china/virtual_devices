@@ -522,7 +522,7 @@ class VirtualCamera(Camera):
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual camera '{self._attr_name}' motion detection enabled")
-        self.fire_template_event("enable_motion_detection")
+        self.fire_template_event("camera.enable_motion_detection")
 
     async def async_disable_motion_detection(self) -> None:
         """Disable motion detection."""
@@ -531,7 +531,7 @@ class VirtualCamera(Camera):
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual camera '{self._attr_name}' motion detection disabled")
-        self.fire_template_event("disable_motion_detection")
+        self.fire_template_event("camera.disable_motion_detection")
 
     async def async_turn_on(self) -> None:
         """Turn on camera."""
@@ -539,7 +539,7 @@ class VirtualCamera(Camera):
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual camera '{self._attr_name}' turned on")
-        self.fire_template_event("turn_on")
+        self.fire_template_event("camera.turn_on")
 
     async def async_turn_off(self) -> None:
         """Turn off camera."""
@@ -548,7 +548,7 @@ class VirtualCamera(Camera):
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual camera '{self._attr_name}' turned off")
-        self.fire_template_event("turn_off")
+        self.fire_template_event("camera.turn_off")
 
     async def async_update(self) -> None:
         """Update camera state and refresh the animated frame cache.

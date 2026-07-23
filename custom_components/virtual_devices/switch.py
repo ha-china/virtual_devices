@@ -131,7 +131,7 @@ class VirtualSwitch(BaseVirtualEntity[SwitchEntityConfig, SwitchState], SwitchEn
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
         self._attr_is_on = True
-        self.fire_template_event("turn_on", **kwargs)
+        self.fire_template_event("switch.turn_on", **kwargs)
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug("Virtual switch '%s' turned on", self._attr_name)
@@ -139,7 +139,7 @@ class VirtualSwitch(BaseVirtualEntity[SwitchEntityConfig, SwitchState], SwitchEn
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
         self._attr_is_on = False
-        self.fire_template_event("turn_off")
+        self.fire_template_event("switch.turn_off")
         await self.async_save_state()
         self.async_write_ha_state()
         _LOGGER.debug("Virtual switch '%s' turned off", self._attr_name)

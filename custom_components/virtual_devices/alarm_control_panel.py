@@ -125,7 +125,7 @@ class VirtualAlarmControlPanel(
         self._attr_alarm_state = AlarmControlPanelState.DISARMED
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("disarm", state=self._attr_alarm_state.value)
+        self.fire_template_event("alarm_control_panel.disarm", state=self._attr_alarm_state.value)
 
     async def async_alarm_arm_home(self, code: str | None = None) -> None:
         if not self._validate_code(code):
@@ -133,7 +133,7 @@ class VirtualAlarmControlPanel(
         self._attr_alarm_state = AlarmControlPanelState.ARMED_HOME
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("arm_home", state=self._attr_alarm_state.value)
+        self.fire_template_event("alarm_control_panel.arm_home", state=self._attr_alarm_state.value)
 
     async def async_alarm_arm_away(self, code: str | None = None) -> None:
         if not self._validate_code(code):
@@ -141,7 +141,7 @@ class VirtualAlarmControlPanel(
         self._attr_alarm_state = AlarmControlPanelState.ARMED_AWAY
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("arm_away", state=self._attr_alarm_state.value)
+        self.fire_template_event("alarm_control_panel.arm_away", state=self._attr_alarm_state.value)
 
     async def async_alarm_arm_night(self, code: str | None = None) -> None:
         if not self._supports_arm_night or not self._validate_code(code):
@@ -149,7 +149,7 @@ class VirtualAlarmControlPanel(
         self._attr_alarm_state = AlarmControlPanelState.ARMED_NIGHT
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("arm_night", state=self._attr_alarm_state.value)
+        self.fire_template_event("alarm_control_panel.arm_night", state=self._attr_alarm_state.value)
 
     async def async_alarm_arm_vacation(self, code: str | None = None) -> None:
         if not self._supports_arm_vacation or not self._validate_code(code):
@@ -157,10 +157,10 @@ class VirtualAlarmControlPanel(
         self._attr_alarm_state = AlarmControlPanelState.ARMED_VACATION
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("arm_vacation", state=self._attr_alarm_state.value)
+        self.fire_template_event("alarm_control_panel.arm_vacation", state=self._attr_alarm_state.value)
 
     async def async_alarm_trigger(self, code: str | None = None) -> None:
         self._attr_alarm_state = AlarmControlPanelState.TRIGGERED
         await self.async_save_state()
         self.async_write_ha_state()
-        self.fire_template_event("trigger", state=self._attr_alarm_state.value)
+        self.fire_template_event("alarm_control_panel.trigger", state=self._attr_alarm_state.value)

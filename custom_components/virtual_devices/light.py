@@ -313,13 +313,13 @@ class VirtualLight(BaseVirtualEntity[LightEntityConfig, LightState], LightEntity
         if ATTR_EFFECT in kwargs and self._has_effects:
             self._attr_effect = kwargs[ATTR_EFFECT]
 
-        self.fire_template_event("turn_on", **kwargs)
+        self.fire_template_event("light.turn_on", **kwargs)
         await self.async_save_state()
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the light off."""
         self._attr_is_on = False
-        self.fire_template_event("turn_off")
+        self.fire_template_event("light.turn_off")
         await self.async_save_state()
         self.async_write_ha_state()

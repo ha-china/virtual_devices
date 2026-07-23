@@ -245,7 +245,7 @@ class VirtualValve(ValveEntity):
             self.async_write_ha_state()
 
         _LOGGER.debug(f"Virtual valve '{self._attr_name}' opening")
-        self.fire_template_event("open", target_position=100)
+        self.fire_template_event("valve.open", target_position=100)
 
     async def async_close_valve(self) -> None:
         """Close the valve."""
@@ -265,7 +265,7 @@ class VirtualValve(ValveEntity):
             self.async_write_ha_state()
 
         _LOGGER.debug(f"Virtual valve '{self._attr_name}' closing")
-        self.fire_template_event("close", target_position=0)
+        self.fire_template_event("valve.close", target_position=0)
 
     async def async_set_valve_position(self, position: int) -> None:
         """Set the valve to a specific position."""
@@ -293,7 +293,7 @@ class VirtualValve(ValveEntity):
             self.async_write_ha_state()
 
         _LOGGER.debug(f"Virtual valve '{self._attr_name}' moving to position {position}%")
-        self.fire_template_event("set_position", position=position)
+        self.fire_template_event("valve.set_position", position=position)
 
     async def async_stop_valve(self) -> None:
         """Stop the valve."""
@@ -302,7 +302,7 @@ class VirtualValve(ValveEntity):
         self._is_moving = False
         self.async_write_ha_state()
         _LOGGER.debug(f"Virtual valve '{self._attr_name}' stopped")
-        self.fire_template_event("stop")
+        self.fire_template_event("valve.stop")
 
     async def _move_to_position(self, target_position: int) -> None:
         """Move valve to target position with travel time simulation."""

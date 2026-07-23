@@ -140,7 +140,7 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
         if self._attr_hvac_mode == HVACMode.OFF:
             self._attr_hvac_mode = HVACMode.COOL
             self._update_hvac_action()
-            self.fire_template_event("turn_on", hvac_mode=self._attr_hvac_mode,
+            self.fire_template_event("climate.turn_on", hvac_mode=self._attr_hvac_mode,
                                      target_temperature=self._attr_target_temperature, current_temperature=self._attr_current_temperature)
             await self.async_save_state()
             self.async_write_ha_state()
@@ -150,7 +150,7 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
         if self._attr_hvac_mode != HVACMode.OFF:
             self._attr_hvac_mode = HVACMode.OFF
             self._attr_hvac_action = HVACAction.OFF
-            self.fire_template_event("turn_off", hvac_mode=HVACMode.OFF,
+            self.fire_template_event("climate.turn_off", hvac_mode=HVACMode.OFF,
                                      target_temperature=self._attr_target_temperature, current_temperature=self._attr_current_temperature)
             await self.async_save_state()
             self.async_write_ha_state()
@@ -159,7 +159,7 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
         """Set new target hvac mode."""
         self._attr_hvac_mode = hvac_mode
         self._update_hvac_action()
-        self.fire_template_event("set_hvac_mode", hvac_mode=hvac_mode,
+        self.fire_template_event("climate.set_hvac_mode", hvac_mode=hvac_mode,
                                  target_temperature=self._attr_target_temperature, current_temperature=self._attr_current_temperature)
         await self.async_save_state()
         self.async_write_ha_state()
@@ -171,7 +171,7 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
             temperature = max(self._attr_min_temp, min(self._attr_max_temp, temperature))
             self._attr_target_temperature = temperature
             self._update_hvac_action()
-            self.fire_template_event("set_temperature", target_temperature=temperature,
+            self.fire_template_event("climate.set_temperature", target_temperature=temperature,
                                      current_temperature=self._attr_current_temperature)
             await self.async_save_state()
             self.async_write_ha_state()
@@ -179,14 +179,14 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         """Set new target fan mode."""
         self._attr_fan_mode = fan_mode
-        self.fire_template_event("set_fan_mode", fan_mode=fan_mode)
+        self.fire_template_event("climate.set_fan_mode", fan_mode=fan_mode)
         await self.async_save_state()
         self.async_write_ha_state()
 
     async def async_set_swing_mode(self, swing_mode: str) -> None:
         """Set new target swing operation."""
         self._attr_swing_mode = swing_mode
-        self.fire_template_event("set_swing_mode", swing_mode=swing_mode)
+        self.fire_template_event("climate.set_swing_mode", swing_mode=swing_mode)
         await self.async_save_state()
         self.async_write_ha_state()
 
@@ -196,7 +196,7 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
         if preset_mode in PRESET_TEMPERATURES:
             self._attr_target_temperature = PRESET_TEMPERATURES[preset_mode]
         self._update_hvac_action()
-        self.fire_template_event("set_preset_mode", preset_mode=preset_mode,
+        self.fire_template_event("climate.set_preset_mode", preset_mode=preset_mode,
                                  target_temperature=self._attr_target_temperature)
         await self.async_save_state()
         self.async_write_ha_state()
