@@ -179,12 +179,12 @@ class VirtualCover(BaseVirtualEntity[CoverEntityConfig, CoverState], CoverEntity
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover fully."""
         await self._move_to_position(100)
-        self.fire_template_event("open_cover", **kwargs)
+        self.fire_template_event("cover.open_cover", **kwargs)
 
     async def async_close_cover(self, **kwargs: Any) -> None:
         """Close the cover fully."""
         await self._move_to_position(0)
-        self.fire_template_event("close_cover", **kwargs)
+        self.fire_template_event("cover.close_cover", **kwargs)
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
         """Stop the cover movement."""
