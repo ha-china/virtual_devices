@@ -308,7 +308,8 @@ class SchemaFactory:
             vol.Optional("sensor_type", default="temperature"): vol.In(
                 [
                     "temperature", "humidity", "pressure", "illuminance",
-                    "power", "energy", "voltage", "current", "battery"
+                    "power", "energy", "voltage", "current", "battery",
+                    "gas", "water",
                 ]
             ),
         }

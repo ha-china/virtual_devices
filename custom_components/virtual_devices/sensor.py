@@ -26,6 +26,7 @@ from homeassistant.const import (
     UnitOfPower,
     UnitOfPressure,
     UnitOfTemperature,
+    UnitOfVolume,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -91,6 +92,20 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.TOTAL_INCREASING,
         "range": (0, 10000),
         "icon": "mdi:lightning-bolt",
+    },
+    "gas": {
+        "device_class": SensorDeviceClass.GAS,
+        "unit": UnitOfVolume.CUBIC_METERS,
+        "state_class": SensorStateClass.TOTAL_INCREASING,
+        "range": (0, 10000),
+        "icon": "mdi:fire",
+    },
+    "water": {
+        "device_class": SensorDeviceClass.WATER,
+        "unit": UnitOfVolume.LITERS,
+        "state_class": SensorStateClass.TOTAL_INCREASING,
+        "range": (0, 100000),
+        "icon": "mdi:water",
     },
     "voltage": {
         "device_class": SensorDeviceClass.VOLTAGE,
@@ -370,10 +385,9 @@ class VirtualSensor(BaseVirtualEntity[SensorEntityConfig, SensorState], SensorEn
 
     def _generate_initial_value(self, type_config: dict[str, Any]) -> float | int:
         """Generate initial value based on sensor type."""
-        if self._sensor_type == "battery":
+        if self._sensor_type in ("battery",):
             return random.randint(20, 100)
-        if self._sensor_type == "energy":
-            # TOTAL_INCREASING: start low so subsequent updates can accumulate.
+        if self._sensor_type in ("energy", "gas", "water"):
             return round(random.uniform(0, 10), 2)
         range_vals: tuple[int, int] = type_config.get("range", (0, 100))
         return round(random.uniform(range_vals[0], range_vals[1]), 1)
@@ -393,7 +407,7 @@ class VirtualSensor(BaseVirtualEntity[SensorEntityConfig, SensorState], SensorEn
             change: float = random.uniform(-5, 5)
             self._native_value = round(
                 max(range_vals[0], min(range_vals[1], current + change)))
-        elif self._sensor_type == "energy":
+        elif self._sensor_type in ("energy", "gas", "water"):
             # TOTAL_INCREASING semantics: value only increases, with a tiny
             # chance of a meter reset back near 0 to simulate rollover.
             current = self._native_value if isinstance(
