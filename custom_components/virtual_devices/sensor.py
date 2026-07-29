@@ -35,6 +35,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .base_entity import BaseVirtualEntity
 from .const import (
     CONF_ENTITIES,
+    CONF_ENTITY_NAME,
     DEVICE_TYPE_DISHWASHER,
     DEVICE_TYPE_DOORBELL,
     DEVICE_TYPE_DRYER,
@@ -57,6 +58,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (-30, 50),
         "icon": "mdi:thermometer",
+        "default_name": "Temperature",
     },
     "humidity": {
         "device_class": SensorDeviceClass.HUMIDITY,
@@ -64,6 +66,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 100),
         "icon": "mdi:water-percent",
+        "default_name": "Humidity",
     },
     "pressure": {
         "device_class": SensorDeviceClass.PRESSURE,
@@ -71,6 +74,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (950, 1050),
         "icon": "mdi:gauge",
+        "default_name": "Pressure",
     },
     "illuminance": {
         "device_class": SensorDeviceClass.ILLUMINANCE,
@@ -78,6 +82,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 100000),
         "icon": "mdi:brightness-6",
+        "default_name": "Illuminance",
     },
     "power": {
         "device_class": SensorDeviceClass.POWER,
@@ -85,6 +90,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 5000),
         "icon": "mdi:flash",
+        "default_name": "Power Consumption",
     },
     "energy": {
         "device_class": SensorDeviceClass.ENERGY,
@@ -92,6 +98,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.TOTAL_INCREASING,
         "range": (0, 10000),
         "icon": "mdi:lightning-bolt",
+        "default_name": "Total Energy kWh",
     },
     "gas": {
         "device_class": SensorDeviceClass.GAS,
@@ -99,6 +106,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.TOTAL_INCREASING,
         "range": (0, 10000),
         "icon": "mdi:fire",
+        "default_name": "Gas Consumption",
     },
     "water": {
         "device_class": SensorDeviceClass.WATER,
@@ -106,6 +114,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.TOTAL_INCREASING,
         "range": (0, 100000),
         "icon": "mdi:water",
+        "default_name": "Water Consumption",
     },
     "voltage": {
         "device_class": SensorDeviceClass.VOLTAGE,
@@ -113,6 +122,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 500),
         "icon": "mdi:lightning-bolt-outline",
+        "default_name": "Voltage",
     },
     "current": {
         "device_class": SensorDeviceClass.CURRENT,
@@ -120,6 +130,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 50),
         "icon": "mdi:current-ac",
+        "default_name": "Current",
     },
     "battery": {
         "device_class": SensorDeviceClass.BATTERY,
@@ -127,6 +138,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 100),
         "icon": "mdi:battery",
+        "default_name": "Battery",
     },
     "signal_strength": {
         "device_class": SensorDeviceClass.SIGNAL_STRENGTH,
@@ -134,6 +146,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (-100, 0),
         "icon": "mdi:wifi",
+        "default_name": "Signal Strength",
     },
     "pm25": {
         "device_class": SensorDeviceClass.PM25,
@@ -141,6 +154,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 500),
         "icon": "mdi:blur",
+        "default_name": "PM2.5",
     },
     "pm10": {
         "device_class": SensorDeviceClass.PM10,
@@ -148,6 +162,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 600),
         "icon": "mdi:blur",
+        "default_name": "PM10",
     },
     "co2": {
         "device_class": SensorDeviceClass.CO2,
@@ -155,6 +170,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (300, 5000),
         "icon": "mdi:molecule-co2",
+        "default_name": "CO2",
     },
     "voc": {
         "device_class": SensorDeviceClass.VOLATILE_ORGANIC_COMPOUNDS,
@@ -162,6 +178,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 1000),
         "icon": "mdi:cloud",
+        "default_name": "VOC",
     },
     "formaldehyde": {
         # No standard SensorDeviceClass for formaldehyde in HA Core
@@ -170,6 +187,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 100),
         "icon": "mdi:flask",
+        "default_name": "Formaldehyde",
     },
     "noise": {
         "device_class": SensorDeviceClass.SOUND_PRESSURE,
@@ -177,6 +195,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (20, 120),
         "icon": "mdi:volume-high",
+        "default_name": "Noise",
     },
     "uv_index": {
         # No SensorDeviceClass.EMISSIVITY/UV_INDEX in HA Core; uv_index is a
@@ -186,6 +205,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 12),
         "icon": "mdi:weather-sunny",
+        "default_name": "UV Index",
     },
     "rainfall": {
         "device_class": SensorDeviceClass.PRECIPITATION,
@@ -193,6 +213,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 200),
         "icon": "mdi:weather-pouring",
+        "default_name": "Rainfall",
     },
     "wind_speed": {
         "device_class": SensorDeviceClass.WIND_SPEED,
@@ -200,6 +221,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 200),
         "icon": "mdi:weather-windy",
+        "default_name": "Wind Speed",
     },
     "water_quality": {
         # No standard SensorDeviceClass for generic water quality index
@@ -208,6 +230,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 100),
         "icon": "mdi:water-check",
+        "default_name": "Water Quality",
     },
     "ph": {
         "device_class": SensorDeviceClass.PH,
@@ -215,6 +238,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 14),
         "icon": "mdi:water",
+        "default_name": "pH",
     },
 }
 
@@ -348,6 +372,10 @@ class VirtualSensor(BaseVirtualEntity[SensorEntityConfig, SensorState], SensorEn
         self._attr_native_unit_of_measurement = type_config.get("unit")
         self._attr_state_class = type_config.get("state_class")
         self._attr_icon = type_config.get("icon", "mdi:eye")
+
+        # Use default name from sensor type if user didn't set a custom name
+        if CONF_ENTITY_NAME not in entity_config:
+            self._attr_name = type_config.get("default_name", self._attr_name)
 
         # Simulation settings
         self._simulation_enabled: bool = entity_config.get("enable_simulation", True)
