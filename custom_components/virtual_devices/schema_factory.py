@@ -104,7 +104,7 @@ class SchemaFactory:
         Returns:
             A voluptuous Schema for the entity configuration
         """
-        default_name = f"{device_name}_{device_type}_{entity_num}"
+        default_name = f"{device_name}_{entity_num}"
 
         # Base schema with entity name
         schema_dict: dict[vol.Marker, Any] = {

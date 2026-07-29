@@ -35,7 +35,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .base_entity import BaseVirtualEntity
 from .const import (
     CONF_ENTITIES,
-    CONF_ENTITY_NAME,
     DEVICE_TYPE_DISHWASHER,
     DEVICE_TYPE_DOORBELL,
     DEVICE_TYPE_DRYER,
@@ -373,9 +372,8 @@ class VirtualSensor(BaseVirtualEntity[SensorEntityConfig, SensorState], SensorEn
         self._attr_state_class = type_config.get("state_class")
         self._attr_icon = type_config.get("icon", "mdi:eye")
 
-        # Use default name from sensor type if user didn't set a custom name
-        if CONF_ENTITY_NAME not in entity_config:
-            self._attr_name = type_config.get("default_name", self._attr_name)
+        # Use default name from sensor type, ignore config flow default
+        self._attr_name = type_config.get("default_name", self._attr_name)
 
         # Simulation settings
         self._simulation_enabled: bool = entity_config.get("enable_simulation", True)

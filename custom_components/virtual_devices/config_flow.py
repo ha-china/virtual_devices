@@ -319,7 +319,7 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         while self._current_entity_index < self._entity_count:
             entity_num = self._current_entity_index + 1
             device_type_name = DEVICE_TYPES[self._device_type]
-            default_name = f"{self._device_name}_{device_type_name}_{entity_num}"
+            default_name = f"{self._device_name}_{entity_num}"
 
             entity_config: dict[str, Any] = {CONF_ENTITY_NAME: default_name}
 
