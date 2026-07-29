@@ -418,9 +418,25 @@ class VirtualSensor(BaseVirtualEntity[SensorEntityConfig, SensorState], SensorEn
                 increment = random.uniform(0.05, 0.5)
                 self._native_value = round(
                     min(range_vals[1], current + increment), 2)
+        elif self._sensor_type == "power":
+            # Realistic household power simulation: base load + gradual changes + appliance spikes.
+            current = self._native_value if isinstance(
+                self._native_value, (int, float)) else 200.0
+            # Base load (always-on devices: fridge, router, standby)
+            base_load = random.uniform(150, 400)
+            # Random walk drift
+            drift = random.uniform(-50, 50)
+            # Occasional appliance spike (e.g., kettle, microwave, oven)
+            spike = 0
+            if random.random() < 0.05:
+                spike = random.choice([800, 1200, 1500, 2000, 2500])
+            new_value = current + drift
+            # Apply base load tendency (pull toward baseline)
+            new_value = new_value * 0.9 + base_load * 0.1 + spike
+            self._native_value = round(
+                max(range_vals[0], min(range_vals[1], new_value)), 1)
         else:
-            # MEASUREMENT-class sensors (and any dimensionless ones) fluctuate
-            # within their configured range.
+            # MEASUREMENT-class sensors fluctuate within their configured range.
             self._native_value = round(
                 random.uniform(range_vals[0], range_vals[1]), 1)
 
