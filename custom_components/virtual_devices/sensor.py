@@ -349,6 +349,8 @@ async def async_setup_entry(
 class VirtualSensor(BaseVirtualEntity[SensorEntityConfig, SensorState], SensorEntity):
     """Representation of a virtual sensor."""
 
+    _attr_should_poll = True
+
     def __init__(
         self,
         hass: HomeAssistant,
