@@ -6,6 +6,7 @@ import random
 from typing import Any
 
 from homeassistant.components.sensor import (
+    RestoreSensor,
     SensorDeviceClass,
     SensorEntity,
     SensorStateClass,
@@ -107,9 +108,9 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "icon": "mdi:fire",
         "default_name": "Gas Consumption",
     },
-    "water": {
+        "water": {
         "device_class": SensorDeviceClass.WATER,
-        "unit": UnitOfVolume.LITERS,
+        "unit": UnitOfVolume.CUBIC_METERS,
         "state_class": SensorStateClass.TOTAL_INCREASING,
         "range": (0, 100000),
         "icon": "mdi:water",
@@ -346,7 +347,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class VirtualSensor(BaseVirtualEntity[SensorEntityConfig, SensorState], SensorEntity):
+class VirtualSensor(BaseVirtualEntity[SensorEntityConfig, SensorState], RestoreSensor, SensorEntity):
     """Representation of a virtual sensor."""
 
     _attr_should_poll = True
@@ -381,8 +382,14 @@ class VirtualSensor(BaseVirtualEntity[SensorEntityConfig, SensorState], SensorEn
         self._simulation_enabled: bool = entity_config.get("enable_simulation", True)
         self._update_frequency: int = entity_config.get("update_frequency", 30)
 
-        # Initialize native value - will be populated by async_load_state
+        # Initialize native value - will be populated by async_added_to_hass
         self._native_value: float | int | str | None = self._generate_initial_value(type_config)
+
+    async def async_added_to_hass(self) -> None:
+        """Restore state when entity is added to Home Assistant."""
+        await super().async_added_to_hass()
+        if self._attr_native_value is not None:
+            self._native_value = self._attr_native_value
 
     def get_default_state(self) -> SensorState:
         """Return the default state for this sensor entity."""
@@ -436,16 +443,12 @@ class VirtualSensor(BaseVirtualEntity[SensorEntityConfig, SensorState], SensorEn
             self._native_value = round(
                 max(range_vals[0], min(range_vals[1], current + change)))
         elif self._sensor_type in ("energy", "gas", "water"):
-            # TOTAL_INCREASING semantics: value only increases, with a tiny
-            # chance of a meter reset back near 0 to simulate rollover.
+            # TOTAL_INCREASING semantics: value only increases.
             current = self._native_value if isinstance(
                 self._native_value, (int, float)) else 0.0
-            if random.random() < 0.001:
-                self._native_value = round(random.uniform(0, 1), 2)
-            else:
-                increment = random.uniform(0.05, 0.5)
-                self._native_value = round(
-                    min(range_vals[1], current + increment), 2)
+            increment = random.uniform(0.05, 0.5)
+            self._native_value = round(
+                min(range_vals[1], current + increment), 2)
         elif self._sensor_type == "power":
             # Realistic household power simulation: base load + gradual changes + appliance spikes.
             current = self._native_value if isinstance(
