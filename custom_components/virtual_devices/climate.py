@@ -6,7 +6,7 @@ import random
 from typing import Any
 
 from homeassistant.components.climate import (
-    ClimateEntity, ClimateEntityFeature, HVACAction, HVACMode,
+    ATTR_HVAC_MODE, ClimateEntity, ClimateEntityFeature, HVACAction, HVACMode,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
@@ -168,11 +168,13 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
         if temperature is not None:
             temperature = max(self._attr_min_temp, min(self._attr_max_temp, temperature))
             self._attr_target_temperature = temperature
-            self._update_hvac_action()
-            self.fire_template_event("climate.set_temperature", target_temperature=temperature,
-                                     current_temperature=self._attr_current_temperature)
-            await self.async_save_state()
-            self.async_write_ha_state()
+        if hvac_mode := kwargs.get(ATTR_HVAC_MODE):
+            self._attr_hvac_mode = HVACMode(hvac_mode) if isinstance(hvac_mode, str) else hvac_mode
+        self._update_hvac_action()
+        self.fire_template_event("climate.set_temperature", target_temperature=self._attr_target_temperature,
+                                 current_temperature=self._attr_current_temperature)
+        await self.async_save_state()
+        self.async_write_ha_state()
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         """Set new target fan mode."""
