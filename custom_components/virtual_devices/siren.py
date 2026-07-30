@@ -56,7 +56,6 @@ class VirtualSiren(BaseVirtualEntity[SirenEntityConfig, SirenState], SirenEntity
         | SirenEntityFeature.VOLUME_SET
         | SirenEntityFeature.TURN_ON
         | SirenEntityFeature.TURN_OFF
-        | SirenEntityFeature.STROBE
     )
 
     def __init__(
@@ -70,13 +69,10 @@ class VirtualSiren(BaseVirtualEntity[SirenEntityConfig, SirenState], SirenEntity
         super().__init__(hass, config_entry_id, entity_config, index, device_info, "siren")
         self._attr_icon = "mdi:bullhorn"
         self._attr_available_tones = list(SIREN_TONES.keys())
-        # HA Core `SirenEntity.is_on` (via ToggleEntity cached_property) reads
-        # `self._attr_is_on`; use that field instead of a private `_is_on`.
         self._attr_is_on: bool = False
         self._tone = entity_config.get(CONF_SIREN_TONE, "alarm")
         self._duration = int(entity_config.get(CONF_SIREN_DURATION, 30))
         self._volume_level = float(entity_config.get(CONF_SIREN_VOLUME, 1.0))
-        self._strobe: bool = False
 
     def get_default_state(self) -> SirenState:
         return {
@@ -84,7 +80,6 @@ class VirtualSiren(BaseVirtualEntity[SirenEntityConfig, SirenState], SirenEntity
             "tone": "alarm",
             "duration": 30,
             "volume_level": 1.0,
-            "strobe": False,
         }
 
     def apply_state(self, state: SirenState) -> None:
@@ -92,7 +87,6 @@ class VirtualSiren(BaseVirtualEntity[SirenEntityConfig, SirenState], SirenEntity
         self._tone = state.get("tone", "alarm")
         self._duration = state.get("duration", 30)
         self._volume_level = state.get("volume_level", 1.0)
-        self._strobe = state.get("strobe", False)
 
     def get_current_state(self) -> SirenState:
         return {
@@ -100,7 +94,6 @@ class VirtualSiren(BaseVirtualEntity[SirenEntityConfig, SirenState], SirenEntity
             "tone": self._tone,
             "duration": self._duration,
             "volume_level": self._volume_level,
-            "strobe": self._strobe,
         }
 
     @property
@@ -117,7 +110,6 @@ class VirtualSiren(BaseVirtualEntity[SirenEntityConfig, SirenState], SirenEntity
             "tone": self._tone,
             "duration": self._duration,
             "volume_level": self._volume_level,
-            "strobe": self._strobe,
         }
 
     async def async_turn_on(self, **kwargs: Any) -> None:
@@ -125,7 +117,6 @@ class VirtualSiren(BaseVirtualEntity[SirenEntityConfig, SirenState], SirenEntity
         self._tone = kwargs.get("tone", self._tone)
         self._duration = int(kwargs.get("duration", self._duration))
         self._volume_level = float(kwargs.get("volume_level", self._volume_level))
-        self._strobe = bool(kwargs.get("strobe", self._strobe))
         await self.async_save_state()
         self.async_write_ha_state()
         self.fire_template_event(
@@ -133,7 +124,6 @@ class VirtualSiren(BaseVirtualEntity[SirenEntityConfig, SirenState], SirenEntity
             tone=self._tone,
             duration=self._duration,
             volume_level=self._volume_level,
-            strobe=self._strobe,
         )
 
     async def async_turn_off(self, **kwargs: Any) -> None:
@@ -141,4 +131,3 @@ class VirtualSiren(BaseVirtualEntity[SirenEntityConfig, SirenState], SirenEntity
         await self.async_save_state()
         self.async_write_ha_state()
         self.fire_template_event("siren.turn_off")
-
