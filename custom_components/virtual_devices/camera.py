@@ -263,9 +263,6 @@ class VirtualCamera(Camera):
         if self._camera_type in ["indoor", "outdoor", "ptz"]:
             features |= CameraEntityFeature.STREAM
 
-        if self._camera_type == "ptz":
-            features |= CameraEntityFeature.PTZ
-
         self._attr_supported_features = features
 
     def _init_actors(self) -> None:
