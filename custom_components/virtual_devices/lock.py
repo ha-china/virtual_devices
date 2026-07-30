@@ -71,6 +71,8 @@ async def async_setup_entry(
 class VirtualLock(BaseVirtualEntity[LockEntityConfig, LockStateType], LockEntity):
     """Representation of a virtual lock."""
 
+    _attr_should_poll = True
+
     def __init__(
         self,
         hass: HomeAssistant,

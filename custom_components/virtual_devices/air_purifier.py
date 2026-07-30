@@ -115,6 +115,7 @@ class VirtualAirPurifier(FanEntity):
             | FanEntityFeature.TURN_OFF
             | FanEntityFeature.SET_SPEED
             | FanEntityFeature.OSCILLATE
+            | FanEntityFeature.PRESET_MODE
         )
 
         # Set device info
@@ -124,6 +125,8 @@ class VirtualAirPurifier(FanEntity):
         self._attr_is_on: bool = False
         self._attr_percentage: int = entity_config.get("fan_speed", 0)
         self._attr_oscillating: bool = False
+        self._attr_preset_mode: str | None = None
+        self._attr_preset_modes: list[str] = ["auto", "sleep", "turbo", "quiet"]
 
         # Setup speed list
         self._setup_purifier_features()
@@ -308,6 +311,14 @@ class VirtualAirPurifier(FanEntity):
         self.async_write_ha_state()
         _LOGGER.debug(f"Air purifier '{self._attr_name}' oscillation set to {oscillating}")
         self.fire_template_event("air_purifier.set_oscillate", oscillating=oscillating)
+
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
+        """Set preset mode."""
+        self._attr_preset_mode = preset_mode
+        await self.async_save_state()
+        self.async_write_ha_state()
+        _LOGGER.debug(f"Air purifier '{self._attr_name}' preset mode set to {preset_mode}")
+        self.fire_template_event("air_purifier.set_preset_mode", preset_mode=preset_mode)
 
     def calculate_aqi(self) -> dict[str, Any]:
         """Calculate AQI based on current air quality."""

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from homeassistant.const import EntityCategory
+
 
 DOMAIN = "virtual_devices"
 MANUFACTURER = "Home Assistant China (unofficial)"
@@ -229,6 +229,14 @@ SENSOR_TYPES = {
     "wind_speed": "wind_speed",
     "water_quality": "water_quality",
     "ph": "ph",
+    "volume": "volume",
+    "weight": "weight",
+    "distance": "distance",
+    "irradiance": "irradiance",
+    "moisture": "moisture",
+    "frequency": "frequency",
+    "timestamp": "timestamp",
+    "duration": "duration",
 }
 
 # 二进制传感器类型
@@ -291,44 +299,6 @@ DEFAULT_ENTITY_COUNT = 1
 DEFAULT_MIN_TEMP = 16
 DEFAULT_MAX_TEMP = 35
 DEFAULT_TEMP_STEP = 1
-
-# 实体类别配置
-ENTITY_CATEGORIES = {
-    "temperature": EntityCategory.DIAGNOSTIC,
-    "humidity": EntityCategory.DIAGNOSTIC,
-    "pressure": EntityCategory.DIAGNOSTIC,
-    "illuminance": EntityCategory.DIAGNOSTIC,
-    "power": EntityCategory.DIAGNOSTIC,
-    "energy": EntityCategory.DIAGNOSTIC,
-    "voltage": EntityCategory.DIAGNOSTIC,
-    "current": EntityCategory.DIAGNOSTIC,
-    "battery": EntityCategory.DIAGNOSTIC,
-    "signal_strength": EntityCategory.DIAGNOSTIC,
-    "pm25": EntityCategory.DIAGNOSTIC,
-    "pm10": EntityCategory.DIAGNOSTIC,
-    "co2": EntityCategory.DIAGNOSTIC,
-    "voc": EntityCategory.DIAGNOSTIC,
-    "formaldehyde": EntityCategory.DIAGNOSTIC,
-    "noise": EntityCategory.DIAGNOSTIC,
-    "uv_index": EntityCategory.DIAGNOSTIC,
-    "rainfall": EntityCategory.DIAGNOSTIC,
-    "wind_speed": EntityCategory.DIAGNOSTIC,
-    "water_quality": EntityCategory.DIAGNOSTIC,
-    "ph": EntityCategory.DIAGNOSTIC,
-    "motion": EntityCategory.DIAGNOSTIC,
-    "door": EntityCategory.DIAGNOSTIC,
-    "window": EntityCategory.DIAGNOSTIC,
-    "smoke": EntityCategory.DIAGNOSTIC,
-    "gas": EntityCategory.DIAGNOSTIC,
-    "moisture": EntityCategory.DIAGNOSTIC,
-    "occupancy": EntityCategory.DIAGNOSTIC,
-    "opening": EntityCategory.DIAGNOSTIC,
-    "presence": EntityCategory.DIAGNOSTIC,
-    "problem": EntityCategory.DIAGNOSTIC,
-    "safety": EntityCategory.DIAGNOSTIC,
-    "sound": EntityCategory.DIAGNOSTIC,
-    "vibration": EntityCategory.DIAGNOSTIC,
-}
 
 # 媒体播放器类型配置
 MEDIA_PLAYER_TYPES = {

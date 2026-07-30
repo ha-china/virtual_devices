@@ -48,6 +48,15 @@ BINARY_SENSOR_TYPE_MAP: dict[str, BinarySensorDeviceClass] = {
     "safety": BinarySensorDeviceClass.SAFETY,
     "sound": BinarySensorDeviceClass.SOUND,
     "vibration": BinarySensorDeviceClass.VIBRATION,
+    "battery": BinarySensorDeviceClass.BATTERY,
+    "cold": BinarySensorDeviceClass.COLD,
+    "heat": BinarySensorDeviceClass.HEAT,
+    "tamper": BinarySensorDeviceClass.TAMPER,
+    "carbon_monoxide": BinarySensorDeviceClass.CO,
+    "connectivity": BinarySensorDeviceClass.CONNECTIVITY,
+    "running": BinarySensorDeviceClass.RUNNING,
+    "update": BinarySensorDeviceClass.UPDATE,
+    "power": BinarySensorDeviceClass.POWER,
 }
 
 
@@ -145,6 +154,8 @@ async def async_setup_entry(
 
 class VirtualBinarySensor(BaseVirtualEntity[BinarySensorEntityConfig, BinarySensorState], BinarySensorEntity):
     """Representation of a virtual binary sensor."""
+
+    _attr_should_poll = True
 
     def __init__(
         self,

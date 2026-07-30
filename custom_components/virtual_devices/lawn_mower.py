@@ -55,6 +55,8 @@ async def async_setup_entry(
 class VirtualLawnMower(BaseVirtualEntity[LawnMowerEntityConfig, LawnMowerState], LawnMowerEntity):
     """Representation of a virtual lawn mower."""
 
+    _attr_should_poll = True
+
     def __init__(
         self,
         hass: HomeAssistant,
@@ -80,6 +82,7 @@ class VirtualLawnMower(BaseVirtualEntity[LawnMowerEntityConfig, LawnMowerState],
         self._battery_level = 100
         self._current_zone = entity_config.get(CONF_MOWER_ZONE, "full_lawn")
         self._cutting_height = int(entity_config.get(CONF_MOWER_CUTTING_HEIGHT, 45))
+        self._error_message: str | None = None
 
     def get_default_state(self) -> LawnMowerState:
         return {
@@ -87,6 +90,7 @@ class VirtualLawnMower(BaseVirtualEntity[LawnMowerEntityConfig, LawnMowerState],
             "battery_level": 100,
             "current_zone": "full_lawn",
             "cutting_height": 45,
+            "error_message": None,
         }
 
     def apply_state(self, state: LawnMowerState) -> None:
@@ -94,6 +98,7 @@ class VirtualLawnMower(BaseVirtualEntity[LawnMowerEntityConfig, LawnMowerState],
         self._battery_level = state.get("battery_level", 100)
         self._current_zone = state.get("current_zone", "full_lawn")
         self._cutting_height = state.get("cutting_height", 45)
+        self._error_message = state.get("error_message")
 
     def get_current_state(self) -> LawnMowerState:
         return {
@@ -101,6 +106,7 @@ class VirtualLawnMower(BaseVirtualEntity[LawnMowerEntityConfig, LawnMowerState],
             "battery_level": self._battery_level,
             "current_zone": self._current_zone,
             "cutting_height": self._cutting_height,
+            "error_message": self._error_message,
         }
 
     @property
@@ -108,8 +114,14 @@ class VirtualLawnMower(BaseVirtualEntity[LawnMowerEntityConfig, LawnMowerState],
         return self._battery_level
 
     @property
-    def extra_state_attributes(self) -> dict[str, int | str]:
-        return {"current_zone": self._current_zone, "cutting_height": self._cutting_height}
+    def extra_state_attributes(self) -> dict[str, int | str | None]:
+        attrs: dict[str, int | str | None] = {
+            "current_zone": self._current_zone,
+            "cutting_height": self._cutting_height,
+        }
+        if self._error_message:
+            attrs["error_message"] = self._error_message
+        return attrs
 
     async def async_start_mowing(self) -> None:
         self._attr_activity = LawnMowerActivity.MOWING
@@ -129,6 +141,13 @@ class VirtualLawnMower(BaseVirtualEntity[LawnMowerEntityConfig, LawnMowerState],
     async def async_update(self) -> None:
         if self._attr_activity == LawnMowerActivity.MOWING:
             self._battery_level = max(0, self._battery_level - random.randint(1, 3))
+            if random.random() < 0.01:
+                self._attr_activity = LawnMowerActivity.ERROR
+                self._error_message = "Blade jam detected"
+                _LOGGER.warning("Lawn mower '%s' encountered error: %s", self._attr_name, self._error_message)
+        elif self._attr_activity == LawnMowerActivity.ERROR:
+            self._error_message = None
+            self._attr_activity = LawnMowerActivity.DOCKED
         elif self._attr_activity in (LawnMowerActivity.DOCKED, LawnMowerActivity.RETURNING):
             self._battery_level = min(100, self._battery_level + 1)
         if self._attr_activity == LawnMowerActivity.RETURNING and self._battery_level > 10:

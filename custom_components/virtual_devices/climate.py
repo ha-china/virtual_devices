@@ -50,11 +50,13 @@ async def async_setup_entry(
 class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], ClimateEntity):
     """Representation of a virtual climate device."""
 
+    _attr_should_poll = True
     _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
     _attr_supported_features: ClimateEntityFeature = (
         ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.FAN_MODE
         | ClimateEntityFeature.SWING_MODE | ClimateEntityFeature.PRESET_MODE
         | ClimateEntityFeature.TURN_ON | ClimateEntityFeature.TURN_OFF
+        | ClimateEntityFeature.AUX_HEAT | ClimateEntityFeature.TARGET_HUMIDITY
     )
     _attr_hvac_modes: list[HVACMode] = [
         HVACMode.OFF, HVACMode.HEAT, HVACMode.COOL, HVACMode.AUTO, HVACMode.DRY, HVACMode.FAN_ONLY,
@@ -92,7 +94,8 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
         # TARGET_HUMIDITY feature (no `async_set_humidity` implementation), so
         # `target_humidity` is emitted via `extra_state_attributes` instead.
         self._attr_current_humidity: float = 55.0
-        self._target_humidity: float = 50.0
+        self._attr_target_humidity: float | None = 50.0
+        self._attr_aux_heat: bool = False
         self._target_reached_threshold: float = 1.0
         self._temperature_change_rate: float = 0.5
 
@@ -105,6 +108,7 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
         if self._humidity_enabled:
             state["current_humidity"] = 55.0
             state["target_humidity"] = 50.0
+        state["aux_heat"] = False
         return state
 
     def apply_state(self, state: ClimateState) -> None:
@@ -120,7 +124,8 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
             hvac_action_value, str) else hvac_action_value
         if self._humidity_enabled:
             self._attr_current_humidity = float(state.get("current_humidity", 55.0))
-            self._target_humidity = float(state.get("target_humidity", 50.0))
+            self._attr_target_humidity = float(state.get("target_humidity", 50.0))
+        self._attr_aux_heat = bool(state.get("aux_heat", False))
 
     def get_current_state(self) -> ClimateState:
         """Get current state for persistence."""
@@ -132,7 +137,8 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
         }
         if self._humidity_enabled:
             state["current_humidity"] = self._attr_current_humidity
-            state["target_humidity"] = self._target_humidity
+            state["target_humidity"] = self._attr_target_humidity
+        state["aux_heat"] = self._attr_aux_heat
         return state
 
     async def async_turn_on(self) -> None:
@@ -250,11 +256,21 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
         humidity_change -= (self._attr_current_temperature - 20) * 0.1
         self._attr_current_humidity = max(20.0, min(90.0, self._attr_current_humidity + humidity_change))
 
+    async def async_set_aux_heat(self, on_off: bool) -> None:
+        """Set auxiliary heater on/off."""
+        self._attr_aux_heat = on_off
+        self.fire_template_event("climate.set_aux_heat", aux_heat=on_off)
+        await self.async_save_state()
+        self.async_write_ha_state()
+
+    async def async_set_humidity(self, humidity: int) -> None:
+        """Set target humidity."""
+        self._attr_target_humidity = max(0, min(100, humidity))
+        self.fire_template_event("climate.set_humidity", target_humidity=self._attr_target_humidity)
+        await self.async_save_state()
+        self.async_write_ha_state()
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
-        if self._humidity_enabled:
-            # `current_humidity` is auto-emitted by the base class from
-            # `_attr_current_humidity`; expose `target_humidity` here only.
-            return {"target_humidity": self._target_humidity}
         return {}

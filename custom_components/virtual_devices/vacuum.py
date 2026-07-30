@@ -94,6 +94,8 @@ async def async_setup_entry(
 class VirtualVacuum(BaseVirtualEntity[VacuumEntityConfig, VacuumState], StateVacuumEntity):
     """Representation of a virtual vacuum."""
 
+    _attr_should_poll = True
+
     def __init__(
         self,
         hass: HomeAssistant,

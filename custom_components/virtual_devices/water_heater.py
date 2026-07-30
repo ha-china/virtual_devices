@@ -154,7 +154,7 @@ class VirtualWaterHeater(WaterHeaterEntity):
         self._heating_start_time: float | None = None
         self._last_update: float | None = None
 
-        _LOGGER.info(f"Virtual water heater '{self._attr_name}' initialized")
+        _LOGGER.info("Virtual water heater '%s' initialized", self._attr_name)
 
     def get_default_state(self) -> WaterHeaterState:
         """Return the default state for this entity type."""
@@ -189,9 +189,9 @@ class VirtualWaterHeater(WaterHeaterEntity):
             data = await self._store.async_load()
             if data:
                 self.apply_state(data)
-                _LOGGER.debug(f"Water heater '{self._attr_name}' state loaded")
+                _LOGGER.debug("Water heater '%s' state loaded", self._attr_name)
         except Exception as ex:
-            _LOGGER.error(f"Failed to load state for water heater '{self._attr_name}': {ex}")
+            _LOGGER.error("Failed to load state for water heater '%s': %s", self._attr_name, ex)
             self.apply_state(self.get_default_state())
 
     async def async_save_state(self) -> None:
@@ -199,16 +199,16 @@ class VirtualWaterHeater(WaterHeaterEntity):
         try:
             data = self.get_current_state()
             await self._store.async_save(data)
-            _LOGGER.debug(f"Water heater '{self._attr_name}' state saved")
+            _LOGGER.debug("Water heater '%s' state saved", self._attr_name)
         except Exception as ex:
-            _LOGGER.error(f"Failed to save state for water heater '{self._attr_name}': {ex}")
+            _LOGGER.error("Failed to save state for water heater '%s': %s", self._attr_name, ex)
 
     async def async_added_to_hass(self) -> None:
         """Call when entity is added to hass."""
         await super().async_added_to_hass()
         await self.async_load_state()
         self.async_write_ha_state()
-        _LOGGER.info(f"Virtual water heater '{self._attr_name}' added to Home Assistant")
+        _LOGGER.info("Virtual water heater '%s' added to Home Assistant", self._attr_name)
 
     def fire_template_event(self, action: str, **kwargs: Any) -> None:
         """Fire a template update event if templates are configured."""
@@ -233,7 +233,7 @@ class VirtualWaterHeater(WaterHeaterEntity):
             self._attr_target_temperature = temperature
             await self.async_save_state()
             self.async_write_ha_state()
-            _LOGGER.debug(f"Water heater '{self._attr_name}' target temperature set to {temperature}°C")
+            _LOGGER.debug("Water heater '%s' target temperature set to %s\u00b0C", self._attr_name, temperature)
             self.fire_template_event("water_heater.set_temperature", temperature=temperature)
 
     async def async_set_operation_mode(self, operation_mode: str) -> None:
@@ -242,21 +242,21 @@ class VirtualWaterHeater(WaterHeaterEntity):
         self._update_heating_state()
         await self.async_save_state()
         self.async_write_ha_state()
-        _LOGGER.debug(f"Water heater '{self._attr_name}' operation mode set to {operation_mode}")
+        _LOGGER.debug("Water heater '%s' operation mode set to %s", self._attr_name, operation_mode)
         self.fire_template_event("water_heater.set_operation_mode", operation_mode=operation_mode)
 
     async def async_turn_away_mode_on(self) -> None:
         """Turn away mode on."""
         self._attr_is_away_mode_on = True
         self.async_write_ha_state()
-        _LOGGER.debug(f"Water heater '{self._attr_name}' away mode turned on")
+        _LOGGER.debug("Water heater '%s' away mode turned on", self._attr_name)
         self.fire_template_event("water_heater.turn_away_mode_on")
 
     async def async_turn_away_mode_off(self) -> None:
         """Turn away mode off."""
         self._attr_is_away_mode_on = False
         self.async_write_ha_state()
-        _LOGGER.debug(f"Water heater '{self._attr_name}' away mode turned off")
+        _LOGGER.debug("Water heater '%s' away mode turned off", self._attr_name)
         self.fire_template_event("water_heater.turn_away_mode_off")
 
     def _update_heating_state(self) -> None:

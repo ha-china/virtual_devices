@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from homeassistant.components.button import ButtonEntity
+from homeassistant.components.button import ButtonDeviceClass, ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -135,6 +135,15 @@ class VirtualButton(BaseVirtualEntity[ButtonEntityConfig, ButtonState], ButtonEn
             "identify": "mdi:bullseye-arrow",
         }
         self._attr_icon = icon_map.get(button_type, "mdi:gesture-tap-button")
+
+        # Set device class based on button type
+        device_class_map: dict[str, ButtonDeviceClass | None] = {
+            "restart": ButtonDeviceClass.RESTART,
+            "update": ButtonDeviceClass.UPDATE,
+            "identify": ButtonDeviceClass.IDENTIFY,
+            "generic": None,
+        }
+        self._attr_device_class = device_class_map.get(button_type)
 
     def get_default_state(self) -> ButtonState:
         """Return the default state for this button entity."""

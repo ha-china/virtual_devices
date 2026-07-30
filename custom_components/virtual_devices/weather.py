@@ -394,6 +394,45 @@ class VirtualWeather(WeatherEntity):
 
         return forecast
 
+
+
+    async def async_forecast_hourly(self) -> list[Forecast] | None:
+        """Return the hourly forecast for the next 24 hours."""
+        forecasts: list[Forecast] = []
+        base_date = datetime.now().replace(minute=0, second=0, microsecond=0)
+
+        for hour in range(24):
+            forecast_date = base_date + timedelta(hours=hour)
+            condition = self._get_random_condition()
+            temp_variation = random.uniform(-3, 3)
+            hourly_temp = self._attr_native_temperature + temp_variation
+
+            if condition in ["rainy", "pouring", "lightning-rainy"]:
+                precipitation = random.uniform(0.5, 5)
+                pressure = random.uniform(990, 1010)
+            elif condition in ["sunny", "partlycloudy"]:
+                precipitation = 0
+                pressure = random.uniform(1015, 1030)
+            else:
+                precipitation = random.uniform(0, 2)
+                pressure = random.uniform(1000, 1020)
+
+            is_daytime = 6 <= forecast_date.hour <= 18
+
+            forecast_data: dict[str, Any] = {
+                "datetime": forecast_date.isoformat(),
+                "condition": condition,
+                ATTR_FORECAST_NATIVE_TEMP: round(hourly_temp, 1),
+                ATTR_FORECAST_NATIVE_PRECIPITATION: round(precipitation, 2),
+                ATTR_FORECAST_NATIVE_PRESSURE: round(pressure, 1),
+                ATTR_FORECAST_NATIVE_WIND_SPEED: round(random.uniform(5, 25), 1),
+                ATTR_FORECAST_IS_DAYTIME: is_daytime,
+            }
+
+            forecasts.append(Forecast(forecast_data))
+
+        return forecasts
+
     async def async_update(self) -> None:
         """Update weather data."""
         if datetime.now() - self._last_update < timedelta(minutes=5):

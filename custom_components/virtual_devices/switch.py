@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from homeassistant.components.switch import SwitchEntity
+from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -107,6 +107,7 @@ class VirtualSwitch(BaseVirtualEntity[SwitchEntityConfig, SwitchState], SwitchEn
         """Initialize the virtual switch."""
         super().__init__(hass, config_entry_id, entity_config, index, device_info, "switch")
 
+        self._attr_device_class = SwitchDeviceClass.SWITCH
         self._attr_icon = "mdi:electric-switch"
         self._attr_is_on: bool = False
 
@@ -122,11 +123,6 @@ class VirtualSwitch(BaseVirtualEntity[SwitchEntityConfig, SwitchState], SwitchEn
     def get_current_state(self) -> SwitchState:
         """Get current state for persistence."""
         return {"is_on": self._attr_is_on}
-
-    @property
-    def is_on(self) -> bool:
-        """Return true if switch is on."""
-        return self._attr_is_on
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
@@ -165,12 +161,8 @@ class VirtualLaundryPowerSwitch(SwitchEntity):
         self._attr_name = f"{base_name} Power"
         self._attr_unique_id = f"{config_entry_id}_laundry_{index}_power"
         self._attr_device_info = device_info
+        self._attr_is_on = False
         self._attr_icon = "mdi:power"
-
-    @property
-    def is_on(self) -> bool:
-        """Return current power state."""
-        return self._manager.state["power_on"]
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn appliance power on."""
@@ -185,6 +177,7 @@ class VirtualLaundryPowerSwitch(SwitchEntity):
     async def async_update(self) -> None:
         """Refresh shared laundry state."""
         await self._manager.async_refresh()
+        self._attr_is_on = self._manager.state["power_on"]
 
 
 class VirtualAppliancePowerSwitch(SwitchEntity):
@@ -197,11 +190,8 @@ class VirtualAppliancePowerSwitch(SwitchEntity):
         self._attr_name = f"{base_name} Power"
         self._attr_unique_id = f"{config_entry_id}_{manager.device_type}_{index}_power"
         self._attr_device_info = device_info
+        self._attr_is_on = False
         self._attr_icon = "mdi:power"
-
-    @property
-    def is_on(self) -> bool:
-        return self._manager.state.get("power_on", False)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self._manager.async_set_power(True)
@@ -213,3 +203,4 @@ class VirtualAppliancePowerSwitch(SwitchEntity):
 
     async def async_update(self) -> None:
         await self._manager.async_refresh()
+        self._attr_is_on = self._manager.state.get("power_on", False)

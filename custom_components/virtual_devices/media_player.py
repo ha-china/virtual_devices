@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any
 
 from homeassistant.components.media_player import (
+    BrowseMedia,
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
     MediaPlayerState,
@@ -169,7 +170,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         # Assumed state for UI
         self._attr_assumed_state: bool = True
 
-        _LOGGER.info(f"Virtual media player '{self._attr_name}' initialized with state: {self._attr_state}")
+        _LOGGER.info("Virtual media player '%s' initialized with state: %s", self._attr_name, self._attr_state)
 
     def get_default_state(self) -> MediaPlayerStateType:
         """Return the default state for this entity type."""
@@ -217,9 +218,9 @@ class VirtualMediaPlayer(MediaPlayerEntity):
             data = await self._store.async_load()
             if data:
                 self.apply_state(data)
-                _LOGGER.debug(f"Media player '{self._attr_name}' state loaded from storage")
+                _LOGGER.debug("Media player '%s' state loaded from storage", self._attr_name)
         except Exception as ex:
-            _LOGGER.error(f"Failed to load state for media player '{self._attr_name}': {ex}")
+            _LOGGER.error("Failed to load state for media player '%s': %s", self._attr_name, ex)
             self.apply_state(self.get_default_state())
 
     async def async_save_state(self) -> None:
@@ -227,9 +228,9 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         try:
             data = self.get_current_state()
             await self._store.async_save(data)
-            _LOGGER.debug(f"Media player '{self._attr_name}' state saved to storage")
+            _LOGGER.debug("Media player '%s' state saved to storage", self._attr_name)
         except Exception as ex:
-            _LOGGER.error(f"Failed to save state for media player '{self._attr_name}': {ex}")
+            _LOGGER.error("Failed to save state for media player '%s': %s", self._attr_name, ex)
 
     async def async_added_to_hass(self) -> None:
         """Call when entity is added to hass."""
@@ -237,8 +238,8 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         await self.async_load_state()
         self.async_write_ha_state()
         _LOGGER.info(
-            f"Virtual media player '{self._attr_name}' added to Home Assistant "
-            f"with state: {self._attr_state}, volume: {self._attr_volume_level}, source: {self._attr_source}"
+            "Virtual media player '%s' added to Home Assistant with state: %s, volume: %s, source: %s",
+            self._attr_name, self._attr_state, self._attr_volume_level, self._attr_source,
         )
 
     def _setup_features(self) -> None:
@@ -262,6 +263,8 @@ class VirtualMediaPlayer(MediaPlayerEntity):
 
         if self._entity_config.get(CONF_MEDIA_SUPPORTS_SEEK, False):
             features |= MediaPlayerEntityFeature.SEEK
+
+        features |= MediaPlayerEntityFeature.BROWSE_MEDIA
 
         self._attr_supported_features = features
 
@@ -295,7 +298,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self._attr_state = MediaPlayerState.IDLE
         await self.async_save_state()
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual media player '{self._attr_name}' turned on")
+        _LOGGER.debug("Virtual media player '%s' turned on", self._attr_name)
         self.fire_template_event("media_player.turn_on", state="on")
 
     async def async_turn_off(self) -> None:
@@ -308,7 +311,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self._attr_media_position_updated_at = None
         await self.async_save_state()
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual media player '{self._attr_name}' turned off")
+        _LOGGER.debug("Virtual media player '%s' turned off", self._attr_name)
         self.fire_template_event("media_player.turn_off", state="off")
 
     async def async_media_play(self) -> None:
@@ -320,7 +323,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self._attr_media_position_updated_at = datetime.now()
         await self.async_save_state()
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual media player '{self._attr_name}' playing")
+        _LOGGER.debug("Virtual media player '%s' playing", self._attr_name)
         self.fire_template_event("media_player.play", state="playing", media_title=self._attr_media_title)
 
     async def async_media_pause(self) -> None:
@@ -328,7 +331,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self._attr_state = MediaPlayerState.PAUSED
         await self.async_save_state()
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual media player '{self._attr_name}' paused")
+        _LOGGER.debug("Virtual media player '%s' paused", self._attr_name)
         self.fire_template_event("media_player.pause", state="paused")
 
     async def async_media_stop(self) -> None:
@@ -338,7 +341,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self._attr_media_position_updated_at = None
         await self.async_save_state()
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual media player '{self._attr_name}' stopped")
+        _LOGGER.debug("Virtual media player '%s' stopped", self._attr_name)
         self.fire_template_event("media_player.stop", state="idle")
 
     async def async_media_next_track(self) -> None:
@@ -348,7 +351,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
             self._attr_media_position = 0
             self._attr_media_position_updated_at = datetime.now()
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual media player '{self._attr_name}' next track")
+        _LOGGER.debug("Virtual media player '%s' next track", self._attr_name)
         self.fire_template_event("media_player.next_track", media_title=self._attr_media_title)
 
     async def async_media_previous_track(self) -> None:
@@ -358,7 +361,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
             self._attr_media_position = 0
             self._attr_media_position_updated_at = datetime.now()
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual media player '{self._attr_name}' previous track")
+        _LOGGER.debug("Virtual media player '%s' previous track", self._attr_name)
         self.fire_template_event("media_player.previous_track", media_title=self._attr_media_title)
 
     async def async_media_seek(self, position: float) -> None:
@@ -366,7 +369,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self._attr_media_position = int(position)
         self._attr_media_position_updated_at = datetime.now()
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual media player '{self._attr_name}' seek to {position}s")
+        _LOGGER.debug("Virtual media player '%s' seek to %ss", self._attr_name, position)
         self.fire_template_event("media_player.seek", position=position)
 
     async def async_play_media(
@@ -386,12 +389,147 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self._attr_state = MediaPlayerState.PLAYING
 
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual media player '{self._attr_name}' playing media: {media_id}")
+        _LOGGER.debug("Virtual media player '%s' playing media: %s", self._attr_name, media_id)
         self.fire_template_event(
             "media_player.play_media",
             media_type=media_type,
             media_id=media_id,
             media_title=self._attr_media_title,
+        )
+
+    async def async_browse_media(
+        self,
+        media_content_type: str | None = None,
+        media_content_id: str | None = None,
+    ) -> BrowseMedia:
+        """Browse media."""
+        if media_content_id is None:
+            return BrowseMedia(
+                media_class="directory",
+                media_content_id="root",
+                media_content_type="root",
+                title="Media Library",
+                can_play=False,
+                can_expand=True,
+                children=[
+                    BrowseMedia(
+                        media_class="directory",
+                        media_content_id="music",
+                        media_content_type=MediaType.MUSIC,
+                        title="Music",
+                        can_play=False,
+                        can_expand=True,
+                    ),
+                    BrowseMedia(
+                        media_class="directory",
+                        media_content_id="radio",
+                        media_content_type=MediaType.MUSIC,
+                        title="Radio",
+                        can_play=False,
+                        can_expand=True,
+                    ),
+                    BrowseMedia(
+                        media_class="directory",
+                        media_content_id="podcast",
+                        media_content_type=MediaType.PODCAST,
+                        title="Podcast",
+                        can_play=False,
+                        can_expand=True,
+                    ),
+                ],
+            )
+
+        if media_content_id == "music":
+            return BrowseMedia(
+                media_class="directory",
+                media_content_id="music",
+                media_content_type=MediaType.MUSIC,
+                title="Music",
+                can_play=False,
+                can_expand=True,
+                children=[
+                    BrowseMedia(
+                        media_class="track",
+                        media_content_id="virtual_song_1",
+                        media_content_type=MediaType.MUSIC,
+                        title="Virtual Song 1",
+                        can_play=True,
+                        can_expand=False,
+                    ),
+                    BrowseMedia(
+                        media_class="track",
+                        media_content_id="virtual_song_2",
+                        media_content_type=MediaType.MUSIC,
+                        title="Virtual Song 2",
+                        can_play=True,
+                        can_expand=False,
+                    ),
+                ],
+            )
+
+        if media_content_id == "radio":
+            return BrowseMedia(
+                media_class="directory",
+                media_content_id="radio",
+                media_content_type=MediaType.MUSIC,
+                title="Radio",
+                can_play=False,
+                can_expand=True,
+                children=[
+                    BrowseMedia(
+                        media_class="station",
+                        media_content_id="radio_station_1",
+                        media_content_type=MediaType.MUSIC,
+                        title="Radio Station 1",
+                        can_play=True,
+                        can_expand=False,
+                    ),
+                    BrowseMedia(
+                        media_class="station",
+                        media_content_id="radio_station_2",
+                        media_content_type=MediaType.MUSIC,
+                        title="Radio Station 2",
+                        can_play=True,
+                        can_expand=False,
+                    ),
+                ],
+            )
+
+        if media_content_id == "podcast":
+            return BrowseMedia(
+                media_class="directory",
+                media_content_id="podcast",
+                media_content_type=MediaType.PODCAST,
+                title="Podcast",
+                can_play=False,
+                can_expand=True,
+                children=[
+                    BrowseMedia(
+                        media_class="episode",
+                        media_content_id="podcast_ep_1",
+                        media_content_type=MediaType.PODCAST,
+                        title="Podcast Episode 1",
+                        can_play=True,
+                        can_expand=False,
+                    ),
+                    BrowseMedia(
+                        media_class="episode",
+                        media_content_id="podcast_ep_2",
+                        media_content_type=MediaType.PODCAST,
+                        title="Podcast Episode 2",
+                        can_play=True,
+                        can_expand=False,
+                    ),
+                ],
+            )
+
+        return BrowseMedia(
+            media_class="directory",
+            media_content_id=media_content_id or "",
+            media_content_type=media_content_type or MediaType.MUSIC,
+            title="Unknown",
+            can_play=False,
+            can_expand=False,
         )
 
     async def async_select_source(self, source: str) -> None:
@@ -400,7 +538,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
             self._attr_source = source
             await self.async_save_state()
             self.async_write_ha_state()
-            _LOGGER.debug(f"Virtual media player '{self._attr_name}' source changed to {source}")
+            _LOGGER.debug("Virtual media player '%s' source changed to %s", self._attr_name, source)
             self.fire_template_event("media_player.select_source", source=source)
 
     async def async_set_volume_level(self, volume: float) -> None:
@@ -410,7 +548,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
 
         if abs(original_volume - volume) > 0.001:
             _LOGGER.warning(
-                f"Volume {original_volume} out of range (0.0-1.0), clamped to {volume}"
+                "Volume %s out of range (0.0-1.0), clamped to %s", original_volume, volume
             )
 
         self._attr_volume_level = volume
@@ -420,7 +558,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
 
         await self.async_save_state()
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual media player '{self._attr_name}' volume set to {volume}")
+        _LOGGER.debug("Virtual media player '%s' volume set to %s", self._attr_name, volume)
         self.fire_template_event("media_player.set_volume_level", volume=volume)
 
     async def async_mute_volume(self, mute: bool) -> None:
@@ -428,7 +566,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         self._attr_is_volume_muted = mute
         await self.async_save_state()
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual media player '{self._attr_name}' muted: {mute}")
+        _LOGGER.debug("Virtual media player '%s' muted: %s", self._attr_name, mute)
         self.fire_template_event("media_player.mute_volume", mute=mute)
 
     async def async_set_repeat(self, repeat: RepeatMode) -> None:
@@ -436,7 +574,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         valid_repeat_modes: list[str] = ["off", "one", "all"]
         repeat_val: str = repeat if isinstance(repeat, str) else repeat.value
         if repeat_val not in valid_repeat_modes:
-            _LOGGER.warning(f"Invalid repeat mode: {repeat_val}. Valid modes: {valid_repeat_modes}")
+            _LOGGER.warning("Invalid repeat mode: %s. Valid modes: %s", repeat_val, valid_repeat_modes)
             return
 
         self._attr_repeat = repeat_val
@@ -447,10 +585,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         await self.async_save_state()
         self.async_write_ha_state()
 
-        await asyncio.sleep(0.1)
-        self.async_write_ha_state()
-
-        _LOGGER.info(f"Virtual media player '{self._attr_name}' repeat set to {self._attr_repeat}")
+        _LOGGER.info("Virtual media player '%s' repeat set to %s", self._attr_name, self._attr_repeat)
         self.fire_template_event("media_player.set_repeat", repeat=self._attr_repeat)
 
     async def async_set_shuffle(self, shuffle: bool) -> None:
@@ -471,10 +606,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
         await self.async_save_state()
         self.async_write_ha_state()
 
-        await asyncio.sleep(0.1)
-        self.async_write_ha_state()
-
-        _LOGGER.info(f"Virtual media player '{self._attr_name}' shuffle set to {shuffle}")
+        _LOGGER.info("Virtual media player '%s' shuffle set to %s", self._attr_name, shuffle)
         self.fire_template_event("media_player.set_shuffle", shuffle=shuffle)
 
     def _select_next_track(self) -> None:

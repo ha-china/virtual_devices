@@ -46,12 +46,11 @@ async def async_setup_entry(
 class VirtualRemote(BaseVirtualEntity[RemoteEntityConfig, RemoteState], RemoteEntity):
     """Representation of a virtual remote."""
 
-    # NOTE: HA Core routes `remote.learn_command` / `remote.delete_command`
-    # services only when `LEARN_COMMAND` / `DELETE_COMMAND` features are
-    # declared, and they call `async_learn_command` / `async_delete_command`.
-    # We do not implement either (this is a virtual remote), so omit both
-    # features to avoid NotImplementedError when the services are invoked.
-    _attr_supported_features = RemoteEntityFeature.ACTIVITY
+    _attr_supported_features = (
+        RemoteEntityFeature.ACTIVITY
+        | RemoteEntityFeature.LEARN_COMMAND
+        | RemoteEntityFeature.DELETE_COMMAND
+    )
 
     def __init__(
         self,
@@ -70,26 +69,33 @@ class VirtualRemote(BaseVirtualEntity[RemoteEntityConfig, RemoteState], RemoteEn
             commands = [item.strip() for item in commands.split(",") if item.strip()]
         self._commands = commands or ["power"]
         self._last_command: str | None = None
+        self._learned_commands: dict[str, Any] = {}
         self._attr_activity_list = ["tv", "movie", "music", "game"]
 
     def get_default_state(self) -> RemoteState:
-        return {"is_on": False, "current_activity": "tv", "last_command": None}
+        return {"is_on": False, "current_activity": "tv", "last_command": None, "learned_commands": {}}
 
     def apply_state(self, state: RemoteState) -> None:
         self._attr_is_on = state.get("is_on", False)
         self._attr_current_activity = state.get("current_activity", "tv")
         self._last_command = state.get("last_command")
+        self._learned_commands = state.get("learned_commands", {})
 
     def get_current_state(self) -> RemoteState:
         return {
             "is_on": self._attr_is_on,
             "current_activity": self._attr_current_activity,
             "last_command": self._last_command,
+            "learned_commands": self._learned_commands,
         }
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        return {"available_commands": self._commands, "last_command": self._last_command}
+        return {
+            "available_commands": self._commands,
+            "last_command": self._last_command,
+            "learned_commands": self._learned_commands,
+        }
 
     async def async_turn_on(self, activity: str | None = None, **kwargs: Any) -> None:
         self._attr_is_on = True
@@ -114,3 +120,30 @@ class VirtualRemote(BaseVirtualEntity[RemoteEntityConfig, RemoteState], RemoteEn
         await self.async_save_state()
         self.async_write_ha_state()
         self.fire_template_event("remote.send_command", command=self._last_command)
+
+    async def async_learn_command(self, **kwargs: Any) -> None:
+        """Learn a command."""
+        command = kwargs.get("command")
+        device = kwargs.get("device", "default")
+        code = kwargs.get("code")
+        if command:
+            if device not in self._learned_commands:
+                self._learned_commands[device] = {}
+            self._learned_commands[device][command] = code or f"learned_{command}"
+            _LOGGER.info("Learned command '%s' for device '%s'", command, device)
+            await self.async_save_state()
+            self.async_write_ha_state()
+            self.fire_template_event("remote.learn_command", command=command, device=device)
+
+    async def async_delete_command(self, **kwargs: Any) -> None:
+        """Delete a learned command."""
+        command = kwargs.get("command")
+        device = kwargs.get("device", "default")
+        if device in self._learned_commands and command in self._learned_commands[device]:
+            del self._learned_commands[device][command]
+            if not self._learned_commands[device]:
+                del self._learned_commands[device]
+            _LOGGER.info("Deleted command '%s' for device '%s'", command, device)
+            await self.async_save_state()
+            self.async_write_ha_state()
+            self.fire_template_event("remote.delete_command", command=command, device=device)

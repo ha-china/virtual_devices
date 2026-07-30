@@ -9,7 +9,10 @@ from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_COLOR_TEMP_KELVIN,
     ATTR_EFFECT,
+    ATTR_FLASH,
+    ATTR_HS_COLOR,
     ATTR_RGB_COLOR,
+    ATTR_XY_COLOR,
     ColorMode,
     LightEntity,
     LightEntityFeature,
@@ -150,13 +153,15 @@ class VirtualLight(BaseVirtualEntity[LightEntityConfig, LightState], LightEntity
             supported_features |= LightEntityFeature.EFFECT
             self._attr_effect_list = EFFECT_LIST
 
+        supported_features |= LightEntityFeature.FLASH
+
         # Determine color modes - RGB and COLOR_TEMP take precedence over BRIGHTNESS
         if self._has_rgb and self._has_color_temp:
             # Both RGB and color temp supported
-            supported_modes = {ColorMode.RGB, ColorMode.COLOR_TEMP}
+            supported_modes = {ColorMode.RGB, ColorMode.COLOR_TEMP, ColorMode.XY, ColorMode.HS}
         elif self._has_rgb:
             # RGB only (includes brightness)
-            supported_modes = {ColorMode.RGB}
+            supported_modes = {ColorMode.RGB, ColorMode.XY, ColorMode.HS}
         elif self._has_color_temp:
             # Color temp only (includes brightness)
             supported_modes = {ColorMode.COLOR_TEMP}
@@ -179,6 +184,8 @@ class VirtualLight(BaseVirtualEntity[LightEntityConfig, LightState], LightEntity
         self._attr_is_on: bool = False
         self._attr_brightness: int | None = DEFAULT_BRIGHTNESS if self._has_brightness else None
         self._attr_rgb_color: RGBColor | None = DEFAULT_RGB_COLOR if self._has_rgb else None
+        self._attr_xy_color: tuple[float, float] | None = (0.5, 0.5) if self._has_rgb else None
+        self._attr_hs_color: tuple[float, float] | None = (0.0, 100.0) if self._has_rgb else None
         self._attr_color_temp_kelvin: int | None = DEFAULT_COLOR_TEMP_KELVIN if self._has_color_temp else None
         self._attr_effect: str | None = None
 
@@ -310,8 +317,47 @@ class VirtualLight(BaseVirtualEntity[LightEntityConfig, LightState], LightEntity
             else:
                 self._attr_brightness = brightness
 
+        if ATTR_XY_COLOR in kwargs and self._has_rgb:
+            self._attr_xy_color = kwargs[ATTR_XY_COLOR]
+            x, y = self._attr_xy_color
+            r = max(0, min(255, int(255 * (x / (x + y + 0.001)))))
+            g = max(0, min(255, int(255 * (y / (x + y + 0.001)))))
+            b = max(0, min(255, int(255 * ((1 - x - y) / (x + y + 0.001)))))
+            self._attr_rgb_color = (r, g, b)
+            if ColorMode.RGB in self._attr_supported_color_modes:
+                self._attr_color_mode = ColorMode.RGB
+
+        if ATTR_HS_COLOR in kwargs and self._has_rgb:
+            self._attr_hs_color = kwargs[ATTR_HS_COLOR]
+            h, s = self._attr_hs_color
+            s_norm = s / 100.0
+            hi = int(h / 60) % 6
+            f = h / 60 - hi
+            p = int(255 * (1 - s_norm))
+            q = int(255 * (1 - f * s_norm))
+            t = int(255 * (1 - (1 - f) * s_norm))
+            rgb_map = {
+                0: (255, t, p),
+                1: (q, 255, p),
+                2: (p, 255, t),
+                3: (p, q, 255),
+                4: (t, p, 255),
+                5: (255, p, q),
+            }
+            self._attr_rgb_color = rgb_map[hi]
+            if ColorMode.RGB in self._attr_supported_color_modes:
+                self._attr_color_mode = ColorMode.RGB
+
         if ATTR_EFFECT in kwargs and self._has_effects:
             self._attr_effect = kwargs[ATTR_EFFECT]
+
+        if ATTR_FLASH in kwargs:
+            self._attr_brightness = 255
+            self.async_write_ha_state()
+            self._attr_brightness = max(1, self._attr_brightness - 200) if self._attr_brightness else 1
+            self.async_write_ha_state()
+            self._attr_brightness = 255
+            self.async_write_ha_state()
 
         self.fire_template_event("light.turn_on", **kwargs)
         await self.async_save_state()

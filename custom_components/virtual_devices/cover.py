@@ -88,6 +88,10 @@ class VirtualCover(BaseVirtualEntity[CoverEntityConfig, CoverState], CoverEntity
         | CoverEntityFeature.CLOSE
         | CoverEntityFeature.STOP
         | CoverEntityFeature.SET_POSITION
+        | CoverEntityFeature.OPEN_TILT
+        | CoverEntityFeature.CLOSE_TILT
+        | CoverEntityFeature.SET_TILT_POSITION
+        | CoverEntityFeature.STOP_TILT
     )
 
     def __init__(
@@ -122,6 +126,7 @@ class VirtualCover(BaseVirtualEntity[CoverEntityConfig, CoverState], CoverEntity
         # do NOT redefine them as @property overrides.
         self._attr_current_cover_position: int = 0
         self._attr_is_closed: bool = True
+        self._attr_current_cover_tilt_position: int = 100
 
         # Entity category (None = primary entity)
         self._attr_entity_category = None
@@ -213,6 +218,30 @@ class VirtualCover(BaseVirtualEntity[CoverEntityConfig, CoverState], CoverEntity
                 self._attr_name,
                 position,
             )
+
+    async def async_open_cover_tilt(self, **kwargs: Any) -> None:
+        """Open the cover tilt."""
+        self._attr_current_cover_tilt_position = 100
+        self.async_write_ha_state()
+        self.fire_template_event("cover.open_cover_tilt", **kwargs)
+
+    async def async_close_cover_tilt(self, **kwargs: Any) -> None:
+        """Close the cover tilt."""
+        self._attr_current_cover_tilt_position = 0
+        self.async_write_ha_state()
+        self.fire_template_event("cover.close_cover_tilt", **kwargs)
+
+    async def async_set_cover_tilt_position(self, **kwargs: Any) -> None:
+        """Move the cover tilt to a specific position."""
+        position: int | None = kwargs.get(ATTR_POSITION)
+        if position is not None:
+            self._attr_current_cover_tilt_position = max(0, min(100, position))
+            self.async_write_ha_state()
+            self.fire_template_event("cover.set_cover_tilt_position", **kwargs)
+
+    async def async_stop_cover_tilt(self, **kwargs: Any) -> None:
+        """Stop the cover tilt."""
+        self.fire_template_event("cover.stop_cover_tilt", **kwargs)
 
     async def _move_to_position(self, target_position: int) -> None:
         """Move cover to target position with travel time simulation."""

@@ -185,7 +185,7 @@ class VirtualCamera(Camera):
         # Set device info
         self._attr_device_info = device_info
 
-        _LOGGER.info(f"Virtual camera '{self._attr_name}' initialized (type: {camera_type})")
+        _LOGGER.info("Virtual camera '%s' initialized (type: %s)", self._attr_name, camera_type)
 
     def get_default_state(self) -> CameraState:
         """Return the default state for this entity type."""
@@ -220,9 +220,9 @@ class VirtualCamera(Camera):
             data = await self._store.async_load()
             if data:
                 self.apply_state(data)
-                _LOGGER.debug(f"Camera '{self._attr_name}' state loaded from storage")
+                _LOGGER.debug("Camera '%s' state loaded from storage", self._attr_name)
         except Exception as ex:
-            _LOGGER.error(f"Failed to load state for camera '{self._attr_name}': {ex}")
+            _LOGGER.error("Failed to load state for camera '%s': %s", self._attr_name, ex)
             self.apply_state(self.get_default_state())
 
     async def async_save_state(self) -> None:
@@ -230,9 +230,9 @@ class VirtualCamera(Camera):
         try:
             data = self.get_current_state()
             await self._store.async_save(data)
-            _LOGGER.debug(f"Camera '{self._attr_name}' state saved to storage")
+            _LOGGER.debug("Camera '%s' state saved to storage", self._attr_name)
         except Exception as ex:
-            _LOGGER.error(f"Failed to save state for camera '{self._attr_name}': {ex}")
+            _LOGGER.error("Failed to save state for camera '%s': %s", self._attr_name, ex)
 
     async def async_added_to_hass(self) -> None:
         """Call when entity is added to hass."""
@@ -240,7 +240,7 @@ class VirtualCamera(Camera):
         await self.async_load_state()
         self._attr_available = True
         self.async_write_ha_state()
-        _LOGGER.info(f"Virtual camera '{self._attr_name}' added to Home Assistant")
+        _LOGGER.info("Virtual camera '%s' added to Home Assistant", self._attr_name)
 
     def fire_template_event(self, action: str, **kwargs: Any) -> None:
         """Fire a template update event if templates are configured."""
@@ -262,6 +262,9 @@ class VirtualCamera(Camera):
 
         if self._camera_type in ["indoor", "outdoor", "ptz"]:
             features |= CameraEntityFeature.STREAM
+
+        if self._camera_type == "ptz":
+            features |= CameraEntityFeature.PTZ
 
         self._attr_supported_features = features
 
@@ -361,7 +364,7 @@ class VirtualCamera(Camera):
                 return image_bytes
             return minimal_jpeg
         except Exception as e:
-            _LOGGER.error(f"Error generating camera image: {e}")
+            _LOGGER.error("Error generating camera image: %s", e)
             return minimal_jpeg
 
     def _generate_image(self, width: int | None = None, height: int | None = None) -> bytes:
@@ -510,7 +513,7 @@ class VirtualCamera(Camera):
                 image = image.resize((width, height))
                 out_w, out_h = width, height
             except Exception as e:
-                _LOGGER.debug(f"Camera '{self._attr_name}' resize failed: {e}")
+                _LOGGER.debug("Camera '%s' resize failed: %s", self._attr_name, e)
 
         img_bytes = io.BytesIO()
         image.save(img_bytes, format="JPEG", quality=85)
@@ -521,7 +524,7 @@ class VirtualCamera(Camera):
         self._attr_motion_detection_enabled = True
         await self.async_save_state()
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual camera '{self._attr_name}' motion detection enabled")
+        _LOGGER.debug("Virtual camera '%s' motion detection enabled", self._attr_name)
         self.fire_template_event("camera.enable_motion_detection")
 
     async def async_disable_motion_detection(self) -> None:
@@ -530,15 +533,30 @@ class VirtualCamera(Camera):
         self._motion_detected = False
         await self.async_save_state()
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual camera '{self._attr_name}' motion detection disabled")
+        _LOGGER.debug("Virtual camera '%s' motion detection disabled", self._attr_name)
         self.fire_template_event("camera.disable_motion_detection")
+
+    async def async_pan(self, pan: int) -> None:
+        """Pan the camera."""
+        self._pan = pan
+        self.async_write_ha_state()
+
+    async def async_tilt(self, tilt: int) -> None:
+        """Tilt the camera."""
+        self._tilt = tilt
+        self.async_write_ha_state()
+
+    async def async_zoom(self, zoom: int) -> None:
+        """Zoom the camera."""
+        self._zoom = max(1.0, min(10.0, float(zoom)))
+        self.async_write_ha_state()
 
     async def async_turn_on(self) -> None:
         """Turn on camera."""
         self._attr_is_streaming = True
         await self.async_save_state()
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual camera '{self._attr_name}' turned on")
+        _LOGGER.debug("Virtual camera '%s' turned on", self._attr_name)
         self.fire_template_event("camera.turn_on")
 
     async def async_turn_off(self) -> None:
@@ -547,7 +565,7 @@ class VirtualCamera(Camera):
         self._attr_is_recording = False
         await self.async_save_state()
         self.async_write_ha_state()
-        _LOGGER.debug(f"Virtual camera '{self._attr_name}' turned off")
+        _LOGGER.debug("Virtual camera '%s' turned off", self._attr_name)
         self.fire_template_event("camera.turn_off")
 
     async def async_update(self) -> None:
@@ -597,7 +615,7 @@ class VirtualCamera(Camera):
                     # video element refreshes immediately.
                     self.async_write_ha_state()
             except Exception as e:
-                _LOGGER.error(f"Error generating animated frame for '{self._attr_name}': {e}")
+                _LOGGER.error("Error generating animated frame for '%s': %s", self._attr_name, e)
 
         self.async_write_ha_state()
 

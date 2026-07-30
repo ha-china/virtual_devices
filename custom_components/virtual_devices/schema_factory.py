@@ -311,6 +311,7 @@ class SchemaFactory:
                     "power", "energy", "voltage", "current", "battery",
                     "gas", "water", "solar_energy", "battery_charge",
                     "battery_discharge", "gas_flow_rate", "water_flow_rate",
+                    "volume", "weight", "distance", "irradiance", "moisture", "frequency", "timestamp", "duration",
                 ]
             ),
         }
@@ -323,7 +324,9 @@ class SchemaFactory:
                 [
                     "motion", "door", "window", "smoke", "gas", "water_leak",
                     "moisture", "occupancy", "opening", "presence", "problem",
-                    "safety", "sound", "vibration"
+                    "safety", "sound", "vibration",
+                    "battery", "cold", "heat", "tamper", "carbon_monoxide",
+                    "connectivity", "running", "update", "power",
                 ]
             ),
         }
@@ -333,7 +336,7 @@ class SchemaFactory:
         """Build schema fields for button entities."""
         return {
             vol.Optional("button_type", default="generic"): vol.In(
-                ["generic", "doorbell", "emergency", "reset"]
+                ["generic", "restart", "update", "identify", "doorbell", "emergency", "reset"]
             ),
         }
 
