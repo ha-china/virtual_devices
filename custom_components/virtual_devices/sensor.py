@@ -388,8 +388,9 @@ class VirtualSensor(BaseVirtualEntity[SensorEntityConfig, SensorState], RestoreS
     async def async_added_to_hass(self) -> None:
         """Restore state when entity is added to Home Assistant."""
         await super().async_added_to_hass()
-        if self._attr_native_value is not None:
-            self._native_value = self._attr_native_value
+        if (last_sensor_data := await self.async_get_last_sensor_data()) is not None:
+            if last_sensor_data.native_value is not None:
+                self._native_value = last_sensor_data.native_value
 
     def get_default_state(self) -> SensorState:
         """Return the default state for this sensor entity."""
