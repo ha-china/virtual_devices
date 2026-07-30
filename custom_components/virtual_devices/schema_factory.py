@@ -309,7 +309,8 @@ class SchemaFactory:
                 [
                     "temperature", "humidity", "pressure", "illuminance",
                     "power", "energy", "voltage", "current", "battery",
-                    "gas", "water",
+                    "gas", "water", "solar_energy", "battery_charge",
+                    "battery_discharge", "gas_flow_rate", "water_flow_rate",
                 ]
             ),
         }

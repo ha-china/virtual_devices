@@ -28,6 +28,7 @@ from homeassistant.const import (
     UnitOfPressure,
     UnitOfTemperature,
     UnitOfVolume,
+    UnitOfVolumeFlowRate,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -108,13 +109,53 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "icon": "mdi:fire",
         "default_name": "Gas Consumption",
     },
-        "water": {
+    "water": {
         "device_class": SensorDeviceClass.WATER,
         "unit": UnitOfVolume.CUBIC_METERS,
         "state_class": SensorStateClass.TOTAL_INCREASING,
         "range": (0, 100000),
         "icon": "mdi:water",
         "default_name": "Water Consumption",
+    },
+    "solar_energy": {
+        "device_class": SensorDeviceClass.ENERGY,
+        "unit": UnitOfEnergy.KILO_WATT_HOUR,
+        "state_class": SensorStateClass.TOTAL_INCREASING,
+        "range": (0, 10000),
+        "icon": "mdi:solar-power",
+        "default_name": "Solar Production",
+    },
+    "battery_charge": {
+        "device_class": SensorDeviceClass.ENERGY,
+        "unit": UnitOfEnergy.KILO_WATT_HOUR,
+        "state_class": SensorStateClass.TOTAL_INCREASING,
+        "range": (0, 10000),
+        "icon": "mdi:battery-charging",
+        "default_name": "Battery Charge",
+    },
+    "battery_discharge": {
+        "device_class": SensorDeviceClass.ENERGY,
+        "unit": UnitOfEnergy.KILO_WATT_HOUR,
+        "state_class": SensorStateClass.TOTAL_INCREASING,
+        "range": (0, 10000),
+        "icon": "mdi:battery-discharge",
+        "default_name": "Battery Discharge",
+    },
+    "gas_flow_rate": {
+        "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
+        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "range": (0, 10),
+        "icon": "mdi:pipe",
+        "default_name": "Gas Flow Rate",
+    },
+    "water_flow_rate": {
+        "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
+        "unit": UnitOfVolumeFlowRate.LITERS_PER_MINUTE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "range": (0, 50),
+        "icon": "mdi:water-pump",
+        "default_name": "Water Flow Rate",
     },
     "voltage": {
         "device_class": SensorDeviceClass.VOLTAGE,
@@ -423,7 +464,7 @@ class VirtualSensor(BaseVirtualEntity[SensorEntityConfig, SensorState], RestoreS
         """Generate initial value based on sensor type."""
         if self._sensor_type in ("battery",):
             return random.randint(20, 100)
-        if self._sensor_type in ("energy", "gas", "water"):
+        if self._sensor_type in ("energy", "gas", "water", "solar_energy", "battery_charge", "battery_discharge"):
             return round(random.uniform(0, 10), 2)
         range_vals: tuple[int, int] = type_config.get("range", (0, 100))
         return round(random.uniform(range_vals[0], range_vals[1]), 1)
@@ -443,13 +484,21 @@ class VirtualSensor(BaseVirtualEntity[SensorEntityConfig, SensorState], RestoreS
             change: float = random.uniform(-5, 5)
             self._native_value = round(
                 max(range_vals[0], min(range_vals[1], current + change)))
-        elif self._sensor_type in ("energy", "gas", "water"):
+        elif self._sensor_type in ("energy", "gas", "water", "solar_energy", "battery_charge", "battery_discharge"):
             # TOTAL_INCREASING semantics: value only increases.
             current = self._native_value if isinstance(
                 self._native_value, (int, float)) else 0.0
             increment = random.uniform(0.05, 0.5)
             self._native_value = round(
                 min(range_vals[1], current + increment), 2)
+        elif self._sensor_type in ("gas_flow_rate", "water_flow_rate"):
+            # MEASUREMENT flow rate: fluctuates with occasional usage spikes.
+            current = self._native_value if isinstance(
+                self._native_value, (int, float)) else 0.0
+            drift = random.uniform(-0.5, 0.5)
+            spike = random.choice([0, 0, 0, 2, 5, 10]) if random.random() < 0.05 else 0
+            self._native_value = round(
+                max(range_vals[0], min(range_vals[1], current + drift + spike)), 1)
         elif self._sensor_type == "power":
             # Realistic household power simulation: base load + gradual changes + appliance spikes.
             current = self._native_value if isinstance(
