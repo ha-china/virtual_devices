@@ -68,6 +68,7 @@ DEVICE_TYPE_DEHUMIDIFIER = "dehumidifier"
 DEVICE_TYPE_DISHWASHER = "dishwasher"
 DEVICE_TYPE_REFRIGERATOR = "refrigerator"
 DEVICE_TYPE_DOORBELL = "doorbell"
+DEVICE_TYPE_VEHICLE = "vehicle"
 
 
 @dataclass
@@ -118,6 +119,7 @@ DEVICE_TYPES = {
     DEVICE_TYPE_DISHWASHER: DEVICE_TYPE_DISHWASHER,
     DEVICE_TYPE_REFRIGERATOR: DEVICE_TYPE_REFRIGERATOR,
     DEVICE_TYPE_DOORBELL: DEVICE_TYPE_DOORBELL,
+    DEVICE_TYPE_VEHICLE: DEVICE_TYPE_VEHICLE,
 }
 
 SIREN_TONES = {
@@ -791,6 +793,14 @@ DEVICE_TYPE_REGISTRY: dict[str, DeviceTypeInfo] = {
             "motion_detection": True,
             "recording": False,
             "night_vision": True,
+        },
+    ),
+    DEVICE_TYPE_VEHICLE: DeviceTypeInfo(
+        key=DEVICE_TYPE_VEHICLE,
+        display_name_key="device_type.vehicle",
+        icon="mdi:car",
+        default_config={
+            "vehicle_type": "car",
         },
     ),
 }

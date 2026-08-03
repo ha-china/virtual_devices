@@ -46,6 +46,7 @@ from .const import (
     DEVICE_TYPE_REFRIGERATOR,
     DEVICE_TYPE_REMOTE,
     DEVICE_TYPE_SIREN,
+    DEVICE_TYPE_VEHICLE,
     DEVICE_TYPE_WASHER,
     DOMAIN,
     DEVICE_TYPE_REGISTRY,
@@ -310,6 +311,9 @@ class VirtualDevicesMultiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ],
             DEVICE_TYPE_DOORBELL: [
                 "doorbell_chime", "recording", "motion_detection", "night_vision",
+            ],
+            DEVICE_TYPE_VEHICLE: [
+                "vehicle_type",
             ],
         }
         return field_map.get(self._device_type, [])

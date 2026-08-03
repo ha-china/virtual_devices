@@ -46,6 +46,8 @@ PLATFORMS: list[Platform] = [
     Platform.VALVE,
     Platform.WATER_HEATER,
     Platform.HUMIDIFIER,
+    Platform.DEVICE_TRACKER,
+    Platform.UPDATE,
     # Note: air_purifier is not a standalone platform, it uses the fan platform
 ]
 

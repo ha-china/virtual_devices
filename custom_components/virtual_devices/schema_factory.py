@@ -47,6 +47,7 @@ from .const import (
     DEVICE_TYPE_DEHUMIDIFIER,
     DEVICE_TYPE_DISHWASHER,
     DEVICE_TYPE_DOORBELL,
+    DEVICE_TYPE_VEHICLE,
     DEVICE_TYPE_FAN,
     DEVICE_TYPE_HUMIDIFIER,
     DEVICE_TYPE_LIGHT,
@@ -218,6 +219,15 @@ class SchemaFactory:
             ),
             vol.Optional(CONF_FREEZER_TEMPERATURE, default=-18): vol.All(
                 vol.Coerce(int), vol.Range(min=-30, max=-10)
+            ),
+        }
+
+    @staticmethod
+    def _build_vehicle_schema() -> dict[vol.Marker, Any]:
+        """Build schema fields for vehicle entities."""
+        return {
+            vol.Optional("vehicle_type", default="car"): vol.In(
+                ["car", "ev", "ebike"]
             ),
         }
 
@@ -587,6 +597,7 @@ SCHEMA_BUILDERS: dict[str, SchemaBuilderFunc] = {
     DEVICE_TYPE_DEHUMIDIFIER: SchemaFactory._build_dehumidifier_schema,
     DEVICE_TYPE_REFRIGERATOR: SchemaFactory._build_refrigerator_schema,
     DEVICE_TYPE_DOORBELL: SchemaFactory._build_doorbell_schema,
+    DEVICE_TYPE_VEHICLE: SchemaFactory._build_vehicle_schema,
     DEVICE_TYPE_CLIMATE: SchemaFactory._build_climate_schema,
     DEVICE_TYPE_COVER: SchemaFactory._build_cover_schema,
     DEVICE_TYPE_FAN: SchemaFactory._build_fan_schema,
