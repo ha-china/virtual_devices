@@ -22,7 +22,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Supported Home Assistant platforms
-PLATFORMS: list[Platform] = [
+PLATFORMS: list[Platform | str] = [
     Platform.LIGHT,
     Platform.SWITCH,
     Platform.CLIMATE,
@@ -46,8 +46,7 @@ PLATFORMS: list[Platform] = [
     Platform.VALVE,
     Platform.WATER_HEATER,
     Platform.HUMIDIFIER,
-    Platform.DEVICE_TRACKER,
-    Platform.UPDATE,
+    "vehicle",
     # Note: air_purifier is not a standalone platform, it uses the fan platform
 ]
 
