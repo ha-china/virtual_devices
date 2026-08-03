@@ -142,6 +142,21 @@ STATE_KEY_SOFTWARE_UPDATE_AVAILABLE = "software_update_available"
 STATE_KEY_SOFTWARE_UPDATE_VERSION = "software_update_version"
 STATE_KEY_SOFTWARE_UPDATE_INSTALLING = "software_update_installing"
 STATE_KEY_SOFTWARE_UPDATE_PROGRESS = "software_update_progress"
+STATE_KEY_TIMES_CHARGED = "times_charged"
+STATE_KEY_BATTERY_GRADE = "battery_grade"
+STATE_KEY_TIME_LEFT = "time_left"
+STATE_KEY_CENTRE_CTRL_BATT = "centre_ctrl_batt"
+STATE_KEY_HDOP = "hdop"
+STATE_KEY_RIDING_TIME = "riding_time"
+STATE_KEY_DAYS_IN_USE = "days_in_use"
+STATE_KEY_LAST_TRACK_START = "last_track_start"
+STATE_KEY_LAST_TRACK_END = "last_track_end"
+STATE_KEY_LAST_TRACK_DISTANCE = "last_track_distance"
+STATE_KEY_LAST_TRACK_AVG_SPEED = "last_track_avg_speed"
+STATE_KEY_LAST_TRACK_RIDING_TIME = "last_track_riding_time"
+STATE_KEY_BATTERY_TEMP_DESC = "battery_temp_desc"
+STATE_KEY_BATTERY_LEVEL_B = "battery_level_b"
+STATE_KEY_BATTERY_GRADE_B = "battery_grade_b"
 
 class VehicleDataManager:
     """Manages shared vehicle state and simulation."""
@@ -264,6 +279,21 @@ class VehicleDataManager:
             STATE_KEY_SOFTWARE_UPDATE_VERSION: "2025.32.1",
             STATE_KEY_SOFTWARE_UPDATE_INSTALLING: False,
             STATE_KEY_SOFTWARE_UPDATE_PROGRESS: 0,
+            STATE_KEY_TIMES_CHARGED: random.randint(10, 200),
+            STATE_KEY_BATTERY_GRADE: random.randint(80, 100),
+            STATE_KEY_TIME_LEFT: random.randint(1, 8),
+            STATE_KEY_CENTRE_CTRL_BATT: random.randint(60, 100),
+            STATE_KEY_HDOP: round(random.uniform(0.5, 3.0), 1),
+            STATE_KEY_RIDING_TIME: 0,
+            STATE_KEY_DAYS_IN_USE: random.randint(30, 500),
+            STATE_KEY_LAST_TRACK_START: datetime.now().isoformat(),
+            STATE_KEY_LAST_TRACK_END: datetime.now().isoformat(),
+            STATE_KEY_LAST_TRACK_DISTANCE: round(random.uniform(1, 20), 1),
+            STATE_KEY_LAST_TRACK_AVG_SPEED: round(random.uniform(15, 40), 1),
+            STATE_KEY_LAST_TRACK_RIDING_TIME: random.randint(300, 3600),
+            STATE_KEY_BATTERY_TEMP_DESC: "Normal",
+            STATE_KEY_BATTERY_LEVEL_B: random.randint(20, 100),
+            STATE_KEY_BATTERY_GRADE_B: random.randint(80, 100),
         }
 
     async def async_load(self) -> None:
@@ -384,6 +414,28 @@ class VehicleDataManager:
             else:
                 bat_temp -= 0.02 * delta / 60
             self._data[STATE_KEY_BATTERY_TEMP] = round(max(5, min(60, bat_temp)), 1)
+        if is_ebike:
+            if is_on and speed > 0:
+                self._data[STATE_KEY_RIDING_TIME] = self._data.get(STATE_KEY_RIDING_TIME, 0) + int(delta)
+            if self._data.get(STATE_KEY_CHARGING, False):
+                was_charging = self._data.get("_was_charging", False)
+                if not was_charging:
+                    self._data[STATE_KEY_TIMES_CHARGED] = self._data.get(STATE_KEY_TIMES_CHARGED, 0) + 1
+                self._data["_was_charging"] = True
+            else:
+                self._data["_was_charging"] = False
+            ctrl_batt = self._data.get(STATE_KEY_CENTRE_CTRL_BATT, 100)
+            ctrl_batt -= 0.001 * delta / 60
+            self._data[STATE_KEY_CENTRE_CTRL_BATT] = round(max(0, ctrl_batt), 1)
+            hdop = self._data.get(STATE_KEY_HDOP, 1.0)
+            hdop += random.uniform(-0.1, 0.1) * delta / 60
+            self._data[STATE_KEY_HDOP] = round(max(0.5, min(10.0, hdop)), 1)
+            if self._data.get(STATE_KEY_BATTERY_TEMP, 25.0) < 15:
+                self._data[STATE_KEY_BATTERY_TEMP_DESC] = "Cold"
+            elif bat_temp > 40:
+                self._data[STATE_KEY_BATTERY_TEMP_DESC] = "High"
+            else:
+                self._data[STATE_KEY_BATTERY_TEMP_DESC] = "Normal"
         if is_car and is_on:
             coolant = self._data.get(STATE_KEY_COOLANT_TEMP, 85.0)
             target_coolant = 85 + speed * 0.1
@@ -530,6 +582,26 @@ async def async_setup_entry(
         sens_idx += 1
     if vehicle_type == "ebike":
         entities.append(VirtualVehicleAssistLevelSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+        sens_idx += 1
+        entities.append(VirtualVehicleTimesChargedSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+        sens_idx += 1
+        entities.append(VirtualVehicleBatteryGradeSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+        sens_idx += 1
+        entities.append(VirtualVehicleBatteryGradeSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager, " B"))
+        sens_idx += 1
+        entities.append(VirtualVehicleTimeLeftSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+        sens_idx += 1
+        entities.append(VirtualVehicleCentreCtrlBattSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+        sens_idx += 1
+        entities.append(VirtualVehicleHDopSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+        sens_idx += 1
+        entities.append(VirtualVehicleRidingTimeSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+        sens_idx += 1
+        entities.append(VirtualVehicleDaysInUseSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+        sens_idx += 1
+        entities.append(VirtualVehicleBatteryTempDescSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+        sens_idx += 1
+        entities.append(VirtualVehicleBatteryLevelBSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
         sens_idx += 1
 
     # Buttons
@@ -1446,6 +1518,173 @@ class VirtualVehicleAssistLevelSensor(SensorEntity):
 
     async def async_update(self):
         await self._manager.async_simulate()
+
+
+class VirtualVehicleTimesChargedSensor(SensorEntity):
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_native_unit_of_measurement = "cycles"
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_should_poll = True
+    def __init__(self, hass, config_entry_id, entity_name, idx, device_info, manager):
+        self._manager = manager
+        self._attr_name = f"{entity_name} Times Charged"
+        self._attr_unique_id = f"{config_entry_id}_vehicle_{idx}_times_charged"
+        self._attr_device_info = device_info
+    @property
+    def native_value(self):
+        return self._manager.get_state(STATE_KEY_TIMES_CHARGED, 0)
+    async def async_update(self):
+        pass
+
+
+class VirtualVehicleBatteryGradeSensor(SensorEntity):
+    _attr_device_class = SensorDeviceClass.BATTERY
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_should_poll = True
+    def __init__(self, hass, config_entry_id, entity_name, idx, device_info, manager, suffix=""):
+        self._manager = manager
+        self._suffix = suffix
+        self._attr_name = f"{entity_name} Battery Grade{suffix}"
+        self._attr_unique_id = f"{config_entry_id}_vehicle_{idx}_battery_grade{suffix.lower().replace(' ', '_')}"
+        self._attr_device_info = device_info
+    @property
+    def native_value(self):
+        key = STATE_KEY_BATTERY_GRADE_B if self._suffix == " B" else STATE_KEY_BATTERY_GRADE
+        return self._manager.get_state(key, 100)
+    async def async_update(self):
+        pass
+
+
+class VirtualVehicleTimeLeftSensor(SensorEntity):
+    _attr_native_unit_of_measurement = "h"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:av-timer"
+    _attr_should_poll = True
+    def __init__(self, hass, config_entry_id, entity_name, idx, device_info, manager):
+        self._manager = manager
+        self._attr_name = f"{entity_name} Time Left"
+        self._attr_unique_id = f"{config_entry_id}_vehicle_{idx}_time_left"
+        self._attr_device_info = device_info
+    @property
+    def native_value(self):
+        return self._manager.get_state(STATE_KEY_TIME_LEFT, 0)
+    async def async_update(self):
+        pass
+
+
+class VirtualVehicleCentreCtrlBattSensor(SensorEntity):
+    _attr_device_class = SensorDeviceClass.BATTERY
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:car-cruise-control"
+    _attr_should_poll = True
+    def __init__(self, hass, config_entry_id, entity_name, idx, device_info, manager):
+        self._manager = manager
+        self._attr_name = f"{entity_name} Centre Ctrl Battery"
+        self._attr_unique_id = f"{config_entry_id}_vehicle_{idx}_centre_ctrl_batt"
+        self._attr_device_info = device_info
+    @property
+    def native_value(self):
+        return self._manager.get_state(STATE_KEY_CENTRE_CTRL_BATT, 100)
+    async def async_update(self):
+        pass
+
+
+class VirtualVehicleHDopSensor(SensorEntity):
+    _attr_icon = "mdi:map-marker"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_should_poll = True
+    def __init__(self, hass, config_entry_id, entity_name, idx, device_info, manager):
+        self._manager = manager
+        self._attr_name = f"{entity_name} GPS HDOP"
+        self._attr_unique_id = f"{config_entry_id}_vehicle_{idx}_hdop"
+        self._attr_device_info = device_info
+    @property
+    def native_value(self):
+        return self._manager.get_state(STATE_KEY_HDOP, 0)
+    @property
+    def native_unit_of_measurement(self):
+        return None
+    async def async_update(self):
+        pass
+
+
+class VirtualVehicleRidingTimeSensor(SensorEntity):
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:map-clock"
+    _attr_should_poll = True
+    def __init__(self, hass, config_entry_id, entity_name, idx, device_info, manager):
+        self._manager = manager
+        self._attr_name = f"{entity_name} Riding Time"
+        self._attr_unique_id = f"{config_entry_id}_vehicle_{idx}_riding_time"
+        self._attr_device_info = device_info
+    @property
+    def native_value(self):
+        return self._manager.get_state(STATE_KEY_RIDING_TIME, 0)
+    async def async_update(self):
+        pass
+
+
+class VirtualVehicleDaysInUseSensor(SensorEntity):
+    _attr_native_unit_of_measurement = "days"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:calendar-today"
+    _attr_should_poll = True
+    def __init__(self, hass, config_entry_id, entity_name, idx, device_info, manager):
+        self._manager = manager
+        self._attr_name = f"{entity_name} Days In Use"
+        self._attr_unique_id = f"{config_entry_id}_vehicle_{idx}_days_in_use"
+        self._attr_device_info = device_info
+    @property
+    def native_value(self):
+        return self._manager.get_state(STATE_KEY_DAYS_IN_USE, 0)
+    async def async_update(self):
+        pass
+
+
+class VirtualVehicleBatteryTempDescSensor(SensorEntity):
+    _attr_icon = "mdi:thermometer-alert"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_should_poll = True
+    def __init__(self, hass, config_entry_id, entity_name, idx, device_info, manager):
+        self._manager = manager
+        self._attr_name = f"{entity_name} Battery Temp Status"
+        self._attr_unique_id = f"{config_entry_id}_vehicle_{idx}_battery_temp_desc"
+        self._attr_device_info = device_info
+    @property
+    def native_value(self):
+        return self._manager.get_state(STATE_KEY_BATTERY_TEMP_DESC, "Normal")
+    async def async_update(self):
+        pass
+
+
+class VirtualVehicleBatteryLevelBSensor(SensorEntity):
+    _attr_device_class = SensorDeviceClass.BATTERY
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:battery-charging-50"
+    _attr_should_poll = True
+    def __init__(self, hass, config_entry_id, entity_name, idx, device_info, manager):
+        self._manager = manager
+        self._attr_name = f"{entity_name} Battery B"
+        self._attr_unique_id = f"{config_entry_id}_vehicle_{idx}_battery_b"
+        self._attr_device_info = device_info
+    @property
+    def native_value(self):
+        return self._manager.get_state(STATE_KEY_BATTERY_LEVEL_B, 100)
+    async def async_update(self):
+        pass
 
 
 class VirtualVehicleEstimatedRangeSensor(SensorEntity):
