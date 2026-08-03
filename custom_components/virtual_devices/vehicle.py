@@ -755,12 +755,6 @@ class VirtualVehicleTracker(TrackerEntity):
     def longitude(self) -> float | None:
         return self._manager.get_state(STATE_KEY_LONGITUDE)
 
-    @property
-    def battery_level(self) -> int | None:
-        if self._manager.is_car():
-            return self._manager.get_state(STATE_KEY_FUEL_LEVEL)
-        return self._manager.get_state(STATE_KEY_BATTERY_LEVEL)
-
     async def async_update(self):
         await self._manager.async_simulate()
 

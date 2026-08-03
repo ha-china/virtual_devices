@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import (
+    DEVICE_TYPE_VEHICLE,
     DOMAIN,
     MANUFACTURER,
     MODEL,
@@ -22,7 +23,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Supported Home Assistant platforms
-PLATFORMS: list[Platform | str] = [
+PLATFORMS: list[Platform] = [
     Platform.LIGHT,
     Platform.SWITCH,
     Platform.CLIMATE,
@@ -46,7 +47,6 @@ PLATFORMS: list[Platform | str] = [
     Platform.VALVE,
     Platform.WATER_HEATER,
     Platform.HUMIDIFIER,
-    "vehicle",
     # Note: air_purifier is not a standalone platform, it uses the fan platform
 ]
 
@@ -128,6 +128,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     device_type = entry.data.get("device_type", "unknown")
+    if device_type == DEVICE_TYPE_VEHICLE:
+        from .vehicle import async_setup_entry as async_setup_vehicle
+        await async_setup_vehicle(hass, entry)
+
     _LOGGER.info("Successfully set up virtual device: %s", device_type)
 
     return True
