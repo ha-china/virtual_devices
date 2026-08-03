@@ -54,8 +54,8 @@ async def async_setup_entry(
             VirtualVehicleFlashLightsButton, VirtualVehicleHonkHornButton,
             VirtualVehicleWakeButton, VirtualVehicleKeylessDrivingButton,
         )
-        vehicle_type = config_entry.data.get("vehicle_type", "ev")
         entities_config = config_entry.data.get("entities", [])
+        vehicle_type = entities_config[0].get("vehicle_type", "ev") if entities_config else "ev"
         manager = hass.data[DOMAIN][config_entry.entry_id].get("vehicle_manager")
         if not manager:
             entity_name = entities_config[0].get("entity_name", "vehicle") if entities_config else "vehicle"
