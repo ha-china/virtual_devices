@@ -22,6 +22,7 @@ from .const import (
     DEVICE_TYPE_DOORBELL,
     DEVICE_TYPE_DRYER,
     DEVICE_TYPE_REFRIGERATOR,
+    DEVICE_TYPE_VEHICLE,
     DEVICE_TYPE_WASHER,
     DOMAIN,
 )
@@ -68,11 +69,62 @@ async def async_setup_entry(
     """Set up virtual binary sensor entities."""
     device_type: str | None = config_entry.data.get("device_type")
 
-    if device_type not in (DEVICE_TYPE_BINARY_SENSOR, DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER, DEVICE_TYPE_DISHWASHER, DEVICE_TYPE_REFRIGERATOR, DEVICE_TYPE_DOORBELL):
+    if device_type not in (DEVICE_TYPE_BINARY_SENSOR, DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER, DEVICE_TYPE_DISHWASHER, DEVICE_TYPE_REFRIGERATOR, DEVICE_TYPE_DOORBELL, DEVICE_TYPE_VEHICLE):
         return
 
     device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
     entities: list[VirtualBinarySensor | VirtualLaundryBinarySensor] = []
+
+    if device_type == DEVICE_TYPE_VEHICLE:
+        from .vehicle import (
+            VehicleDataManager,
+            VirtualVehicleDoorSensor, VirtualVehicleTrunkSensor,
+            VirtualVehicleHoodSensor, VirtualVehicleEngineStatusSensor,
+            VirtualVehicleUserPresentSensor, VirtualVehicleParkingBrakeSensor,
+            VirtualVehicleTireWarningSensor, VirtualVehicleChargingSensor,
+            VirtualVehicleChargeCableSensor, VirtualVehicleLightOnSensor,
+            VirtualVehicleBrakeEngagedSensor,
+        )
+        vehicle_type = config_entry.data.get("vehicle_type", "ev")
+        entities_config = config_entry.data.get("entities", [])
+        manager = hass.data[DOMAIN][config_entry.entry_id].get("vehicle_manager")
+        if not manager:
+            entity_name = entities_config[0].get("entity_name", "vehicle") if entities_config else "vehicle"
+            manager = VehicleDataManager(hass, config_entry.entry_id, vehicle_type, entity_name)
+            await manager.async_load()
+            hass.data[DOMAIN][config_entry.entry_id]["vehicle_manager"] = manager
+        entity_name = entities_config[0].get("entity_name", "vehicle") if entities_config else "vehicle"
+        bin_idx = 0
+        if vehicle_type in ("car", "ev"):
+            for door in ["Front Driver Door", "Front Passenger Door", "Rear Driver Door", "Rear Passenger Door"]:
+                entities.append(VirtualVehicleDoorSensor(hass, config_entry.entry_id, entity_name, bin_idx, device_info, manager, door))
+                bin_idx += 1
+            entities.append(VirtualVehicleTrunkSensor(hass, config_entry.entry_id, entity_name, bin_idx, device_info, manager))
+            bin_idx += 1
+            entities.append(VirtualVehicleHoodSensor(hass, config_entry.entry_id, entity_name, bin_idx, device_info, manager))
+            bin_idx += 1
+            entities.append(VirtualVehicleParkingBrakeSensor(hass, config_entry.entry_id, entity_name, bin_idx, device_info, manager))
+            bin_idx += 1
+            for wheel in ["FL", "FR", "RL", "RR"]:
+                entities.append(VirtualVehicleTireWarningSensor(hass, config_entry.entry_id, entity_name, bin_idx, device_info, manager, wheel))
+                bin_idx += 1
+        entities.append(VirtualVehicleEngineStatusSensor(hass, config_entry.entry_id, entity_name, bin_idx, device_info, manager, vehicle_type))
+        bin_idx += 1
+        entities.append(VirtualVehicleUserPresentSensor(hass, config_entry.entry_id, entity_name, bin_idx, device_info, manager))
+        bin_idx += 1
+        if vehicle_type in ("ev", "ebike"):
+            entities.append(VirtualVehicleChargingSensor(hass, config_entry.entry_id, entity_name, bin_idx, device_info, manager))
+            bin_idx += 1
+        if vehicle_type == "ev":
+            entities.append(VirtualVehicleChargeCableSensor(hass, config_entry.entry_id, entity_name, bin_idx, device_info, manager))
+            bin_idx += 1
+        if vehicle_type == "ebike":
+            entities.append(VirtualVehicleLightOnSensor(hass, config_entry.entry_id, entity_name, bin_idx, device_info, manager))
+            bin_idx += 1
+            entities.append(VirtualVehicleBrakeEngagedSensor(hass, config_entry.entry_id, entity_name, bin_idx, device_info, manager))
+            bin_idx += 1
+        async_add_entities(entities)
+        return
 
     if device_type in (DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER):
         sensor_kinds = ["door", "remote_start", "remote_control"]

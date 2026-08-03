@@ -46,6 +46,7 @@ from .const import (
     DEVICE_TYPE_DRYER,
     DEVICE_TYPE_REFRIGERATOR,
     DEVICE_TYPE_SENSOR,
+    DEVICE_TYPE_VEHICLE,
     DEVICE_TYPE_WASHER,
     DOMAIN,
 )
@@ -361,11 +362,123 @@ async def async_setup_entry(
     device_type: str | None = config_entry.data.get("device_type")
 
     # Only set up sensor entities for sensor device type
-    if device_type not in (DEVICE_TYPE_SENSOR, DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER, DEVICE_TYPE_DISHWASHER, DEVICE_TYPE_REFRIGERATOR, DEVICE_TYPE_DOORBELL):
+    if device_type not in (DEVICE_TYPE_SENSOR, DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER, DEVICE_TYPE_DISHWASHER, DEVICE_TYPE_REFRIGERATOR, DEVICE_TYPE_DOORBELL, DEVICE_TYPE_VEHICLE):
         return
 
     device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
     entities: list[VirtualSensor | VirtualLaundrySensor] = []
+
+    if device_type == DEVICE_TYPE_VEHICLE:
+        from .vehicle import (
+            VehicleDataManager,
+            VirtualVehicleSpeedSensor, VirtualVehicleOdometerSensor,
+            VirtualVehicleTripDistanceSensor, VirtualVehicleOutsideTempSensor,
+            VirtualVehicleInsideTempSensor, VirtualVehicleFuelLevelSensor,
+            VirtualVehicleFuelRangeSensor, VirtualVehicleBatteryLevelSensor,
+            VirtualVehicleBatteryRangeSensor, VirtualVehicleBatteryVoltageSensor,
+            VirtualVehicleBatteryCurrentSensor, VirtualVehicleMotorPowerSensor,
+            VirtualVehicleChargeRateSensor, VirtualVehicleChargerPowerSensor,
+            VirtualVehicleChargerVoltageSensor, VirtualVehicleChargerCurrentSensor,
+            VirtualVehicleChargeEnergyAddedSensor, VirtualVehicleTimeToFullChargeSensor,
+            VirtualVehicleTirePressureSensor, VirtualVehicleOilLevelSensor,
+            VirtualVehicleCoolantTempSensor, VirtualVehicleBatteryTempSensor,
+            VirtualVehicleEstimatedRangeSensor, VirtualVehicleAssistLevelSensor,
+            VirtualVehicleTimesChargedSensor, VirtualVehicleBatteryGradeSensor,
+            VirtualVehicleTimeLeftSensor, VirtualVehicleCentreCtrlBattSensor,
+            VirtualVehicleHDopSensor, VirtualVehicleRidingTimeSensor,
+            VirtualVehicleDaysInUseSensor, VirtualVehicleBatteryTempDescSensor,
+            VirtualVehicleBatteryLevelBSensor,
+        )
+        vehicle_type = config_entry.data.get("vehicle_type", "ev")
+        entities_config = config_entry.data.get("entities", [])
+        manager = hass.data[DOMAIN][config_entry.entry_id].get("vehicle_manager")
+        if not manager:
+            entity_name = entities_config[0].get("entity_name", "vehicle") if entities_config else "vehicle"
+            manager = VehicleDataManager(hass, config_entry.entry_id, vehicle_type, entity_name)
+            await manager.async_load()
+            hass.data[DOMAIN][config_entry.entry_id]["vehicle_manager"] = manager
+        entity_name = entities_config[0].get("entity_name", "vehicle") if entities_config else "vehicle"
+        sens_idx = 0
+        entities.append(VirtualVehicleSpeedSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+        sens_idx += 1
+        entities.append(VirtualVehicleOdometerSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+        sens_idx += 1
+        if vehicle_type == "ebike":
+            entities.append(VirtualVehicleTripDistanceSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+        entities.append(VirtualVehicleOutsideTempSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+        sens_idx += 1
+        if vehicle_type in ("car", "ev"):
+            entities.append(VirtualVehicleInsideTempSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+        if vehicle_type == "car":
+            entities.append(VirtualVehicleFuelLevelSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleFuelRangeSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+        if vehicle_type in ("ev", "ebike"):
+            entities.append(VirtualVehicleBatteryLevelSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleBatteryRangeSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleBatteryVoltageSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleBatteryCurrentSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleMotorPowerSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+        if vehicle_type == "ev":
+            entities.append(VirtualVehicleChargeRateSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleChargerPowerSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleChargerVoltageSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleChargerCurrentSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleChargeEnergyAddedSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleTimeToFullChargeSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+        if vehicle_type in ("car", "ev"):
+            for wheel in ["FL", "FR", "RL", "RR"]:
+                entities.append(VirtualVehicleTirePressureSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager, wheel))
+                sens_idx += 1
+        if vehicle_type == "car":
+            entities.append(VirtualVehicleOilLevelSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleCoolantTempSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+        if vehicle_type in ("ev", "ebike"):
+            entities.append(VirtualVehicleBatteryTempSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleEstimatedRangeSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+        if vehicle_type == "ebike":
+            entities.append(VirtualVehicleAssistLevelSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleTimesChargedSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleBatteryGradeSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleBatteryGradeSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager, " B"))
+            sens_idx += 1
+            entities.append(VirtualVehicleTimeLeftSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleCentreCtrlBattSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleHDopSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleRidingTimeSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleDaysInUseSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleBatteryTempDescSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+            entities.append(VirtualVehicleBatteryLevelBSensor(hass, config_entry.entry_id, entity_name, sens_idx, device_info, manager))
+            sens_idx += 1
+        async_add_entities(entities)
+        return
 
     if device_type in (DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER):
         sensor_kinds = [

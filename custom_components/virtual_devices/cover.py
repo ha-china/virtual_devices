@@ -21,6 +21,7 @@ from .const import (
     CONF_ENTITIES,
     CONF_TRAVEL_TIME,
     DEVICE_TYPE_COVER,
+    DEVICE_TYPE_VEHICLE,
     DOMAIN,
 )
 from .types import CoverEntityConfig, CoverState
@@ -52,7 +53,7 @@ async def async_setup_entry(
     device_type: str | None = config_entry.data.get("device_type")
 
     # Only create cover entities for cover device types
-    if device_type != DEVICE_TYPE_COVER:
+    if device_type not in (DEVICE_TYPE_COVER, DEVICE_TYPE_VEHICLE):
         _LOGGER.debug("Skipping cover setup for device type: %s", device_type)
         return
 
@@ -60,6 +61,42 @@ async def async_setup_entry(
 
     device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
     entities: list[VirtualCover] = []
+
+    if device_type == DEVICE_TYPE_VEHICLE:
+        from .vehicle import (
+            VehicleDataManager,
+            VirtualVehicleChargePortCover, VirtualVehicleFrunkCover,
+            VirtualVehicleTrunkCover, VirtualVehicleSunroofCover,
+            VirtualVehicleWindowsCover, VirtualVehicleWindowCover,
+        )
+        vehicle_type = config_entry.data.get("vehicle_type", "ev")
+        entities_config = config_entry.data.get("entities", [])
+        manager = hass.data[DOMAIN][config_entry.entry_id].get("vehicle_manager")
+        if not manager:
+            entity_name = entities_config[0].get("entity_name", "vehicle") if entities_config else "vehicle"
+            manager = VehicleDataManager(hass, config_entry.entry_id, vehicle_type, entity_name)
+            await manager.async_load()
+            hass.data[DOMAIN][config_entry.entry_id]["vehicle_manager"] = manager
+        entity_name = entities_config[0].get("entity_name", "vehicle") if entities_config else "vehicle"
+        cov_idx = 0
+        if vehicle_type == "ev":
+            entities.append(VirtualVehicleChargePortCover(hass, config_entry.entry_id, entity_name, cov_idx, device_info, manager))
+            cov_idx += 1
+            entities.append(VirtualVehicleFrunkCover(hass, config_entry.entry_id, entity_name, cov_idx, device_info, manager))
+            cov_idx += 1
+        if vehicle_type in ("car", "ev"):
+            entities.append(VirtualVehicleTrunkCover(hass, config_entry.entry_id, entity_name, cov_idx, device_info, manager))
+            cov_idx += 1
+            entities.append(VirtualVehicleSunroofCover(hass, config_entry.entry_id, entity_name, cov_idx, device_info, manager))
+            cov_idx += 1
+            entities.append(VirtualVehicleWindowsCover(hass, config_entry.entry_id, entity_name, cov_idx, device_info, manager))
+            cov_idx += 1
+            for window in ["FL", "FR", "RL", "RR"]:
+                entities.append(VirtualVehicleWindowCover(hass, config_entry.entry_id, entity_name, cov_idx, device_info, manager, window))
+                cov_idx += 1
+        async_add_entities(entities)
+        return
+
     entities_config: list[CoverEntityConfig] = config_entry.data.get(CONF_ENTITIES, [])
 
     for idx, entity_config in enumerate(entities_config):

@@ -11,7 +11,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .appliance import get_appliance_bundles
-from .const import DEVICE_TYPE_DISHWASHER, DEVICE_TYPE_DRYER, DEVICE_TYPE_REFRIGERATOR, DEVICE_TYPE_WASHER, DOMAIN
+from .const import DEVICE_TYPE_DISHWASHER, DEVICE_TYPE_DRYER, DEVICE_TYPE_REFRIGERATOR, DEVICE_TYPE_VEHICLE, DEVICE_TYPE_WASHER, DOMAIN
 from .laundry import get_laundry_bundles
 
 
@@ -22,11 +22,44 @@ async def async_setup_entry(
 ) -> None:
     """Set up laundry number entities."""
     device_type: str | None = config_entry.data.get("device_type")
-    if device_type not in (DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER, DEVICE_TYPE_DISHWASHER, DEVICE_TYPE_REFRIGERATOR):
+    if device_type not in (DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER, DEVICE_TYPE_DISHWASHER, DEVICE_TYPE_REFRIGERATOR, DEVICE_TYPE_VEHICLE):
         return
 
     device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
     entities: list[VirtualLaundryDelayNumber | VirtualApplianceNumber] = []
+
+    if device_type == DEVICE_TYPE_VEHICLE:
+        from .vehicle import (
+            VehicleDataManager,
+            VirtualVehicleChargeLimitNumber, VirtualVehicleChargeCurrentNumber,
+            VirtualVehicleTargetTempNumber, VirtualVehicleSpeedLimitNumber,
+            VirtualVehicleAssistLevelNumber,
+        )
+        vehicle_type = config_entry.data.get("vehicle_type", "ev")
+        entities_config = config_entry.data.get("entities", [])
+        manager = hass.data[DOMAIN][config_entry.entry_id].get("vehicle_manager")
+        if not manager:
+            entity_name = entities_config[0].get("entity_name", "vehicle") if entities_config else "vehicle"
+            manager = VehicleDataManager(hass, config_entry.entry_id, vehicle_type, entity_name)
+            await manager.async_load()
+            hass.data[DOMAIN][config_entry.entry_id]["vehicle_manager"] = manager
+        entity_name = entities_config[0].get("entity_name", "vehicle") if entities_config else "vehicle"
+        num_idx = 0
+        if vehicle_type == "ev":
+            entities.append(VirtualVehicleChargeLimitNumber(hass, config_entry.entry_id, entity_name, num_idx, device_info, manager))
+            num_idx += 1
+            entities.append(VirtualVehicleChargeCurrentNumber(hass, config_entry.entry_id, entity_name, num_idx, device_info, manager))
+            num_idx += 1
+        if vehicle_type in ("car", "ev"):
+            entities.append(VirtualVehicleTargetTempNumber(hass, config_entry.entry_id, entity_name, num_idx, device_info, manager))
+            num_idx += 1
+        if vehicle_type == "ebike":
+            entities.append(VirtualVehicleSpeedLimitNumber(hass, config_entry.entry_id, entity_name, num_idx, device_info, manager))
+            num_idx += 1
+            entities.append(VirtualVehicleAssistLevelNumber(hass, config_entry.entry_id, entity_name, num_idx, device_info, manager))
+            num_idx += 1
+        async_add_entities(entities)
+        return
     for index, bundle in enumerate(get_laundry_bundles(hass, config_entry.entry_id)):
         entities.append(
             VirtualLaundryDelayNumber(

@@ -21,6 +21,7 @@ from .const import (
     CONF_ENTITIES,
     CONF_LOCK_STATE,
     DEVICE_TYPE_LOCK,
+    DEVICE_TYPE_VEHICLE,
     DOMAIN,
     LOCK_TYPES,
 )
@@ -37,11 +38,27 @@ async def async_setup_entry(
     """Set up virtual lock entities."""
     device_type: str | None = config_entry.data.get("device_type")
 
-    if device_type != DEVICE_TYPE_LOCK:
+    if device_type not in (DEVICE_TYPE_LOCK, DEVICE_TYPE_VEHICLE):
         return
 
     device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
     entities: list[LockEntity | SensorEntity] = []
+
+    if device_type == DEVICE_TYPE_VEHICLE:
+        from .vehicle import VehicleDataManager, VirtualVehicleLock
+        vehicle_type = config_entry.data.get("vehicle_type", "ev")
+        entities_config = config_entry.data.get("entities", [])
+        manager = hass.data[DOMAIN][config_entry.entry_id].get("vehicle_manager")
+        if not manager:
+            entity_name = entities_config[0].get("entity_name", "vehicle") if entities_config else "vehicle"
+            manager = VehicleDataManager(hass, config_entry.entry_id, vehicle_type, entity_name)
+            await manager.async_load()
+            hass.data[DOMAIN][config_entry.entry_id]["vehicle_manager"] = manager
+        entity_name = entities_config[0].get("entity_name", "vehicle") if entities_config else "vehicle"
+        entities.append(VirtualVehicleLock(hass, config_entry.entry_id, entity_name, 0, device_info, manager))
+        async_add_entities(entities)
+        return
+
     entities_config: list[LockEntityConfig] = config_entry.data.get(CONF_ENTITIES, [])
 
     for idx, entity_config in enumerate(entities_config):

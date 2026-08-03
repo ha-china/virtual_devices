@@ -128,10 +128,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     device_type = entry.data.get("device_type", "unknown")
-    if device_type == DEVICE_TYPE_VEHICLE:
-        from .vehicle import async_setup_entry as async_setup_vehicle
-        await async_setup_vehicle(hass, entry)
-
     _LOGGER.info("Successfully set up virtual device: %s", device_type)
 
     return True

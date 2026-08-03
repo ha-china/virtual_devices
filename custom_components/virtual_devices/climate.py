@@ -17,7 +17,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .base_entity import BaseVirtualEntity
 from .const import (
     CONF_ENTITIES, DEFAULT_MAX_TEMP, DEFAULT_MIN_TEMP, DEFAULT_TEMP_STEP,
-    DEVICE_TYPE_CLIMATE, DOMAIN,
+    DEVICE_TYPE_CLIMATE, DEVICE_TYPE_VEHICLE, DOMAIN,
 )
 from .types import ClimateEntityConfig, ClimateState
 
@@ -31,11 +31,30 @@ async def async_setup_entry(
     hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up virtual climate entities."""
-    if config_entry.data.get("device_type") != DEVICE_TYPE_CLIMATE:
+    if config_entry.data.get("device_type") not in (DEVICE_TYPE_CLIMATE, DEVICE_TYPE_VEHICLE):
         return
 
     device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
     entities: list[VirtualClimate] = []
+
+    if config_entry.data.get("device_type") == DEVICE_TYPE_VEHICLE:
+        from .vehicle import (
+            VehicleDataManager,
+            VirtualVehicleClimate,
+        )
+        vehicle_type = config_entry.data.get("vehicle_type", "ev")
+        entities_config = config_entry.data.get("entities", [])
+        manager = hass.data[DOMAIN][config_entry.entry_id].get("vehicle_manager")
+        if not manager:
+            entity_name = entities_config[0].get("entity_name", "vehicle") if entities_config else "vehicle"
+            manager = VehicleDataManager(hass, config_entry.entry_id, vehicle_type, entity_name)
+            await manager.async_load()
+            hass.data[DOMAIN][config_entry.entry_id]["vehicle_manager"] = manager
+        entity_name = entities_config[0].get("entity_name", "vehicle") if entities_config else "vehicle"
+        if vehicle_type in ("car", "ev"):
+            entities.append(VirtualVehicleClimate(hass, config_entry.entry_id, entity_name, 700, device_info, manager))
+        async_add_entities(entities)
+        return
 
     for idx, entity_config in enumerate(config_entry.data.get(CONF_ENTITIES, [])):
         try:

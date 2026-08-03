@@ -17,6 +17,7 @@ from .const import (
     DEVICE_TYPE_DISHWASHER,
     DEVICE_TYPE_DOORBELL,
     DEVICE_TYPE_DRYER,
+    DEVICE_TYPE_VEHICLE,
     DEVICE_TYPE_WASHER,
     DOMAIN,
 )
@@ -41,11 +42,40 @@ async def async_setup_entry(
     """Set up virtual button entities."""
     device_type: str | None = config_entry.data.get("device_type")
 
-    if device_type not in (DEVICE_TYPE_BUTTON, DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER, DEVICE_TYPE_DISHWASHER, DEVICE_TYPE_DOORBELL):
+    if device_type not in (DEVICE_TYPE_BUTTON, DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER, DEVICE_TYPE_DISHWASHER, DEVICE_TYPE_DOORBELL, DEVICE_TYPE_VEHICLE):
         return
 
     device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
     entities: list[VirtualButton | VirtualLaundryButton] = []
+
+    if device_type == DEVICE_TYPE_VEHICLE:
+        from .vehicle import (
+            VehicleDataManager,
+            VirtualVehicleFlashLightsButton, VirtualVehicleHonkHornButton,
+            VirtualVehicleWakeButton, VirtualVehicleKeylessDrivingButton,
+        )
+        vehicle_type = config_entry.data.get("vehicle_type", "ev")
+        entities_config = config_entry.data.get("entities", [])
+        manager = hass.data[DOMAIN][config_entry.entry_id].get("vehicle_manager")
+        if not manager:
+            entity_name = entities_config[0].get("entity_name", "vehicle") if entities_config else "vehicle"
+            manager = VehicleDataManager(hass, config_entry.entry_id, vehicle_type, entity_name)
+            await manager.async_load()
+            hass.data[DOMAIN][config_entry.entry_id]["vehicle_manager"] = manager
+        entity_name = entities_config[0].get("entity_name", "vehicle") if entities_config else "vehicle"
+        btn_idx = 0
+        entities.append(VirtualVehicleFlashLightsButton(hass, config_entry.entry_id, entity_name, btn_idx, device_info, manager))
+        btn_idx += 1
+        if vehicle_type in ("car", "ev"):
+            entities.append(VirtualVehicleHonkHornButton(hass, config_entry.entry_id, entity_name, btn_idx, device_info, manager))
+            btn_idx += 1
+        if vehicle_type == "ev":
+            entities.append(VirtualVehicleWakeButton(hass, config_entry.entry_id, entity_name, btn_idx, device_info, manager))
+            btn_idx += 1
+            entities.append(VirtualVehicleKeylessDrivingButton(hass, config_entry.entry_id, entity_name, btn_idx, device_info, manager))
+            btn_idx += 1
+        async_add_entities(entities)
+        return
 
     if device_type in (DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER):
         actions = ["start", "pause", "resume", "stop"]

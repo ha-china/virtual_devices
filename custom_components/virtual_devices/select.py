@@ -15,6 +15,7 @@ from .const import (
     DEVICE_TYPE_DOORBELL,
     DEVICE_TYPE_DRYER,
     DEVICE_TYPE_REFRIGERATOR,
+    DEVICE_TYPE_VEHICLE,
     DEVICE_TYPE_WASHER,
     DISHWASHER_PROGRAMS,
     DOORBELL_CHIMES,
@@ -37,11 +38,39 @@ async def async_setup_entry(
 ) -> None:
     """Set up laundry select entities."""
     device_type: str | None = config_entry.data.get("device_type")
-    if device_type not in (DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER, DEVICE_TYPE_DISHWASHER, DEVICE_TYPE_REFRIGERATOR, DEVICE_TYPE_DOORBELL):
+    if device_type not in (DEVICE_TYPE_WASHER, DEVICE_TYPE_DRYER, DEVICE_TYPE_DISHWASHER, DEVICE_TYPE_REFRIGERATOR, DEVICE_TYPE_DOORBELL, DEVICE_TYPE_VEHICLE):
         return
 
     device_info: DeviceInfo = hass.data[DOMAIN][config_entry.entry_id]["device_info"]
     entities: list[VirtualLaundrySelect | VirtualApplianceSelect] = []
+
+    if device_type == DEVICE_TYPE_VEHICLE:
+        from .vehicle import (
+            VehicleDataManager,
+            VirtualVehicleSeatHeaterSelect, VirtualVehicleSteeringWheelHeaterSelect,
+            VirtualVehicleDriveModeSelect,
+        )
+        vehicle_type = config_entry.data.get("vehicle_type", "ev")
+        entities_config = config_entry.data.get("entities", [])
+        manager = hass.data[DOMAIN][config_entry.entry_id].get("vehicle_manager")
+        if not manager:
+            entity_name = entities_config[0].get("entity_name", "vehicle") if entities_config else "vehicle"
+            manager = VehicleDataManager(hass, config_entry.entry_id, vehicle_type, entity_name)
+            await manager.async_load()
+            hass.data[DOMAIN][config_entry.entry_id]["vehicle_manager"] = manager
+        entity_name = entities_config[0].get("entity_name", "vehicle") if entities_config else "vehicle"
+        sel_idx = 0
+        if vehicle_type == "ev":
+            for pos in ["Front Left", "Front Right", "Rear Left", "Rear Center", "Rear Right"]:
+                entities.append(VirtualVehicleSeatHeaterSelect(hass, config_entry.entry_id, entity_name, sel_idx, device_info, manager, pos))
+                sel_idx += 1
+            entities.append(VirtualVehicleSteeringWheelHeaterSelect(hass, config_entry.entry_id, entity_name, sel_idx, device_info, manager))
+            sel_idx += 1
+        if vehicle_type in ("car", "ev"):
+            entities.append(VirtualVehicleDriveModeSelect(hass, config_entry.entry_id, entity_name, sel_idx, device_info, manager))
+            sel_idx += 1
+        async_add_entities(entities)
+        return
     for index, bundle in enumerate(get_laundry_bundles(hass, config_entry.entry_id)):
         entities.append(
             VirtualLaundrySelect(
