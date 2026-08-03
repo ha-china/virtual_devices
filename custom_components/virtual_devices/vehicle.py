@@ -2325,7 +2325,7 @@ class VirtualVehicleTrunkCover(CoverEntity):
 
 class VirtualVehicleSunroofCover(CoverEntity):
     _attr_should_poll = True
-    _attr_device_class = CoverDeviceClass.SUNROOF
+    _attr_device_class = CoverDeviceClass.SHADE
     _attr_supported_features = CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE | CoverEntityFeature.SET_POSITION
 
     def __init__(self, hass, config_entry_id, entity_name, index, device_info, manager):
