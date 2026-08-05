@@ -18,7 +18,7 @@ Built for testing, demos, development, and learning, it delivers a complete devi
 ## ✨ Core Features
 
 - 🎯 **Multi-Entity Devices**: Create 1-10 entities of the same type under one device
-- 🛠️ **26 Device Types**: Cover all major smart home device categories
+- 🛠️ **27 Device Types**: Cover all major smart home device categories
 - 🎨 **Graphical Configuration**: Web-based wizard with step-by-step guidance
 - 📊 **Template System**: Dynamic sensor calculations, media content, and image generation
 - 💾 **State Persistence**: Automatic save and restore of device states
@@ -83,6 +83,12 @@ Built for testing, demos, development, and learning, it delivers a complete devi
 | 🧊 **Refrigerator** | Fridge-freezer temps/Modes/Door states | ⭐⭐⭐⭐ |
 | 🔔 **Doorbell** | Camera/Ring/Motion/Chime | ⭐⭐⭐⭐ |
 
+### 🚗 Vehicle Simulation
+
+| Device Type | Features | Complexity |
+|-------------|----------|------------|
+| 🚗 **Vehicle** | Car (fuel)/EV/E-bike — doors, windows, trunk, frunk, hood, engine, battery, charging, GPS, climate, lock, lights, horn, tire pressure, odometer, speed, seat heaters, sentry mode, software update, and more | ⭐⭐⭐⭐⭐ |
+
 ### 🧺 Laundry Entity Set
 
 Washer and dryer are exposed as complete appliance groups instead of a single toggle. Each configured laundry device can provide:
@@ -100,10 +106,8 @@ Washer and dryer are exposed as complete appliance groups instead of a single to
 
 #### Method 1: HACS Installation (Recommended)
 1. Go to **HACS → Integrations**
-2. Click **Menu → Custom Repositories**
-3. Add repository: `https://github.com/ha-china/virtual_devices`
-4. Search for **"Virtual Devices Multi"** and install
-5. Restart Home Assistant
+2. Search for **"Virtual Devices Multi"** and install
+3. Restart Home Assistant
 
 #### Method 2: Manual Installation
 1. Download the [latest release](https://github.com/ha-china/virtual_devices/releases)
