@@ -40,12 +40,14 @@ jobs:
             echo "Tag $version does not exist, will create release"
           fi
 
-      - name: Generate changelog
+- name: Generate changelog
         id: changelog
         if: github.event_name == 'push' && steps.check_tag.outputs.exists == 'false'
-        uses: Desmond-Dong/actions/bilingual-changelog@v1
+        uses: Desmond-Dong/actions/bilingual-changelog@main
         with:
-          api-key: ${{ secrets.LLM_API_KEY }}
+          llm-api-key: ${{ secrets.LLM_API_KEY }}
+          llm-api-url: ${{ secrets.LLM_API_URL }}
+          llm-model: ${{ secrets.LLM_MODEL }}
 
       - name: Create tag and release
         if: github.event_name == 'push' && steps.check_tag.outputs.exists == 'false'
