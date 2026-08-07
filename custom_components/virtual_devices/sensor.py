@@ -30,7 +30,7 @@ from homeassistant.const import (
     UnitOfMass,
     UnitOfPrecipitationDepth,
     UnitOfPressure,
-    UnitOfRadioactivity,
+    UnitOfRadiationConcentration,
     UnitOfRatio,
     UnitOfReactiveEnergy,
     UnitOfReactivePower,
@@ -321,7 +321,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
     },
     "radon": {
         "device_class": SensorDeviceClass.RADON,
-        "unit": UnitOfRadioactivity.BECQUEREL_PER_CUBIC_METER,
+        "unit": UnitOfRadiationConcentration.BECQUEREL_PER_CUBIC_METER,
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 1000),
         "icon": "mdi:radioactive",
@@ -500,7 +500,7 @@ SENSOR_TYPE_CONFIG: dict[str, dict[str, Any]] = {
     },
     "energy_distance": {
         "device_class": SensorDeviceClass.ENERGY_DISTANCE,
-        "unit": UnitOfEnergyDistance.KILO_WATT_HOURS_PER_100_KILOMETERS,
+        "unit": UnitOfEnergyDistance.KILO_WATT_HOUR_PER_100_KM,
         "state_class": SensorStateClass.MEASUREMENT,
         "range": (0, 100),
         "icon": "mdi:lightning-bolt",
