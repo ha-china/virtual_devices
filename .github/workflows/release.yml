@@ -22,7 +22,7 @@ jobs:
 
       - name: Extract version from manifest
         id: extract_version
-        if: github.event_name == 'push'
+        if: github.event_name != 'release'
         run: |
           version=$(jq -r '.version' custom_components/virtual_devices/manifest.json)
           echo "version=$version" >> $GITHUB_OUTPUT
@@ -30,7 +30,7 @@ jobs:
 
       - name: Check if tag exists
         id: check_tag
-        if: github.event_name == 'push'
+        if: github.event_name != 'release'
         run: |
           version="${{ steps.extract_version.outputs.version }}"
           if git rev-parse "$version" >/dev/null 2>&1; then
@@ -43,7 +43,7 @@ jobs:
 
       - name: Generate changelog
         id: changelog
-        if: github.event_name == 'push' && steps.check_tag.outputs.exists == 'false'
+        if: github.event_name != 'release' && steps.check_tag.outputs.exists == 'false'
         uses: Desmond-Dong/actions/bilingual-changelog@main
         with:
           llm-api-key: ${{ secrets.LLM_API_KEY }}
@@ -51,7 +51,7 @@ jobs:
           llm-model: ${{ secrets.LLM_MODEL }}
 
       - name: Create tag and release
-        if: github.event_name == 'push' && steps.check_tag.outputs.exists == 'false'
+        if: github.event_name != 'release' && steps.check_tag.outputs.exists == 'false'
         run: |
           version="${{ steps.extract_version.outputs.version }}"
           git config --local user.email "action@github.com"
@@ -60,7 +60,7 @@ jobs:
           git push origin "$version"
 
       - name: Create GitHub Release
-        if: github.event_name == 'push' && steps.check_tag.outputs.exists == 'false'
+        if: github.event_name != 'release' && steps.check_tag.outputs.exists == 'false'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.extract_version.outputs.version }}
@@ -75,7 +75,7 @@ jobs:
           zip -r virtual_devices.zip ./
 
       - name: Upload release asset
-        if: github.event_name == 'push' && steps.check_tag.outputs.exists == 'false'
+        if: github.event_name != 'release' && steps.check_tag.outputs.exists == 'false'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
