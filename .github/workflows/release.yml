@@ -41,12 +41,30 @@ jobs:
             echo "Tag $version does not exist, will create release"
           fi
 
+      - name: Debug LLM API connection
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_API_URL: ${{ secrets.LLM_API_URL }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+        run: |
+          echo "LLM_API_URL length: ${#LLM_API_URL}"
+          echo "LLM_API_KEY length: ${#LLM_API_KEY}"
+          echo "LLM_MODEL length: ${#LLM_MODEL}"
+          response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" "$LLM_API_URL" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $LLM_API_KEY" \
+            -d "{\"model\": \"$LLM_MODEL\", \"messages\": [{\"role\": \"user\", \"content\": \"say hi\"}], \"temperature\": 0.1}")
+          echo "$response"
+
       - name: Generate changelog
         id: changelog
         if: github.event_name != 'release' && steps.check_tag.outputs.exists == 'false'
         uses: Desmond-Dong/actions/bilingual-changelog@v1
         with:
           llm-api-key: ${{ secrets.LLM_API_KEY }}
+          llm-api-url: ${{ secrets.LLM_API_URL }}
+          llm-model: ${{ secrets.LLM_MODEL }}
 
       - name: Create tag and release
         if: github.event_name != 'release' && steps.check_tag.outputs.exists == 'false'
