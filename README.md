@@ -53,7 +53,7 @@ Built for testing, demos, development, and learning, it delivers a complete devi
 
 | Device Type | Features | Complexity |
 |-------------|----------|------------|
-| 📊 **Sensor** | 16 environmental/power/air quality types | ⭐⭐⭐ |
+| 📊 **Sensor** | 65 types: air quality (PM/CO/NO/O₃/SO₂/AQI/Radon), power, environmental, health & more | ⭐⭐⭐ |
 | 💧 **Humidifier** | 5 modes/Humidity control/Water level | ⭐⭐⭐⭐ |
 | 🌬️ **Air Purifier** | 6 purification modes/AQI monitoring | ⭐⭐⭐⭐⭐ |
 | 🌤️ **Weather** | Complete weather/5-day forecast | ⭐⭐⭐ |
