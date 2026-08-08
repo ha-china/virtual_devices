@@ -44,11 +44,9 @@ jobs:
       - name: Generate changelog
         id: changelog
         if: github.event_name != 'release' && steps.check_tag.outputs.exists == 'false'
-        uses: Desmond-Dong/actions/bilingual-changelog@main
+        uses: Desmond-Dong/actions/bilingual-changelog@v1
         with:
           llm-api-key: ${{ secrets.LLM_API_KEY }}
-          llm-api-url: ${{ secrets.LLM_API_URL }}
-          llm-model: ${{ secrets.LLM_MODEL }}
 
       - name: Create tag and release
         if: github.event_name != 'release' && steps.check_tag.outputs.exists == 'false'
