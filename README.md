@@ -18,7 +18,7 @@ Built for testing, demos, development, and learning, it delivers a complete devi
 ## ✨ Core Features
 
 - 🎯 **Multi-Entity Devices**: Create 1-10 entities of the same type under one device
-- 🛠️ **27 Device Types**: Cover all major smart home device categories
+- 🛠️ **29 Device Types**: Cover all major smart home device categories
 - 🎨 **Graphical Configuration**: Web-based wizard with step-by-step guidance
 - 📊 **Template System**: Dynamic sensor calculations, media content, and image generation
 - 💾 **State Persistence**: Automatic save and restore of device states
@@ -37,16 +37,16 @@ Built for testing, demos, development, and learning, it delivers a complete devi
 | 🔆 **Light** | Brightness/Color Temp/RGB/Effects | ⭐⭐⭐ |
 | 🔌 **Switch** | Basic on/off with state persistence | ⭐ |
 | ❄️ **Climate** | Temp control/Multiple modes/Fan speeds | ⭐⭐⭐ |
-| 🪟 **Cover** | 8 types with position control | ⭐⭐ |
+| 🪟 **Cover** | 9 types with position control | ⭐⭐ |
 | 💨 **Fan** | Variable speed/Modes/Oscillation | ⭐⭐ |
-| 🚨 **Binary Sensor** | 13 status monitoring types | ⭐⭐ |
+| 🚨 **Binary Sensor** | 23 status monitoring types | ⭐⭐ |
 
 ### 🎮 Entertainment & Communication
 
 | Device Type | Features | Complexity |
 |-------------|----------|------------|
-| 📺 **Media Player** | 6 types/Playback control/Volume | ⭐⭐⭐⭐ |
-| 🎮 **Button** | 4 types for automation triggers | ⭐ |
+| 📺 **Media Player** | 7 types/Playback control/Volume | ⭐⭐⭐⭐ |
+| 🎮 **Button** | 7 types for automation triggers | ⭐ |
 | 🎬 **Scene** | Multi-device linkage/State recovery | ⭐⭐ |
 
 ### 🏥 Environmental & Health
@@ -64,7 +64,7 @@ Built for testing, demos, development, and learning, it delivers a complete devi
 |-------------|----------|------------|
 | 🤖 **Vacuum** | Cleaning modes/Charging/Path planning | ⭐⭐⭐⭐ |
 | 📹 **Camera** | 5 types/Recording/Night vision/PTZ | ⭐⭐⭐⭐⭐ |
-| 🔒 **Lock** | 4 types/Passwords/Auto-lock | ⭐⭐⭐ |
+| 🔒 **Lock** | 6 types/Passwords/Auto-lock | ⭐⭐⭐ |
 | 🚰 **Valve** | 4 types/Flow control/Position feedback | ⭐⭐⭐⭐ |
 
 ### 🔧 Utilities
