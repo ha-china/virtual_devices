@@ -6,6 +6,7 @@ on:
       - 'custom_components/virtual_devices/manifest.json'
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   release:
