@@ -40,7 +40,7 @@ jobs:
             echo "Tag $version does not exist, will create release"
           fi
 
-- name: Generate changelog
+      - name: Generate changelog
         id: changelog
         if: github.event_name == 'push' && steps.check_tag.outputs.exists == 'false'
         uses: Desmond-Dong/actions/bilingual-changelog@main
