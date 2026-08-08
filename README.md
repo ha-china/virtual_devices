@@ -100,6 +100,20 @@ Washer and dryer are exposed as complete appliance groups instead of a single to
 - `sensor`: operation state, remaining time, total time, progress, and finish time
 - `binary_sensor`: door, remote start, and remote control
 
+### 🚗 Vehicle Entity Set
+
+Vehicle supports three sub-types: **Car** (fuel), **EV** (electric), and **E-bike**. Each exposes entities across up to 9 platforms:
+
+- `lock`: door lock
+- `sensor`: speed, odometer, outside/inside temperature, fuel level & range (Car), battery level/range/voltage/current/motor power/temp (EV & E-bike), charge rate/charger power/voltage/current/energy added/time to full charge (EV), tire pressure ×4 (Car & EV), oil level & coolant temp (Car), estimated range, assist level/times charged/battery grade/dual battery/GPS HDOP/riding time/days in use/trip distance (E-bike)
+- `binary_sensor`: 4 doors, trunk, hood, parking brake, tire pressure warning ×4, engine/power status, user present (Car & EV); charging, charge cable (EV); light, brake (E-bike)
+- `switch`: defrost, sentry mode, charge, auto seat climate (L/R), steering wheel heater, cabin overheat protection (EV); light, horn (E-bike)
+- `select`: drive mode; seat heater ×5 (front-left/right, rear-left/center/right), steering wheel heater (EV)
+- `button`: flash lights, honk horn; wake, keyless driving (EV)
+- `number`: target temperature; charge limit, charge current (EV); speed limit, assist level (E-bike)
+- `climate`: cabin climate control (Car & EV)
+- `cover`: trunk, sunroof, windows (group + 4 individual), frunk, charge port door (EV)
+
 ## 🚀 Quick Start
 
 ### Installation Methods
