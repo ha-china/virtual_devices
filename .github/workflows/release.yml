@@ -44,6 +44,7 @@ jobs:
       - name: Generate changelog
         id: changelog
         if: github.event_name != 'release' && steps.check_tag.outputs.exists == 'false'
+        continue-on-error: true
         uses: Desmond-Dong/actions/bilingual-changelog@main
         with:
           llm-api-key: ${{ secrets.LLM_API_KEY }}
@@ -65,7 +66,7 @@ jobs:
         with:
           tag_name: ${{ steps.extract_version.outputs.version }}
           name: Release ${{ steps.extract_version.outputs.version }}
-          body: ${{ steps.changelog.outputs.changelog }}
+          body: ${{ steps.changelog.outputs.changelog || format('Release {0}', steps.extract_version.outputs.version) }}
           draft: false
           prerelease: false
 
