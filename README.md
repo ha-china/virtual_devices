@@ -233,5 +233,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **GitHub Repository**: https://github.com/ha-china/virtual_devices
 - **Issue Reporting**: https://github.com/ha-china/virtual_devices/issues
 - **Feature Requests**: https://github.com/ha-china/virtual_devices/discussions
-- **Changelog**: [CHANGELOG.md](CHANGELOG.md)
-- **API Documentation**: [WIKI](https://github.com/ha-china/virtual_devices/wiki)

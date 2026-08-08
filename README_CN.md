@@ -243,6 +243,4 @@
 - **GitHub仓库**: https://github.com/ha-china/virtual_devices
 - **问题反馈**: https://github.com/ha-china/virtual_devices/issues
 - **功能建议**: https://github.com/ha-china/virtual_devices/discussions
-- **更新日志**: [CHANGELOG.md](CHANGELOG.md)
-- **API文档**: [WIKI](https://github.com/ha-china/virtual_devices/wiki)
 
