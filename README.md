@@ -114,6 +114,33 @@ Vehicle supports three sub-types: **Car** (fuel), **EV** (electric), and **E-bik
 - `climate`: cabin climate control (Car & EV)
 - `cover`: trunk, sunroof, windows (group + 4 individual), frunk, charge port door (EV)
 
+### 🍽️ Appliance Entity Sets
+
+Dishwasher, refrigerator, and doorbell are also exposed as complete appliance groups:
+
+**Dishwasher:**
+- `sensor`: operation state, remaining time, total time, finish time
+- `binary_sensor`: door
+- `switch`: power
+- `select`: program (eco, auto, intensive, quick, rinse)
+- `button`: start, pause, resume, stop
+- `number`: delay start minutes
+
+**Refrigerator:**
+- `sensor`: fridge temperature, freezer temperature, mode
+- `binary_sensor`: fridge door, freezer door
+- `switch`: power
+- `select`: mode (normal, eco, quick_cool, vacation)
+- `number`: fridge temperature, freezer temperature
+
+**Doorbell:**
+- `sensor`: last ring time
+- `binary_sensor`: motion detection
+- `select`: chime (classic, digital, westminster, silent)
+- `button`: ring
+- `camera`: doorbell camera with motion detection and night vision
+- `event`: ring, motion, button press
+
 ## 🚀 Quick Start
 
 ### Installation Methods
