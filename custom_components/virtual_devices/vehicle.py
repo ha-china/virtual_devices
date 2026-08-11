@@ -26,7 +26,7 @@ from homeassistant.components.cover import (
     CoverEntityFeature,
 )
 from homeassistant.components.device_tracker import SourceType
-from homeassistant.components.device_tracker.config_entry import TrackerEntity
+from homeassistant.components.device_tracker import TrackerEntity
 from homeassistant.components.lock import LockEntity
 from homeassistant.components.number import NumberEntity
 from homeassistant.components.select import SelectEntity
@@ -1515,7 +1515,6 @@ class VirtualVehicleAssistLevelSensor(SensorEntity):
 
 
 class VirtualVehicleTimesChargedSensor(SensorEntity):
-    _attr_device_class = SensorDeviceClass.ENERGY
     _attr_native_unit_of_measurement = "cycles"
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     _attr_entity_category = EntityCategory.DIAGNOSTIC
