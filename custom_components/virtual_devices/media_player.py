@@ -96,7 +96,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
     it due to MediaPlayerEntity's specific requirements.
     """
 
-    _attr_should_poll: bool = False
+    _attr_should_poll: bool = True
     _attr_entity_registry_enabled_default: bool = True
 
     def __init__(
@@ -642,7 +642,7 @@ class VirtualMediaPlayer(MediaPlayerEntity):
             if new_position >= self._attr_media_duration:
                 if self._attr_repeat == "one":
                     self._attr_media_position = 0
-                elif self._attr_repeat == "all" or not self._attr_repeat:
+                else:
                     self._select_next_track()
                     if self._attr_state == MediaPlayerState.PLAYING:
                         self._attr_media_position = 0
