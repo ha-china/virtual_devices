@@ -121,8 +121,8 @@ class VirtualWaterHeater(WaterHeaterEntity):
         self._attr_is_away_mode_on: bool = False
 
         # Temperature settings
-        self._attr_current_temperature: float = entity_config.get("current_temperature", 25)
-        self._attr_target_temperature: float = entity_config.get("target_temperature", 60)
+        self._attr_native_current_temperature: float = entity_config.get("current_temperature", 25)
+        self._attr_native_target_temperature: float = entity_config.get("target_temperature", 60)
 
         # Set temperature range based on heater type
         temp_ranges: dict[str, tuple[int, int]] = {
@@ -135,7 +135,7 @@ class VirtualWaterHeater(WaterHeaterEntity):
         min_temp, max_temp = temp_ranges.get(heater_type, (40, 75))
         self._attr_min_temp: float = min_temp
         self._attr_max_temp: float = max_temp
-        self._attr_temperature_unit = UnitOfTemperature.CELSIUS
+        self._attr_native_temperature_unit = UnitOfTemperature.CELSIUS
 
         # Operation modes
         self._attr_operation_list: list[str] = ["off", "heat", "eco"]
@@ -167,15 +167,15 @@ class VirtualWaterHeater(WaterHeaterEntity):
     def apply_state(self, state: WaterHeaterState) -> None:
         """Apply loaded state to entity attributes."""
         self._attr_current_operation = state.get("current_operation", "off")
-        self._attr_target_temperature = state.get("target_temperature", 60.0)
-        self._attr_current_temperature = state.get("current_temperature", 25.0)
+        self._attr_native_target_temperature = state.get("target_temperature", 60.0)
+        self._attr_native_current_temperature = state.get("current_temperature", 25.0)
 
     def get_current_state(self) -> WaterHeaterState:
         """Get current state for persistence."""
         return {
             "current_operation": self._attr_current_operation or "off",
-            "target_temperature": self._attr_target_temperature,
-            "current_temperature": self._attr_current_temperature,
+            "target_temperature": self._attr_native_target_temperature,
+            "current_temperature": self._attr_native_current_temperature,
         }
 
     @property
@@ -230,7 +230,7 @@ class VirtualWaterHeater(WaterHeaterEntity):
             return
 
         if self._attr_min_temp <= temperature <= self._attr_max_temp:
-            self._attr_target_temperature = temperature
+            self._attr_native_target_temperature = temperature
             await self.async_save_state()
             self.async_write_ha_state()
             _LOGGER.debug("Water heater '%s' target temperature set to %s\u00b0C", self._attr_name, temperature)
@@ -264,11 +264,11 @@ class VirtualWaterHeater(WaterHeaterEntity):
         was_heating = self._is_heating
 
         if self._attr_current_operation == "heat":
-            if self._attr_current_temperature < self._attr_target_temperature - 2:
+            if self._attr_native_current_temperature < self._attr_native_target_temperature - 2:
                 if not self._is_heating:
                     self._is_heating = True
                     self._heating_start_time = time.time()
-            elif self._attr_current_temperature >= self._attr_target_temperature:
+            elif self._attr_native_current_temperature >= self._attr_native_target_temperature:
                 if self._is_heating:
                     self._is_heating = False
                     self._heating_start_time = None
@@ -319,18 +319,18 @@ class VirtualWaterHeater(WaterHeaterEntity):
                 }
                 heating_rate = heating_rate_map.get(self._heater_type, 0.5)
                 temp_increase = (heating_rate * elapsed / 60) * self._efficiency
-                self._attr_current_temperature = min(
-                    self._attr_target_temperature,
-                    self._attr_current_temperature + temp_increase
+                self._attr_native_current_temperature = min(
+                    self._attr_native_target_temperature,
+                    self._attr_native_current_temperature + temp_increase
                 )
         else:
             # Natural cooling
-            if self._attr_current_temperature > 20:
+            if self._attr_native_current_temperature > 20:
                 cooling_rate = 0.1
                 time_diff = current_time - (self._last_update or current_time)
-                self._attr_current_temperature = max(
+                self._attr_native_current_temperature = max(
                     20,
-                    self._attr_current_temperature - (cooling_rate * time_diff / 60)
+                    self._attr_native_current_temperature - (cooling_rate * time_diff / 60)
                 )
 
         # Update energy consumption
@@ -351,8 +351,8 @@ class VirtualWaterHeater(WaterHeaterEntity):
                 {
                     "entity_id": self.entity_id,
                     "device_id": self._config_entry_id,
-                    "current_temperature": self._attr_current_temperature,
-                    "target_temperature": self._attr_target_temperature,
+                    "current_temperature": self._attr_native_current_temperature,
+                    "target_temperature": self._attr_native_target_temperature,
                     "operation_mode": self._attr_current_operation,
                     "is_heating": self._is_heating,
                     "power_consumption": self._power_consumption,

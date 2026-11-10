@@ -2439,7 +2439,7 @@ class VirtualVehicleWindowCover(CoverEntity):
 
 class VirtualVehicleClimate(ClimateEntity):
     _attr_should_poll = True
-    _attr_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT, HVACMode.COOL, HVACMode.AUTO, HVACMode.DRY, HVACMode.FAN_ONLY]
     _attr_fan_modes = ["auto", "low", "medium", "high"]
     _attr_swing_modes = ["off", "vertical", "horizontal", "all"]
@@ -2487,11 +2487,11 @@ class VirtualVehicleClimate(ClimateEntity):
         return HVACAction.COOLING
 
     @property
-    def current_temperature(self) -> float | None:
+    def native_current_temperature(self) -> float | None:
         return self._manager.get_state(STATE_KEY_INSIDE_TEMP, 22.0)
 
     @property
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         return self._manager.get_state(STATE_KEY_TARGET_TEMP, 22.0)
 
     @property

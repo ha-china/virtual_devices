@@ -70,7 +70,7 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
     """Representation of a virtual climate device."""
 
     _attr_should_poll = True
-    _attr_temperature_unit: str = UnitOfTemperature.CELSIUS
+    _attr_native_temperature_unit: str = UnitOfTemperature.CELSIUS
     _attr_supported_features: ClimateEntityFeature = (
         ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.FAN_MODE
         | ClimateEntityFeature.SWING_MODE | ClimateEntityFeature.PRESET_MODE
@@ -101,8 +101,8 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
         self._attr_target_temperature_step: float = float(entity_config.get("temp_step", DEFAULT_TEMP_STEP))
         # State attributes - defaults, will be overwritten by async_load_state
         self._attr_hvac_mode: HVACMode = HVACMode.OFF
-        self._attr_target_temperature: float = 24.0
-        self._attr_current_temperature: float = 22.0
+        self._attr_native_target_temperature: float = 24.0
+        self._attr_native_current_temperature: float = 22.0
         self._attr_fan_mode: str = "auto"
         self._attr_swing_mode: str = "off"
         self._attr_preset_mode: str | None = None
@@ -127,8 +127,8 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
     def apply_state(self, state: ClimateState) -> None:
         """Apply loaded state to entity attributes."""
         self._attr_hvac_mode = HVACMode(state.get("hvac_mode", HVACMode.OFF))
-        self._attr_target_temperature = float(state.get("target_temperature", 24.0))
-        self._attr_current_temperature = float(state.get("current_temperature", 22.0))
+        self._attr_native_target_temperature = float(state.get("target_temperature", 24.0))
+        self._attr_native_current_temperature = float(state.get("current_temperature", 22.0))
         self._attr_fan_mode = state.get("fan_mode", "auto")
         self._attr_swing_mode = state.get("swing_mode", "off")
         self._attr_preset_mode = state.get("preset_mode")
@@ -142,8 +142,8 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
     def get_current_state(self) -> ClimateState:
         """Get current state for persistence."""
         state: ClimateState = {
-            "hvac_mode": self._attr_hvac_mode, "target_temperature": self._attr_target_temperature,
-            "current_temperature": self._attr_current_temperature, "fan_mode": self._attr_fan_mode,
+            "hvac_mode": self._attr_hvac_mode, "target_temperature": self._attr_native_target_temperature,
+            "current_temperature": self._attr_native_current_temperature, "fan_mode": self._attr_fan_mode,
             "swing_mode": self._attr_swing_mode, "preset_mode": self._attr_preset_mode,
             "hvac_action": self._attr_hvac_action,
         }
@@ -158,7 +158,7 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
             self._attr_hvac_mode = HVACMode.COOL
             self._update_hvac_action()
             self.fire_template_event("climate.turn_on", hvac_mode=self._attr_hvac_mode,
-                                     target_temperature=self._attr_target_temperature, current_temperature=self._attr_current_temperature)
+                                     target_temperature=self._attr_native_target_temperature, current_temperature=self._attr_native_current_temperature)
             await self.async_save_state()
             self.async_write_ha_state()
 
@@ -168,7 +168,7 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
             self._attr_hvac_mode = HVACMode.OFF
             self._attr_hvac_action = HVACAction.OFF
             self.fire_template_event("climate.turn_off", hvac_mode=HVACMode.OFF,
-                                     target_temperature=self._attr_target_temperature, current_temperature=self._attr_current_temperature)
+                                     target_temperature=self._attr_native_target_temperature, current_temperature=self._attr_native_current_temperature)
             await self.async_save_state()
             self.async_write_ha_state()
 
@@ -177,7 +177,7 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
         self._attr_hvac_mode = hvac_mode
         self._update_hvac_action()
         self.fire_template_event("climate.set_hvac_mode", hvac_mode=hvac_mode,
-                                 target_temperature=self._attr_target_temperature, current_temperature=self._attr_current_temperature)
+                                 target_temperature=self._attr_native_target_temperature, current_temperature=self._attr_native_current_temperature)
         await self.async_save_state()
         self.async_write_ha_state()
 
@@ -186,12 +186,12 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
         temperature: float | None = kwargs.get(ATTR_TEMPERATURE)
         if temperature is not None:
             temperature = max(self._attr_min_temp, min(self._attr_max_temp, temperature))
-            self._attr_target_temperature = temperature
+            self._attr_native_target_temperature = temperature
         if hvac_mode := kwargs.get(ATTR_HVAC_MODE):
             self._attr_hvac_mode = HVACMode(hvac_mode) if isinstance(hvac_mode, str) else hvac_mode
         self._update_hvac_action()
-        self.fire_template_event("climate.set_temperature", target_temperature=self._attr_target_temperature,
-                                 current_temperature=self._attr_current_temperature)
+        self.fire_template_event("climate.set_temperature", target_temperature=self._attr_native_target_temperature,
+                                 current_temperature=self._attr_native_current_temperature)
         await self.async_save_state()
         self.async_write_ha_state()
 
@@ -213,10 +213,10 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
         """Set new preset mode."""
         self._attr_preset_mode = preset_mode
         if preset_mode in PRESET_TEMPERATURES:
-            self._attr_target_temperature = PRESET_TEMPERATURES[preset_mode]
+            self._attr_native_target_temperature = PRESET_TEMPERATURES[preset_mode]
         self._update_hvac_action()
         self.fire_template_event("climate.set_preset_mode", preset_mode=preset_mode,
-                                 target_temperature=self._attr_target_temperature)
+                                 target_temperature=self._attr_native_target_temperature)
         await self.async_save_state()
         self.async_write_ha_state()
 
@@ -229,7 +229,7 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
         elif self._attr_hvac_mode == HVACMode.DRY:
             self._attr_hvac_action = HVACAction.DRYING
         else:
-            temp_diff = self._attr_target_temperature - self._attr_current_temperature
+            temp_diff = self._attr_native_target_temperature - self._attr_native_current_temperature
             if abs(temp_diff) <= self._target_reached_threshold:
                 self._attr_hvac_action = HVACAction.IDLE
             elif temp_diff > 0:
@@ -245,11 +245,11 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
             if self._attr_hvac_action in [HVACAction.HEATING, HVACAction.COOLING]:
                 temp_change = self._temperature_change_rate * 0.1
                 if self._attr_hvac_action == HVACAction.HEATING:
-                    self._attr_current_temperature += temp_change
+                    self._attr_native_current_temperature += temp_change
                 else:
-                    self._attr_current_temperature -= temp_change
-                self._attr_current_temperature = max(self._attr_min_temp, min(
-                    self._attr_max_temp, self._attr_current_temperature))
+                    self._attr_native_current_temperature -= temp_change
+                self._attr_native_current_temperature = max(self._attr_min_temp, min(
+                    self._attr_max_temp, self._attr_native_current_temperature))
             if self._humidity_enabled:
                 self._update_humidity()
             self._update_hvac_action()
@@ -266,7 +266,7 @@ class VirtualClimate(BaseVirtualEntity[ClimateEntityConfig, ClimateState], Clima
             humidity_change -= random.uniform(2.0, 4.0)
         elif self._attr_hvac_mode == HVACMode.FAN_ONLY:
             humidity_change += random.uniform(-0.5, 0.5)
-        humidity_change -= (self._attr_current_temperature - 20) * 0.1
+        humidity_change -= (self._attr_native_current_temperature - 20) * 0.1
         self._attr_current_humidity = max(20.0, min(90.0, self._attr_current_humidity + humidity_change))
 
     async def async_set_humidity(self, humidity: int) -> None:
