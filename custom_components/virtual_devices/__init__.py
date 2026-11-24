@@ -72,7 +72,7 @@ def get_device_info(config_entry: ConfigEntry) -> DeviceInfo:
         name=device_name,
         manufacturer=MANUFACTURER,
         model=_get_device_model(device_type, entities_config),
-        sw_version="2025.10.0",
+        sw_version="2026.11.0",
         configuration_url="https://github.com/ha-china/virtual_devices",
     )
 
