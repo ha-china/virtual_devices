@@ -2,14 +2,14 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![HA Version](https://img.shields.io/badge/HA-2025.10.0+-blue.svg)](https://www.home-assistant.io/)
+[![HA Version](https://img.shields.io/badge/HA-2026.11.0+-blue.svg)](https://www.home-assistant.io/)
 [![Quality Scale](https://img.shields.io/badge/Quality%20Scale-Silver-orange.svg)](https://hacs.xyz/docs/publishing/quality-guideline)
 [![Code Size](https://img.shields.io/github/languages/code-size/ha-china/virtual_devices?color=green)](https://github.com/ha-china/virtual_devices)
 [![Last Commit](https://img.shields.io/github/last-commit/ha-china/virtual_devices?color=blue)](https://github.com/ha-china/virtual_devices)
 
 **Language**: [中文](README_CN.md) | [English](README.md)
 
-这是一个面向 Home Assistant 2025.10.0+ 的企业级虚拟设备集成，**支持一台设备下创建多个同类型实体**。
+这是一个面向 Home Assistant 2026.11.0+ 的企业级虚拟设备集成，**支持一台设备下创建多个同类型实体**。
 
 它为测试、演示、开发和学习提供完整的设备模拟环境。
 

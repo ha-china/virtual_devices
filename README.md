@@ -2,14 +2,14 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![HA Version](https://img.shields.io/badge/HA-2025.10.0+-blue.svg)](https://www.home-assistant.io/)
+[![HA Version](https://img.shields.io/badge/HA-2026.11.0+-blue.svg)](https://www.home-assistant.io/)
 [![Quality Scale](https://img.shields.io/badge/Quality%20Scale-Silver-orange.svg)](https://hacs.xyz/docs/publishing/quality-guideline)
 [![Code Size](https://img.shields.io/github/languages/code-size/ha-china/virtual_devices?color=green)](https://github.com/ha-china/virtual_devices)
 [![Last Commit](https://img.shields.io/github/last-commit/ha-china/virtual_devices?color=blue)](https://github.com/ha-china/virtual_devices)
 
 **Language**: [中文](README_CN.md) | [English](README.md)
 
-An enterprise-grade virtual device integration for Home Assistant 2025.10.0+ with **multi-entity device support**.
+An enterprise-grade virtual device integration for Home Assistant 2026.11.0+ with **multi-entity device support**.
 
 Built for testing, demos, development, and learning, it delivers a complete device simulation environment.
 
